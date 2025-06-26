@@ -16,40 +16,31 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { COLORS } from "@/constants/colors";
 
 const categories = [
-  { name: "Home", icon: "home", color: COLORS.blue, route: "/home" },
-  { name: "Shopping", icon: "cart", color: COLORS.green, route: "/shopping" },
-  { name: "Users", icon: "people", color: COLORS.purple, route: "/users" },
+  { name: "Job", icon: "briefcase", color: COLORS.blue, route: "/job" },
+  { name: "Travel", icon: "airplane", color: COLORS.green, route: "/travel" },
+  { name: "Condo", icon: "home", color: COLORS.purple, route: "/condo" },
+  { name: "Hotel", icon: "bed", color: COLORS.gray, route: "/hotel" },
+  { name: "Course", icon: "school", color: COLORS.orange, route: "/course" },
   {
-    name: "Settings",
-    icon: "settings",
-    color: COLORS.gray,
-    route: "/settings",
-  },
-  {
-    name: "Analytics",
-    icon: "bar-chart",
-    color: COLORS.orange,
-    route: "/analytics",
-  },
-  { name: "Calendar", icon: "calendar", color: COLORS.red, route: "/calendar" },
-  {
-    name: "Messages",
-    icon: "chatbubble",
-    color: COLORS.indigo,
-    route: "/messages",
-  },
-  {
-    name: "Documents",
+    name: "Document",
     icon: "document",
     color: COLORS.yellow,
-    route: "/documents",
+    route: "/document",
   },
+  {
+    name: "Restaurant",
+    icon: "restaurant",
+    color: COLORS.red,
+    route: "/restaurant",
+  },
+  { name: "General", icon: "apps", color: COLORS.indigo, route: "/general" },
 ];
 
 const CategoryGrid = () => {
   const router = useRouter();
 
   const handleCategoryClick = (route: string) => {
+    console.log(`Navigating to ${route}`);
     router.push(route);
   };
 

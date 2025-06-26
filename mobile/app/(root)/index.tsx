@@ -15,9 +15,10 @@ import { styles } from "@/assets/styles/home.styles";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import AppSidebar from "@/components/AppSidebar";
 import { COLORS } from "@/constants/colors";
+import CategoryGrid from "@/components/CategoryGrid";
 
 interface AppLayoutProps {
-  children: React.ReactNode;
+  children?: React.ReactNode;
 }
 
 export default function AppLayout({ children }: AppLayoutProps) {
@@ -28,6 +29,24 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
   };
+
+  // Default to Home content if no children are provided (e.g., root route)
+  const defaultContent = (
+    <SignedIn>
+      <View style={styles.container}>
+        <View style={styles.content}>
+          <FlatList
+            data={[{ key: "category-grid" }]}
+            renderItem={() => <CategoryGrid />}
+            refreshControl={
+              <RefreshControl refreshing={false} onRefresh={() => {}} />
+            }
+            style={styles.contentContainer}
+          />
+        </View>
+      </View>
+    </SignedIn>
+  );
 
   return (
     <View style={styles.container}>
@@ -64,7 +83,9 @@ export default function AppLayout({ children }: AppLayoutProps) {
             <SignOutButton />
           </View>
         </View>
-        <View style={styles.contentContainer}>{children}</View>
+        <View style={styles.contentContainer}>
+          {children || defaultContent}
+        </View>
       </View>
     </View>
   );
