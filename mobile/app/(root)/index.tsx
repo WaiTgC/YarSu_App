@@ -1,21 +1,13 @@
 import { SignedIn, SignedOut, useUser } from "@clerk/clerk-expo";
 import { Link, useRouter } from "expo-router";
-import {
-  Text,
-  View,
-  Image,
-  TouchableOpacity,
-  FlatList,
-  Alert,
-  RefreshControl,
-} from "react-native";
+import { Text, View, Image, TouchableOpacity } from "react-native";
 import { SignOutButton } from "@/components/SignOutButton";
 import { useState } from "react";
 import { styles } from "@/assets/styles/home.styles";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import AppSidebar from "@/components/AppSidebar";
 import { COLORS } from "@/constants/colors";
-import CategoryGrid from "@/components/CategoryGrid";
+import Home from "./home"; // Import Home component
 
 interface AppLayoutProps {
   children?: React.ReactNode;
@@ -30,23 +22,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
     setSidebarOpen(!sidebarOpen);
   };
 
-  // Default to Home content if no children are provided (e.g., root route)
-  const defaultContent = (
-    <SignedIn>
-      <View style={styles.container}>
-        <View style={styles.content}>
-          <FlatList
-            data={[{ key: "category-grid" }]}
-            renderItem={() => <CategoryGrid />}
-            refreshControl={
-              <RefreshControl refreshing={false} onRefresh={() => {}} />
-            }
-            style={styles.contentContainer}
-          />
-        </View>
-      </View>
-    </SignedIn>
-  );
+  // Use Home component as default content if no children are provided
+  const defaultContent = <Home />;
 
   return (
     <View style={styles.container}>
@@ -60,11 +37,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
             >
               <Ionicons name="menu" size={24} color={COLORS.text} />
             </TouchableOpacity>
-            <Image
-              source={require("../../assets/images/YarSu.svg")}
-              style={styles.headerLogo}
-              resizeMode="contain"
-            />
             <View style={styles.welcomeContainer}>
               <Text style={styles.welcomeText}>Welcome,</Text>
               <Text style={styles.usernameText}>
@@ -72,14 +44,14 @@ export default function AppLayout({ children }: AppLayoutProps) {
               </Text>
             </View>
           </View>
+          <View style={styles.headerCenter}>
+            <Image
+              source={require("../../assets/images/YarSu.png")}
+              style={styles.headerLogo}
+              resizeMode="contain"
+            />
+          </View>
           <View style={styles.headerRight}>
-            <TouchableOpacity
-              style={styles.addButton}
-              onPress={() => router.push("./create")}
-            >
-              <Ionicons name="add" size={24} color="white" />
-              <Text style={styles.addButtonText}>Add</Text>
-            </TouchableOpacity>
             <SignOutButton />
           </View>
         </View>

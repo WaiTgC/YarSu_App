@@ -264,6 +264,7 @@
 // });
 import { StyleSheet, Dimensions } from "react-native";
 import { COLORS } from "@/constants/colors";
+import { transform } from "@babel/core";
 
 const { width } = Dimensions.get("window");
 
@@ -286,10 +287,11 @@ export const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
+    zIndex: 1,
   },
   headerLogo: {
-    width: 40,
-    height: 40,
+    width: 56,
+    height: 56,
   },
   welcomeContainer: {
     flexDirection: "column",
@@ -302,6 +304,12 @@ export const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
     color: COLORS.text,
+  },
+  headerCenter: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    alignItems: "center",
   },
   headerRight: {
     flexDirection: "row",
@@ -329,14 +337,14 @@ export const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "space-between",
-    padding: 16,
+    padding: 17,
+    gap: 5,
   },
   card: {
-    width: width * 0.48 - 8, // Approximately 48% width with gap adjustment
     backgroundColor: COLORS.white,
-    borderRadius: 8,
-    padding: 24, // Adjusted from p-6 (24px)
-    marginBottom: 16,
+    borderRadius: 20,
+    width: width > 768 ? "200px" : width * 0.45, // Dynamic width: fixed 200px for larger screens, 45% of screen width for smaller screens
+    height: "58px",
     alignItems: "center",
     borderWidth: 1,
     borderColor: COLORS.border,
@@ -357,11 +365,24 @@ export const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 12, // Adjusted from mb-3 (12px)
+    flexDirection: "row",
+  },
+
+  icon: {
+    color: COLORS.white,
+    fontSize: 24,
+    display: "flex",
   },
   cardText: {
     fontSize: 14, // Adjusted from text-sm (14px) to md:text-base (16px) context
     fontWeight: "600", // Adjusted from font-semibold
     color: COLORS.text,
     textAlign: "center",
+  },
+  banner: {
+    width: 366,
+    height: 148,
+    borderRadius: 15,
+    flexShrink: 0,
   },
 });

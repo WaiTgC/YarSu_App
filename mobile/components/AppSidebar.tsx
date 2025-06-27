@@ -142,7 +142,6 @@ const AppSidebar = ({ isOpen, toggleSidebar }: AppSidebarProps) => {
             </TouchableOpacity>
             <TouchableOpacity style={[styles.menuButton, styles.logoutButton]}>
               <View style={styles.menuItemContent}>
-                <Ionicons name="log-out" size={20} color={COLORS.expense} />
                 <SignOutButton />
               </View>
             </TouchableOpacity>

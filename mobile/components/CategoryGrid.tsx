@@ -56,9 +56,8 @@ const CategoryGrid = () => {
           <View
             style={[styles.iconContainer, { backgroundColor: category.color }]}
           >
-            <Ionicons name={category.icon} size={24} color={COLORS.white} />
+            <Text style={styles.cardText}>{category.name}</Text>
           </View>
-          <Text style={styles.cardText}>{category.name}</Text>
         </TouchableOpacity>
       ))}
     </View>
