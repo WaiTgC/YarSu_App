@@ -28,7 +28,7 @@ export default function SignUpScreen() {
   const [password, setPassword] = useState<string>("");
   const [username, setUsername] = useState<string>("");
   const [phone, setPhone] = useState<string>("");
-  const [selectedCountryCode, setSelectedCountryCode] = useState<string>("+1");
+  const [selectedCountryCode, setSelectedCountryCode] = useState<string>("+63"); // Default to Philippines
   const [pendingVerification, setPendingVerification] =
     useState<boolean>(false);
   const [code, setCode] = useState<string>("");
@@ -71,11 +71,17 @@ export default function SignUpScreen() {
     Animated.parallel([slideUp, shake]).start();
   }, [slideAnim, shakeAnim]);
 
+  useEffect(() => {
+    console.log("Selected country code:", selectedCountryCode); // Debug log
+  }, [selectedCountryCode]);
+
   const handlePhoneChange = (text: string) => {
-    setPhone(text);
+    const cleaned = text.replace(/[^0-9]/g, "");
+    setPhone(cleaned);
   };
 
   const handleCountryCodeChange = (value: string) => {
+    console.log("Picker value changed:", value); // Debug log
     setSelectedCountryCode(value);
   };
 
@@ -112,8 +118,16 @@ export default function SignUpScreen() {
       setError("Phone number is required");
       return;
     }
+    if (selectedCountryCode === "+63" && !phoneNumber.match(/^\+63\d{10}$/)) {
+      setError(
+        "Philippine phone number must be 10 digits (e.g., +639123456789)"
+      );
+      return;
+    }
     if (!phoneNumber.match(/^\+\d{10,15}$/)) {
-      setError("Please enter a valid phone number (e.g., +12025550123)");
+      setError(
+        "Please enter a valid phone number (e.g., +12025550123 or +639123456789)"
+      );
       return;
     }
 
@@ -252,22 +266,36 @@ export default function SignUpScreen() {
             onChangeText={(username) => setUsername(username)}
           />
           <View style={styles.phoneinputcontainer}>
-            <Picker
-              selectedValue={selectedCountryCode}
-              onValueChange={handleCountryCodeChange}
-              style={styles.input}
-              dropdownIconColor={COLORS.textLight}
+            <View
+              style={{
+                width: 120,
+                height: 50,
+                padding: 0,
+              }}
             >
-              {countryCodes.map((countryCode: CountryCode) => (
-                <Picker.Item
-                  key={countryCode.value}
-                  label={countryCode.value}
-                  value={countryCode.value}
-                />
-              ))}
-            </Picker>
+              <Picker
+                selectedValue={selectedCountryCode}
+                onValueChange={handleCountryCodeChange}
+                style={styles.picker}
+                mode="dropdown"
+                itemStyle={{
+                  fontSize: 16,
+                  height: 50,
+                  color: "#000",
+                }}
+              >
+                {countryCodes.map((countryCode: CountryCode) => (
+                  <Picker.Item
+                    key={countryCode.value}
+                    label={countryCode.value}
+                    value={countryCode.value}
+                    style={{ fontSize: 16, color: "#000" }}
+                  />
+                ))}
+              </Picker>
+            </View>
             <TextInput
-              style={[styles.input, error && styles.errorInput]}
+              style={[styles.phoneInput, error && styles.errorInput]}
               value={phone}
               placeholder="Enter phone number"
               placeholderTextColor="#9A8478"
@@ -275,7 +303,6 @@ export default function SignUpScreen() {
               onChangeText={handlePhoneChange}
             />
           </View>
-
           <TextInput
             style={[styles.input, error && styles.errorInput]}
             value={password}
@@ -289,10 +316,8 @@ export default function SignUpScreen() {
           </TouchableOpacity>
           <View style={styles.footerContainer}>
             <Text style={styles.footerText}>Already have an account?</Text>
-            <Link href="/sign-in" asChild>
-              <TouchableOpacity>
-                <Text style={styles.linkText}>Sign In</Text>
-              </TouchableOpacity>
+            <Link href="/sign-in">
+              <Text style={styles.linkText}>Sign In</Text>
             </Link>
           </View>
         </Animated.View>

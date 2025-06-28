@@ -47,10 +47,9 @@ export const styles = StyleSheet.create({
   },
   logotext: {
     width: "100%",
-    height: 80,
+    height: 70,
     resizeMode: "contain",
     marginBottom: 30,
-    marginTop: 20,
     alignSelf: "center",
   },
   title: {
@@ -81,7 +80,7 @@ export const styles = StyleSheet.create({
   optionButton: {
     display: "flex",
     width: 307,
-    height: 38,
+    padding: 10,
     justifyContent: "center",
     alignItems: "center",
     alignSelf: "center",
@@ -111,16 +110,35 @@ export const styles = StyleSheet.create({
     height: 50,
   },
   phoneinputcontainer: {
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: COLORS.white,
-    border: "none",
-    justifyContent: "space-between",
-
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 12,
+    padding: 10,
+    marginBottom: 16,
+    height: 50,
+  },
+  picker: {
+    margin: "auto",
+    borderRightColor: COLORS.border,
+    borderRightWidth: 1,
+    borderWidth: 0,
+    elevation: 0, // Hide border
+    height: "40px",
+    width: "100%",
+    color: "#000",
+    fontSize: 16,
+  },
+  phoneInput: {
+    flex: 1,
+    height: "100%",
+    paddingHorizontal: 10,
     fontSize: 16,
     color: "#000",
-    display: "flex",
-    flexDirection: "row",
+    borderLeftWidth: 0, // Ensure no extra border between picker and input
   },
-  number: {},
   errorInput: {
     borderColor: COLORS.expense,
   },

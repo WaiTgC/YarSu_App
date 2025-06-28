@@ -1,8 +1,18 @@
 import { SignedIn, SignedOut, useUser } from "@clerk/clerk-expo";
-import { Text, View, FlatList, RefreshControl, Animated } from "react-native";
+import {
+  Text,
+  View,
+  FlatList,
+  RefreshControl,
+  Animated,
+  TouchableOpacity,
+  Linking,
+  Image,
+} from "react-native";
 import { useState, useEffect, useRef } from "react";
 import { styles } from "@/assets/styles/home.styles";
 import CategoryGrid from "@/components/CategoryGrid";
+import Ionicons from "@expo/vector-icons/Ionicons";
 
 const images = [
   require("@/assets/images/banner.png"),
@@ -60,6 +70,19 @@ export default function Home({ toggleSidebar }: HomeProps) {
       clearInterval(interval);
     };
   }, [fadeAnim]);
+  const handleTelegramPress = async () => {
+    const url = "https://t.me/nannanbangkok";
+    try {
+      const supported = await Linking.canOpenURL(url);
+      if (supported) {
+        await Linking.openURL(url);
+      } else {
+        console.error("Cannot open URL:", url);
+      }
+    } catch (error) {
+      console.error("Error opening Telegram link:", error);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -69,19 +92,33 @@ export default function Home({ toggleSidebar }: HomeProps) {
             data={[{ key: "content" }]}
             renderItem={() => (
               <View>
-                <Text
-                  style={[
-                    styles.welcomeText,
-                    { fontSize: 24, marginVertical: 16, textAlign: "center" },
-                  ]}
-                >
-                  {getGreeting()},{" "}
-                  {user?.username ||
-                    user?.emailAddresses[0]?.emailAddress ||
-                    "User"}
-                  !
-                </Text>
-                <View style={{ height: 200, alignItems: "center" }}>
+                <View style={styles.greetingContainer}>
+                  <Text style={styles.greetingText}>
+                    {getGreeting()},{" "}
+                    {user?.username ||
+                      user?.emailAddresses[0]?.emailAddress ||
+                      "User"}
+                    !
+                  </Text>
+                  <View style={styles.lanButton}>
+                    <TouchableOpacity>
+                      <Image
+                        source={require("@/assets/images/MY.png")}
+                        style={styles.logo}
+                        resizeMode="contain"
+                      />
+                    </TouchableOpacity>
+                    <View style={styles.separator} />
+                    <TouchableOpacity>
+                      <Image
+                        source={require("@/assets/images/US.png")}
+                        style={styles.logo}
+                        resizeMode="contain"
+                      />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+                <View style={{ height: 150, alignItems: "center" }}>
                   <Animated.Image
                     source={images[currentImage]}
                     style={[styles.banner, { opacity: fadeAnim }]}
@@ -91,6 +128,23 @@ export default function Home({ toggleSidebar }: HomeProps) {
                     }
                   />
                 </View>
+                <Text style={styles.telegramText}>
+                  Join our Telegram Channel & see Updates
+                </Text>
+                <TouchableOpacity
+                  style={styles.joinTele}
+                  onPress={handleTelegramPress}
+                >
+                  <View style={{ flexDirection: "row", alignItems: "center" }}>
+                    <Ionicons
+                      name="paper-plane"
+                      size={20}
+                      color="#000"
+                      style={styles.iconTele}
+                    />
+                    Join Now
+                  </View>
+                </TouchableOpacity>
                 <CategoryGrid />
               </View>
             )}

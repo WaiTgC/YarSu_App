@@ -1,5 +1,5 @@
 import { SignedIn, SignedOut, useUser } from "@clerk/clerk-expo";
-import { useRouter } from "expo-router";
+import { Redirect, useRouter } from "expo-router";
 import { Text, View, Image, TouchableOpacity } from "react-native";
 import { SignOutButton } from "@/components/SignOutButton";
 import { useState } from "react";
@@ -45,7 +45,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
             </View>
             <View style={styles.headerCenter}>
               <Image
-                source={require("@/assets/images/YarSu.png")}
+                source={require("@/assets/images/YarSuLogo.png")}
                 style={styles.headerLogo}
                 resizeMode="contain"
               />
@@ -58,9 +58,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
         </View>
       </SignedIn>
       <SignedOut>
-        <Text style={styles.welcomeText}>
-          Please sign in to view the content
-        </Text>
+        <Redirect href={"/(auth)"} />
       </SignedOut>
     </View>
   );

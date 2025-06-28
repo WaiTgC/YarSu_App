@@ -289,14 +289,68 @@ export const styles = StyleSheet.create({
   },
   headerLogo: {
     width: 56,
-    height: 56,
+    height: 51,
   },
   welcomeContainer: {
     flexDirection: "column",
   },
   welcomeText: {
-    fontSize: 14,
+    fontSize: 15,
     color: COLORS.textLight,
+  },
+  greetingContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  greetingText: {
+    fontSize: 15,
+    color: COLORS.textLight,
+    margin: 20,
+    fontWeight: "400",
+    width: 157,
+    height: 38,
+  },
+  lanButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 15,
+  },
+  logo: {
+    width: 25,
+    height: 25,
+  },
+  separator: {
+    width: 1,
+    height: 30,
+    backgroundColor: COLORS.white,
+    marginVertical: 10,
+    marginHorizontal: 10,
+  },
+  telegramText: {
+    fontSize: 15,
+    color: COLORS.textLight,
+    margin: 20,
+    fontWeight: "400",
+    textAlign: "center",
+  },
+  joinTele: {
+    margin: "auto",
+    backgroundColor: COLORS.white,
+    width: 120,
+    height: "auto",
+    padding: 10,
+    borderRadius: 10,
+    flexShrink: 0,
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  iconTele: {
+    padding: 4,
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: "#000",
+    borderRadius: "50%",
   },
   usernameText: {
     fontSize: 16,
@@ -345,7 +399,7 @@ export const styles = StyleSheet.create({
     backgroundColor: COLORS.white,
     borderRadius: 20,
     maxWidth: 200,
-    width: "auto",
+    width: "100% ",
     height: "58px",
     alignItems: "center",
     borderWidth: 1,
@@ -361,9 +415,9 @@ export const styles = StyleSheet.create({
     animationTimingFunction: "ease-in-out",
   },
   iconContainer: {
-    width: 48, // Adjusted from w-12 (48px)
-    height: 48,
-    borderRadius: 24,
+    width: 170,
+    height: 58,
+    borderRadius: 20,
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 12, // Adjusted from mb-3 (12px)
