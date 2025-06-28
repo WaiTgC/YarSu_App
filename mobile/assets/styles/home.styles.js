@@ -309,7 +309,7 @@ export const styles = StyleSheet.create({
     margin: 20,
     fontWeight: "400",
     width: 157,
-    height: 38,
+    height: "auto",
   },
   lanButton: {
     flexDirection: "row",

@@ -23,7 +23,6 @@ const images = [
 
 const getGreeting = () => {
   const hour = new Date().getHours();
-  console.log(`Current hour: ${hour}`);
   if (hour < 12) return "Good Morning";
   if (hour < 18) return "Good Afternoon";
   return "Good Evening";
@@ -40,24 +39,18 @@ export default function Home({ toggleSidebar }: HomeProps) {
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
   const onRefresh = () => {
-    console.log("Refreshing...");
     setRefreshing(true);
     setTimeout(() => setRefreshing(false), 1000);
   };
 
   useEffect(() => {
-    console.log("Setting up image slider interval");
     const interval = setInterval(() => {
       Animated.timing(fadeAnim, {
         toValue: 0,
         duration: 500,
         useNativeDriver: true,
       }).start(() => {
-        setCurrentImage((prev) => {
-          const next = (prev + 1) % images.length;
-          console.log(`Switching to image index: ${next}`);
-          return next;
-        });
+        setCurrentImage((prev) => (prev + 1) % images.length);
         Animated.timing(fadeAnim, {
           toValue: 1,
           duration: 500,
@@ -65,11 +58,9 @@ export default function Home({ toggleSidebar }: HomeProps) {
         }).start();
       });
     }, 5000);
-    return () => {
-      console.log("Clearing image slider interval");
-      clearInterval(interval);
-    };
+    return () => clearInterval(interval);
   }, [fadeAnim]);
+
   const handleTelegramPress = async () => {
     const url = "https://t.me/nannanbangkok";
     try {
@@ -142,7 +133,7 @@ export default function Home({ toggleSidebar }: HomeProps) {
                       color="#000"
                       style={styles.iconTele}
                     />
-                    Join Now
+                    <Text>Join Now</Text>
                   </View>
                 </TouchableOpacity>
                 <CategoryGrid />
