@@ -15,6 +15,7 @@ export const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
+    alignSelf: "flex-start",
   },
   avatar: {
     width: 40,
@@ -77,5 +78,11 @@ export const styles = StyleSheet.create({
   },
   logoutButton: {
     backgroundColor: COLORS.background,
+  },
+  closeButton: {
+    position: "absolute",
+    right: 10,
+    top: 10,
+    padding: 10,
   },
 });

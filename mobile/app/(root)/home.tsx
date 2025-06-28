@@ -1,16 +1,8 @@
 import { SignedIn, SignedOut, useUser } from "@clerk/clerk-expo";
-import {
-  Text,
-  View,
-  Image,
-  FlatList,
-  RefreshControl,
-  Animated,
-} from "react-native";
+import { Text, View, FlatList, RefreshControl, Animated } from "react-native";
 import { useState, useEffect, useRef } from "react";
 import { styles } from "@/assets/styles/home.styles";
 import CategoryGrid from "@/components/CategoryGrid";
-import { COLORS } from "@/constants/colors";
 
 const images = [
   require("@/assets/images/banner.png"),
@@ -21,26 +13,30 @@ const images = [
 
 const getGreeting = () => {
   const hour = new Date().getHours();
-  console.log(`Current hour: ${hour}`); // Debug log
+  console.log(`Current hour: ${hour}`);
   if (hour < 12) return "Good Morning";
   if (hour < 18) return "Good Afternoon";
   return "Good Evening";
 };
 
-export default function Home() {
+interface HomeProps {
+  toggleSidebar: () => void;
+}
+
+export default function Home({ toggleSidebar }: HomeProps) {
   const { user } = useUser();
   const [refreshing, setRefreshing] = useState(false);
   const [currentImage, setCurrentImage] = useState(0);
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
   const onRefresh = () => {
-    console.log("Refreshing..."); // Debug log
+    console.log("Refreshing...");
     setRefreshing(true);
     setTimeout(() => setRefreshing(false), 1000);
   };
 
   useEffect(() => {
-    console.log("Setting up image slider interval"); // Debug log
+    console.log("Setting up image slider interval");
     const interval = setInterval(() => {
       Animated.timing(fadeAnim, {
         toValue: 0,
@@ -49,7 +45,7 @@ export default function Home() {
       }).start(() => {
         setCurrentImage((prev) => {
           const next = (prev + 1) % images.length;
-          console.log(`Switching to image index: ${next}`); // Debug log
+          console.log(`Switching to image index: ${next}`);
           return next;
         });
         Animated.timing(fadeAnim, {
@@ -60,7 +56,7 @@ export default function Home() {
       });
     }, 5000);
     return () => {
-      console.log("Clearing image slider interval"); // Debug log
+      console.log("Clearing image slider interval");
       clearInterval(interval);
     };
   }, [fadeAnim]);
@@ -85,17 +81,10 @@ export default function Home() {
                     "User"}
                   !
                 </Text>
-                <View
-                  style={{ height: 200, display: "flex", alignItems: "center" }}
-                >
+                <View style={{ height: 200, alignItems: "center" }}>
                   <Animated.Image
                     source={images[currentImage]}
-                    style={[
-                      {
-                        opacity: fadeAnim,
-                      },
-                      styles.banner,
-                    ]}
+                    style={[styles.banner, { opacity: fadeAnim }]}
                     resizeMode="cover"
                     onError={(error) =>
                       console.log("Image load error:", error.nativeEvent)

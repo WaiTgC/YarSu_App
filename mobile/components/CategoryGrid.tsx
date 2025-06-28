@@ -1,18 +1,6 @@
-import { SignedIn, SignedOut, useUser } from "@clerk/clerk-expo";
 import { Link, useRouter } from "expo-router";
-import {
-  Text,
-  View,
-  Image,
-  TouchableOpacity,
-  FlatList,
-  Alert,
-  RefreshControl,
-} from "react-native";
-import { SignOutButton } from "@/components/SignOutButton";
-import { useState } from "react";
+import { Text, View, TouchableOpacity } from "react-native";
 import { styles } from "@/assets/styles/home.styles";
-import Ionicons from "@expo/vector-icons/Ionicons";
 import { COLORS } from "@/constants/colors";
 
 const categories = [

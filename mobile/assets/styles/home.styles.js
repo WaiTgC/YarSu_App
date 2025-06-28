@@ -266,8 +266,6 @@ import { StyleSheet, Dimensions } from "react-native";
 import { COLORS } from "@/constants/colors";
 import { transform } from "@babel/core";
 
-const { width } = Dimensions.get("window");
-
 export const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -334,16 +332,20 @@ export const styles = StyleSheet.create({
     padding: 8,
   },
   grid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(2, 1fr)",
+    gridTemplateRows: "repeat(4, 1fr)",
+    gap: 12,
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "space-between",
-    padding: 17,
-    gap: 5,
+    padding: 15,
   },
   card: {
     backgroundColor: COLORS.white,
     borderRadius: 20,
-    width: width > 768 ? "200px" : width * 0.45, // Dynamic width: fixed 200px for larger screens, 45% of screen width for smaller screens
+    maxWidth: 200,
+    width: "auto",
     height: "58px",
     alignItems: "center",
     borderWidth: 1,
