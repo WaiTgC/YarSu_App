@@ -98,7 +98,7 @@ const Job = () => {
 
       <Modal
         visible={showDetails}
-        animationType="slide"
+        animationType="slide"   
         onRequestClose={() => setShowDetails(false)}
       >
         <ScrollView style={styles.modalContainer}>

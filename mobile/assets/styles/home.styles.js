@@ -337,16 +337,17 @@ export const styles = StyleSheet.create({
   joinTele: {
     margin: "auto",
     backgroundColor: COLORS.white,
-    width: 120,
-    height: "auto",
-    padding: 10,
+    width: 110,
+    height: 35,
+
     borderRadius: 10,
     flexShrink: 0,
     alignItems: "center",
     marginBottom: 10,
   },
   iconTele: {
-    padding: 4,
+    width: 23,
+    height: 23,
     marginRight: 8,
     borderWidth: 1,
     borderColor: "#000",

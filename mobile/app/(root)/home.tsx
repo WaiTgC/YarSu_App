@@ -126,7 +126,14 @@ export default function Home({ toggleSidebar }: HomeProps) {
                   style={styles.joinTele}
                   onPress={handleTelegramPress}
                 >
-                  <View style={{ flexDirection: "row", alignItems: "center" }}>
+                  <View
+                    style={{
+                      flex: 1,
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
                     <Ionicons
                       name="paper-plane"
                       size={20}

@@ -5,10 +5,11 @@ export const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
-    padding: 10,
+    padding: 15,
   },
   card: {
     width: "100%",
+    height: 100,
     padding: 15,
     backgroundColor: COLORS.white,
     borderRadius: 8,
