@@ -48,7 +48,7 @@ export default function Home({ toggleSidebar }: HomeProps) {
       Animated.timing(fadeAnim, {
         toValue: 0,
         duration: 500,
-        useNativeDriver: true,
+        useNativeDriver: true, // Note: This triggers a warning; see below
       }).start(() => {
         setCurrentImage((prev) => (prev + 1) % images.length);
         Animated.timing(fadeAnim, {

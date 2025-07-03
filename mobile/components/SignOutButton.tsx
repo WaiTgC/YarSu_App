@@ -1,56 +1,75 @@
 import { useClerk } from "@clerk/clerk-expo";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { Alert, Text, TouchableOpacity, Platform } from "react-native";
+import { Alert, Pressable, Platform } from "react-native";
 import { COLORS } from "@/constants/colors";
-import { styles } from "@/assets/styles/home.styles"; // Adjust the import path as necessary
+import { styles } from "@/assets/styles/home.styles";
 
 export const SignOutButton = () => {
   const { signOut } = useClerk();
 
   const handleSignOut = async () => {
-    console.log("handleSignOut called, Platform:", Platform.OS); // Debug log
+    console.log("handleSignOut called, Platform:", Platform.OS);
     try {
-      Alert.alert(
-        "Logout",
-        "Are you sure you want to logout?",
-        [
-          {
-            text: "Cancel",
-            style: "cancel",
-            onPress: () => console.log("Cancel pressed"), // Debug log
-          },
-          {
-            text: "Logout",
-            style: "destructive",
-            onPress: async () => {
-              console.log("Logout confirmed"); // Debug log
-              try {
-                await signOut(); // Await signOut
-                console.log("Sign out successful");
-              } catch (error) {
-                console.error("Error signing out:", error.message);
-                Alert.alert("Error", `Failed to sign out: ${error.message}`);
-              }
+      if (Platform.OS === "web") {
+        const confirmed = window.confirm("Are you sure you want to logout?");
+        console.log("Web confirm result:", confirmed);
+        if (!confirmed) {
+          console.log("Logout cancelled");
+          return;
+        }
+      } else {
+        Alert.alert(
+          "Logout",
+          "Are you sure you want to logout?",
+          [
+            {
+              text: "Cancel",
+              style: "cancel",
+              onPress: () => console.log("Cancel pressed"),
             },
-          },
-        ],
-        { cancelable: true, onDismiss: () => console.log("Alert dismissed") } // Debug dismissal
-      );
+            {
+              text: "Logout",
+              style: "destructive",
+              onPress: async () => {
+                await performSignOut();
+              },
+            },
+          ],
+          { cancelable: true, onDismiss: () => console.log("Alert dismissed") }
+        );
+        return; // Exit to avoid duplicate sign-out on non-web platforms
+      }
+      await performSignOut();
     } catch (error) {
-      console.error("Error showing logout alert:", error);
-      alert("Fallback Alert: Are you sure you want to logout?"); // Fallback for debugging
+      console.error("Error in handleSignOut:", error);
+      if (Platform.OS === "web") {
+        window.alert(`Failed to sign out: ${JSON.stringify(error)}`);
+      } else {
+        Alert.alert("Error", `Failed to sign out: ${JSON.stringify(error)}`);
+      }
+    }
+  };
+
+  const performSignOut = async () => {
+    console.log("Performing sign out");
+    try {
+      await signOut();
+      console.log("Sign out successful");
+    } catch (error) {
+      console.error("Error signing out:", error);
+      throw error; // Re-throw to handle in the caller
     }
   };
 
   return (
-    <TouchableOpacity
+    <Pressable
       style={styles.logoutButton}
       onPress={() => {
-        console.log("Logout button pressed"); // Debug log
+        console.log("Pressable pressed, Platform:", Platform.OS);
         handleSignOut();
       }}
     >
       <Ionicons name="log-out-outline" size={22} color={COLORS.text} />
-    </TouchableOpacity>
+    </Pressable>
   );
 };

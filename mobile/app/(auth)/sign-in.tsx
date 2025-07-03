@@ -1,4 +1,5 @@
-import { useSignIn } from "@clerk/clerk-expo";
+// app/(auth)/sign-in.tsx
+import { useSignIn, useUser } from "@clerk/clerk-expo";
 import { Link, useRouter } from "expo-router";
 import {
   Text,
@@ -15,6 +16,7 @@ import { COLORS } from "@/constants/colors";
 
 export default function Page() {
   const { signIn, setActive, isLoaded } = useSignIn();
+  const { user } = useUser();
   const router = useRouter();
 
   const [emailAddress, setEmailAddress] = React.useState("");
@@ -26,33 +28,33 @@ export default function Page() {
   const shakeAnim = useRef(new Animated.Value(0)).current; // For shake effect
 
   useEffect(() => {
-    // Define the slide-up animation (smooth and fast)
+    // Define the slide-up animation
     const slideUp = Animated.spring(slideAnim, {
-      toValue: 0, // Move to final position
-      friction: 7, // Lower friction for smoother bounce
-      tension: 40, // Higher tension for faster movement
+      toValue: 0,
+      friction: 7,
+      tension: 40,
       useNativeDriver: true,
     });
 
-    // Define the shake animation (subtle back-and-forth)
+    // Define the shake animation
     const shake = Animated.sequence([
       Animated.timing(shakeAnim, {
-        toValue: 10, // Move right
+        toValue: 10,
         duration: 50,
         useNativeDriver: true,
       }),
       Animated.timing(shakeAnim, {
-        toValue: -10, // Move left
+        toValue: -10,
         duration: 50,
         useNativeDriver: true,
       }),
       Animated.timing(shakeAnim, {
-        toValue: 5, // Move right slightly
+        toValue: 5,
         duration: 50,
         useNativeDriver: true,
       }),
       Animated.timing(shakeAnim, {
-        toValue: 0, // Return to center
+        toValue: 0,
         duration: 50,
         useNativeDriver: true,
       }),
@@ -60,7 +62,17 @@ export default function Page() {
 
     // Run both animations in parallel
     Animated.parallel([slideUp, shake]).start();
-  }, [slideAnim, shakeAnim]);
+
+    // Redirect if already signed in
+    if (user) {
+      const role = user.publicMetadata?.role;
+      if (role === "admin") {
+        router.replace("/(admin)");
+      } else {
+        router.replace("/(root)");
+      }
+    }
+  }, [slideAnim, shakeAnim, user, router]);
 
   // Handle the submission of the sign-in form
   const onSignInPress = async () => {
@@ -74,20 +86,25 @@ export default function Page() {
 
       if (signInAttempt.status === "complete") {
         await setActive({ session: signInAttempt.createdSessionId });
-        router.replace("/");
+        const role = (await useUser().user)?.publicMetadata?.role;
+        if (role === "admin") {
+          router.replace("/(admin)");
+        } else {
+          router.replace("/(root)");
+        }
       } else {
         console.error(JSON.stringify(signInAttempt, null, 2));
+        setError("Sign-in failed. Please check your credentials.");
       }
     } catch (err) {
       console.error(JSON.stringify(err, null, 2));
+      setError("An error occurred. Please try again.");
     }
   };
 
   return (
     <KeyboardAwareScrollView
-      style={{
-        flex: 1,
-      }}
+      style={{ flex: 1 }}
       contentContainerStyle={{ flexGrow: 1 }}
       enableOnAndroid={true}
       enableAutomaticScroll={true}
@@ -95,12 +112,7 @@ export default function Page() {
     >
       <View style={[styles.containerbg]}>
         <Animated.Text
-          style={[
-            styles.title,
-            {
-              transform: [{ translateX: shakeAnim }], // Apply shake animation
-            },
-          ]}
+          style={[styles.title, { transform: [{ translateX: shakeAnim }] }]}
         >
           Log In
         </Animated.Text>
@@ -108,9 +120,7 @@ export default function Page() {
           <Animated.View
             style={[
               styles.errorBox,
-              {
-                transform: [{ translateX: shakeAnim }], // Apply shake animation
-              },
+              { transform: [{ translateX: shakeAnim }] },
             ]}
           >
             <Ionicons name="alert-circle" size={20} color={COLORS.expense} />
@@ -123,9 +133,7 @@ export default function Page() {
         <Animated.View
           style={[
             styles.animationslideupconatiner,
-            {
-              transform: [{ translateY: slideAnim }], // Apply slide animation
-            },
+            { transform: [{ translateY: slideAnim }] },
           ]}
         >
           <TextInput

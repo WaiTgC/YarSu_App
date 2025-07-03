@@ -15,7 +15,7 @@ import {
 import { useState, useEffect, useRef } from "react";
 import { Redirect, useRouter } from "expo-router";
 import { styles } from "@/assets/styles/admin.styles";
-import CategoryGrid from "@/components/CategoryGrid";
+import AdminCategoryGrid from "@/components/AdminCategoryGrid";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
 const images = [
@@ -153,7 +153,7 @@ export default function Dashboard({ toggleSidebar }: DashboardProps) {
                     <Text>Join Now</Text>
                   </View>
                 </TouchableOpacity>
-                <CategoryGrid />
+                <AdminCategoryGrid />
               </View>
             )}
             refreshControl={

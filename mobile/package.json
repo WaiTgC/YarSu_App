@@ -19,6 +19,7 @@
     "@react-navigation/native": "^7.1.6",
     "assert": "^2.1.0",
     "babel-preset-expo": "^13.0.0",
+    "dotenv": "^17.0.1",
     "expo": "^53.0.15",
     "expo-blur": "~14.1.5",
     "expo-constants": "~17.1.6",

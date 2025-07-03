@@ -1,3 +1,4 @@
+// app/(auth)/sign-up.tsx
 import React, { useState, useRef, useEffect } from "react";
 import {
   Text,
@@ -6,13 +7,12 @@ import {
   View,
   Animated,
 } from "react-native";
-import { useSignUp } from "@clerk/clerk-expo";
+import { useSignUp, useUser } from "@clerk/clerk-expo";
 import { Link, useRouter } from "expo-router";
 import { styles } from "@/assets/styles/auth.styles";
 import { COLORS } from "@/constants/colors";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
-import { Picker } from "@react-native-picker/picker";
 import { countryCodes } from "@/libs/countryCodes";
 
 interface CountryCode {
@@ -22,6 +22,7 @@ interface CountryCode {
 
 export default function SignUpScreen() {
   const { isLoaded, signUp, setActive } = useSignUp();
+  const { user } = useUser();
   const router = useRouter();
 
   const [emailAddress, setEmailAddress] = useState<string>("");
@@ -69,11 +70,17 @@ export default function SignUpScreen() {
     ]);
 
     Animated.parallel([slideUp, shake]).start();
-  }, [slideAnim, shakeAnim]);
 
-  useEffect(() => {
-    console.log("Selected country code:", selectedCountryCode); // Debug log
-  }, [selectedCountryCode]);
+    // Redirect if already signed in
+    if (user) {
+      const role = user.publicMetadata?.role;
+      if (role === "admin") {
+        router.replace("/(admin)");
+      } else {
+        router.replace("/(root)");
+      }
+    }
+  }, [slideAnim, shakeAnim, user, router]);
 
   const handlePhoneChange = (text: string) => {
     const cleaned = text.replace(/[^0-9]/g, "");
@@ -81,7 +88,6 @@ export default function SignUpScreen() {
   };
 
   const handleCountryCodeChange = (value: string) => {
-    console.log("Picker value changed:", value); // Debug log
     setSelectedCountryCode(value);
   };
 
@@ -165,7 +171,12 @@ export default function SignUpScreen() {
 
       if (signUpAttempt.status === "complete") {
         await setActive({ session: signUpAttempt.createdSessionId });
-        router.replace("/");
+        const role = (await useUser().user)?.publicMetadata?.role;
+        if (role === "admin") {
+          router.replace("/(admin)");
+        } else {
+          router.replace("/(root)");
+        }
       } else {
         console.error(JSON.stringify(signUpAttempt, null, 2));
         setError("Verification failed. Please check the code and try again.");
@@ -266,23 +277,13 @@ export default function SignUpScreen() {
             onChangeText={(username) => setUsername(username)}
           />
           <View style={styles.phoneinputcontainer}>
-            <View
-              style={{
-                width: 120,
-                height: 50,
-                padding: 0,
-              }}
-            >
+            <View style={{ width: 120, height: 50, padding: 0 }}>
               <Picker
                 selectedValue={selectedCountryCode}
                 onValueChange={handleCountryCodeChange}
                 style={styles.picker}
                 mode="dropdown"
-                itemStyle={{
-                  fontSize: 16,
-                  height: 50,
-                  color: "#000",
-                }}
+                itemStyle={{ fontSize: 16, height: 50, color: "#000" }}
               >
                 {countryCodes.map((countryCode: CountryCode) => (
                   <Picker.Item
