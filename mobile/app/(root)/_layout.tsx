@@ -1,24 +1,27 @@
-// app/(root)/_layout.tsx
 import AppLayout from "@/components/AppLayout";
 import { useUser } from "@clerk/clerk-expo";
 import { useEffect } from "react";
 import { useRouter } from "expo-router";
 import { Stack } from "expo-router/stack";
 
-function RootLayoutWrapper() {
-  const { user } = useUser();
+export default function RootLayout() {
+  const { isLoaded, user } = useUser();
   const router = useRouter();
 
   useEffect(() => {
-    if (user && user.publicMetadata?.role === "admin") {
+    if (isLoaded && user && user.publicMetadata?.role === "admin") {
       router.replace("/(admin)");
     }
-  }, [user, router]);
+  }, [isLoaded, user, router]);
 
-  return null; // This component only handles redirection
-}
+  if (!isLoaded) {
+    return null; // Or a loading component
+  }
 
-export default function RootLayout() {
+  if (user && user.publicMetadata?.role === "admin") {
+    return null; // Redirect handled by useEffect
+  }
+
   return (
     <AppLayout>
       <Stack screenOptions={{ headerShown: false }}>
@@ -26,7 +29,6 @@ export default function RootLayout() {
         <Stack.Screen name="job" />
         <Stack.Screen name="travel" />
       </Stack>
-      <RootLayoutWrapper /> {/* Add redirection logic here */}
     </AppLayout>
   );
 }

@@ -93,7 +93,7 @@ const Job = () => {
     if (showApplyForm) {
       Animated.timing(slideAnimApply, {
         toValue: headerHeight,
-        duration: 300,
+        duration: 400,
         useNativeDriver: true,
       }).start();
     } else {
