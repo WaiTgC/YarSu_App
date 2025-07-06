@@ -58,6 +58,7 @@ export const styles = StyleSheet.create({
     color: COLORS.textLight,
     marginVertical: 50,
     textAlign: "center",
+    paddingTop: 50,
   },
   optionContainer: {
     backgroundColor: COLORS.white,
@@ -97,6 +98,16 @@ export const styles = StyleSheet.create({
     alignSelf: "center",
     borderRadius: 10,
     padding: 5,
+  },
+  forgotPasswordLink: {
+    alignSelf: "flex-end",
+    marginBottom: 15,
+    marginRight: 10,
+  },
+  forgotPasswordText: {
+    color: COLORS.background,
+    fontSize: 14,
+    fontFamily: "SF Pro Text",
   },
   input: {
     backgroundColor: COLORS.white,
@@ -139,6 +150,16 @@ export const styles = StyleSheet.create({
     color: "#000",
     borderLeftWidth: 0, // Ensure no extra border between picker and input
   },
+  inputContainer: {
+    position: "relative",
+  },
+  label: {
+    fontSize: 14,
+    color: COLORS.black,
+    marginBottom: 5,
+    fontFamily: "SF Pro Text",
+  },
+
   errorInput: {
     borderColor: COLORS.expense,
   },
@@ -162,11 +183,11 @@ export const styles = StyleSheet.create({
     gap: 8,
   },
   footerText: {
-    color: COLORS.text,
+    color: COLORS.background,
     fontSize: 16,
   },
   linkText: {
-    color: COLORS.textLight,
+    color: COLORS.text,
     fontSize: 16,
     fontWeight: "600",
   },
@@ -211,7 +232,7 @@ export const styles = StyleSheet.create({
     width: "100%",
   },
   errorText: {
-    color: COLORS.text,
+    color: COLORS.shadow,
     marginLeft: 8,
     flex: 1,
     fontSize: 14,

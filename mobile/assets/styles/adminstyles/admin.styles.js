@@ -104,4 +104,34 @@ export const styles = StyleSheet.create({
     fontWeight: "600",
     textAlign: "center",
   },
+  footer: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    alignItems: "center",
+    height: 60,
+    backgroundColor: COLORS.white,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+    paddingHorizontal: 10,
+  },
+  tab: {
+    alignItems: "center",
+    justifyContent: "center",
+    flex: 1,
+  },
+  tabText: {
+    fontSize: 12,
+    color: COLORS.text,
+    textAlign: "center",
+  },
+  plusButton: {
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: COLORS.primary,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    marginTop: -20, // Lift above the footer
+    elevation: 5,
+  },
 });

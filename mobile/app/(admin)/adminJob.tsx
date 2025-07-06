@@ -9,7 +9,7 @@ import {
   Alert,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { styles } from "@/assets/styles/admin.styles";
+import { styles } from "@/assets/styles/adminstyles/job.styles";
 import { useJobs } from "@/hooks/useJobs";
 import { formatDate } from "@/libs/utils";
 

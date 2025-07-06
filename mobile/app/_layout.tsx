@@ -8,9 +8,8 @@ import { StatusBar } from "expo-status-bar";
 export default function RootLayout() {
   return (
     <ClerkProvider tokenCache={tokenCache}>
-      <SafeScreen>
-        <Stack screenOptions={{ headerShown: false }}></Stack>
-      </SafeScreen>
+      <Stack screenOptions={{ headerShown: false }}></Stack>
+
       <StatusBar style="dark" />
     </ClerkProvider>
   );

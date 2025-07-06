@@ -4,7 +4,7 @@ import { useRouter } from "expo-router";
 import { Text, View, TouchableOpacity, FlatList, Animated } from "react-native";
 import { SignOutButton } from "@/components/SignOutButton";
 import { useState, useEffect, useRef } from "react";
-import { styles } from "@/assets/styles/Sidebar.styles";
+import { styles } from "@/assets/styles/adminstyles/Sidebar.styles";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { COLORS } from "@/constants/colors";
 
@@ -96,18 +96,6 @@ const AdminSidebar = ({ isOpen, toggleSidebar }: AdminSidebarProps) => {
                 <Text style={styles.usernameText}>
                   {user?.username || user?.emailAddresses[0].emailAddress}
                 </Text>
-                <TouchableOpacity
-                  style={styles.menuButton}
-                  onPress={handleEditProfile}
-                >
-                  <Text style={styles.menuText}>Edit Profile</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.menuButton}
-                  onPress={() => router.push("/(admin)/dashboard")}
-                >
-                  <Text style={styles.menuText}>Dashboard</Text>
-                </TouchableOpacity>
               </View>
             </View>
           </SignedIn>
@@ -122,20 +110,36 @@ const AdminSidebar = ({ isOpen, toggleSidebar }: AdminSidebarProps) => {
         <View style={styles.separator} />
 
         <View style={styles.sidebarContent}>
+          <TouchableOpacity
+            style={styles.groupLabel}
+            onPress={() => router.push("/(admin)/dashboard")}
+          >
+            <Text style={styles.menuText}>Dashboard</Text>
+          </TouchableOpacity>
           <View style={styles.sidebarGroup}>
             <Text style={styles.groupLabel}>Account</Text>
+            <TouchableOpacity
+              style={styles.menuButton}
+              onPress={handleEditProfile}
+            >
+              <View style={styles.menuItemContent}>
+                <Ionicons name="person" size={20} color={COLORS.shadow} />
+                <Text style={styles.menuText}>Edit Profile</Text>
+              </View>
+            </TouchableOpacity>
             <TouchableOpacity
               style={styles.menuButton}
               onPress={handleChangePassword}
             >
               <View style={styles.menuItemContent}>
-                <Ionicons name="lock-closed" size={20} color={COLORS.text} />
+                <Ionicons name="lock-closed" size={20} color={COLORS.shadow} />
                 <Text style={styles.menuText}>Change Password</Text>
               </View>
             </TouchableOpacity>
             <TouchableOpacity style={[styles.menuButton, styles.logoutButton]}>
               <View style={styles.menuItemContent}>
                 <SignOutButton />
+                <Text style={styles.menuText}>Log Out</Text>
               </View>
             </TouchableOpacity>
           </View>

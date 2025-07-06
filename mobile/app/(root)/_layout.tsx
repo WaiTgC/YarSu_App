@@ -3,6 +3,7 @@ import { useUser } from "@clerk/clerk-expo";
 import { useEffect } from "react";
 import { useRouter } from "expo-router";
 import { Stack } from "expo-router/stack";
+import SafeScreen from "@/components/SafeScreen";
 
 export default function RootLayout() {
   const { isLoaded, user } = useUser();
@@ -23,12 +24,10 @@ export default function RootLayout() {
   }
 
   return (
-    <AppLayout>
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="index" />
-        <Stack.Screen name="job" />
-        <Stack.Screen name="travel" />
-      </Stack>
-    </AppLayout>
+    <SafeScreen>
+      <AppLayout>
+        <Stack screenOptions={{ headerShown: false }}></Stack>
+      </AppLayout>
+    </SafeScreen>
   );
 }

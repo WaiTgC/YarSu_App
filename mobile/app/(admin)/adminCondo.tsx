@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, Alert } from "react-native";
 import { useRouter } from "expo-router";
-import { styles } from "@/assets/styles/admin.styles";
+import { styles } from "@/assets/styles/adminstyles/condo.styles";
 
 // Define the Condo type
 type CondoType = {

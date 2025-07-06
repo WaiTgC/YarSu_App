@@ -69,7 +69,7 @@ export const SignOutButton = () => {
         handleSignOut();
       }}
     >
-      <Ionicons name="log-out-outline" size={22} color={COLORS.text} />
+      <Ionicons name="log-out" size={22} color={COLORS.shadow} />
     </Pressable>
   );
 };

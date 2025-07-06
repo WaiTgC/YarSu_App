@@ -1,4 +1,3 @@
-// app/(auth)/sign-in.tsx
 import { useSignIn, useUser } from "@clerk/clerk-expo";
 import { Link, useRouter } from "expo-router";
 import {
@@ -19,16 +18,14 @@ export default function Page() {
   const { user } = useUser();
   const router = useRouter();
 
-  const [emailAddress, setEmailAddress] = React.useState("");
+  const [identifier, setIdentifier] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [error, setError] = React.useState("");
 
-  // Animation setup
-  const slideAnim = useRef(new Animated.Value(1000)).current; // Start off-screen (bottom)
-  const shakeAnim = useRef(new Animated.Value(0)).current; // For shake effect
+  const slideAnim = useRef(new Animated.Value(1000)).current;
+  const shakeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // Define the slide-up animation
     const slideUp = Animated.spring(slideAnim, {
       toValue: 0,
       friction: 7,
@@ -36,7 +33,6 @@ export default function Page() {
       useNativeDriver: true,
     });
 
-    // Define the shake animation
     const shake = Animated.sequence([
       Animated.timing(shakeAnim, {
         toValue: 10,
@@ -60,10 +56,8 @@ export default function Page() {
       }),
     ]);
 
-    // Run both animations in parallel
     Animated.parallel([slideUp, shake]).start();
 
-    // Redirect if already signed in
     if (user) {
       const role = user.publicMetadata?.role;
       if (role === "admin") {
@@ -74,13 +68,12 @@ export default function Page() {
     }
   }, [slideAnim, shakeAnim, user, router]);
 
-  // Handle the submission of the sign-in form
   const onSignInPress = async () => {
     if (!isLoaded) return;
 
     try {
       const signInAttempt = await signIn.create({
-        identifier: emailAddress,
+        identifier,
         password,
       });
 
@@ -109,8 +102,10 @@ export default function Page() {
       enableOnAndroid={true}
       enableAutomaticScroll={true}
       extraScrollHeight={30}
+      showsVerticalScrollIndicator={false}
+      showsHorizontalScrollIndicator={false}
     >
-      <View style={[styles.containerbg]}>
+      <View style={styles.containerbg}>
         <Animated.Text
           style={[styles.title, { transform: [{ translateX: shakeAnim }] }]}
         >
@@ -136,22 +131,35 @@ export default function Page() {
             { transform: [{ translateY: slideAnim }] },
           ]}
         >
-          <TextInput
-            style={[styles.input, error && styles.errorInput]}
-            autoCapitalize="none"
-            value={emailAddress}
-            placeholder="Enter email"
-            placeholderTextColor="#9A8478"
-            onChangeText={(emailAddress) => setEmailAddress(emailAddress)}
-          />
-          <TextInput
-            style={[styles.input, error && styles.errorInput]}
-            value={password}
-            placeholder="Enter password"
-            placeholderTextColor="#9A8478"
-            secureTextEntry={true}
-            onChangeText={(password) => setPassword(password)}
-          />
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Email or Username</Text>
+            <TextInput
+              style={[styles.input, error && styles.errorInput]}
+              autoCapitalize="none"
+              value={identifier}
+              placeholder="👤 Enter email or username"
+              placeholderTextColor="#9A8478"
+              onChangeText={(identifier) => setIdentifier(identifier)}
+            />
+          </View>
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Password</Text>
+            <View style={styles.passwordContainer}>
+              <TextInput
+                style={[styles.input, error && styles.errorInput]}
+                value={password}
+                placeholder="🔒 Enter password"
+                placeholderTextColor="#9A8478"
+                secureTextEntry={true}
+                onChangeText={(password) => setPassword(password)}
+              />
+            </View>
+          </View>
+          <Link href="/reset-password" asChild>
+            <TouchableOpacity style={styles.forgotPasswordLink}>
+              <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+            </TouchableOpacity>
+          </Link>
           <TouchableOpacity style={styles.button} onPress={onSignInPress}>
             <Text style={styles.buttonText}>Sign In</Text>
           </TouchableOpacity>

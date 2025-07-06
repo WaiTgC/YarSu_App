@@ -1,7 +1,6 @@
-// app/(admin)/AdminCategoryGrid.tsx
-import { Link, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import { Text, View, TouchableOpacity } from "react-native";
-import { styles } from "@/assets/styles/admin.styles"; // Adjust to admin styles if needed
+import { styles } from "@/assets/styles/adminstyles/admin.styles";
 import { COLORS } from "@/constants/colors";
 
 const adminCategories = [
@@ -9,7 +8,7 @@ const adminCategories = [
     name: "Admin Jobs",
     icon: "briefcase",
     color: COLORS.blue,
-    route: "/(admin)/adminjob",
+    route: "/(admin)/adminJob",
   },
   {
     name: "Admin Condo",
@@ -23,13 +22,30 @@ const adminCategories = [
     color: COLORS.green,
     route: "/(admin)/admintravel",
   },
+  {
+    name: "Admin Courses",
+    icon: "book",
+    color: COLORS.orange,
+    route: "/(admin)/admincourses",
+  },
+  {
+    name: "Admin Restaurants",
+    icon: "restaurant",
+    color: COLORS.red,
+    route: "/(admin)/adminrestaurants",
+  },
+  {
+    name: "Admin Hotels",
+    icon: "bed",
+    color: COLORS.teal,
+    route: "/(admin)/adminhotels",
+  },
 ];
 
 const AdminCategoryGrid = () => {
   const router = useRouter();
 
   const handleCategoryClick = (route: string) => {
-    console.log(`Navigating to ${route}`);
     router.push(route);
   };
 

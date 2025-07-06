@@ -1,4 +1,3 @@
-// app/(auth)/sign-up.tsx
 import React, { useState, useRef, useEffect } from "react";
 import {
   Text,
@@ -7,29 +6,20 @@ import {
   View,
   Animated,
 } from "react-native";
-import { useSignUp, useUser } from "@clerk/clerk-expo";
+import { useSignUp } from "@clerk/clerk-expo";
 import { Link, useRouter } from "expo-router";
 import { styles } from "@/assets/styles/auth.styles";
 import { COLORS } from "@/constants/colors";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
-import { countryCodes } from "@/libs/countryCodes";
-
-interface CountryCode {
-  label: string;
-  value: string;
-}
 
 export default function SignUpScreen() {
   const { isLoaded, signUp, setActive } = useSignUp();
-  const { user } = useUser();
   const router = useRouter();
 
   const [emailAddress, setEmailAddress] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [username, setUsername] = useState<string>("");
-  const [phone, setPhone] = useState<string>("");
-  const [selectedCountryCode, setSelectedCountryCode] = useState<string>("+63"); // Default to Philippines
   const [pendingVerification, setPendingVerification] =
     useState<boolean>(false);
   const [code, setCode] = useState<string>("");
@@ -70,31 +60,10 @@ export default function SignUpScreen() {
     ]);
 
     Animated.parallel([slideUp, shake]).start();
-
-    // Redirect if already signed in
-    if (user) {
-      const role = user.publicMetadata?.role;
-      if (role === "admin") {
-        router.replace("/(admin)");
-      } else {
-        router.replace("/(root)");
-      }
-    }
-  }, [slideAnim, shakeAnim, user, router]);
-
-  const handlePhoneChange = (text: string) => {
-    const cleaned = text.replace(/[^0-9]/g, "");
-    setPhone(cleaned);
-  };
-
-  const handleCountryCodeChange = (value: string) => {
-    setSelectedCountryCode(value);
-  };
+  }, [slideAnim, shakeAnim]);
 
   const onSignUpPress = async () => {
     if (!isLoaded) return;
-
-    const phoneNumber = `${selectedCountryCode}${phone}`;
 
     if (!emailAddress) {
       setError("Email address is required");
@@ -120,29 +89,12 @@ export default function SignUpScreen() {
       setError("Password must be at least 6 characters long");
       return;
     }
-    if (!phone) {
-      setError("Phone number is required");
-      return;
-    }
-    if (selectedCountryCode === "+63" && !phoneNumber.match(/^\+63\d{10}$/)) {
-      setError(
-        "Philippine phone number must be 10 digits (e.g., +639123456789)"
-      );
-      return;
-    }
-    if (!phoneNumber.match(/^\+\d{10,15}$/)) {
-      setError(
-        "Please enter a valid phone number (e.g., +12025550123 or +639123456789)"
-      );
-      return;
-    }
 
     try {
       await signUp.create({
         emailAddress,
         password,
         username,
-        phoneNumber,
       });
 
       await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
@@ -171,12 +123,7 @@ export default function SignUpScreen() {
 
       if (signUpAttempt.status === "complete") {
         await setActive({ session: signUpAttempt.createdSessionId });
-        const role = (await useUser().user)?.publicMetadata?.role;
-        if (role === "admin") {
-          router.replace("/(admin)");
-        } else {
-          router.replace("/(root)");
-        }
+        router.replace("/");
       } else {
         console.error(JSON.stringify(signUpAttempt, null, 2));
         setError("Verification failed. Please check the code and try again.");
@@ -261,57 +208,39 @@ export default function SignUpScreen() {
             { transform: [{ translateY: slideAnim }] },
           ]}
         >
-          <TextInput
-            style={[styles.input, error && styles.errorInput]}
-            autoCapitalize="none"
-            value={emailAddress}
-            placeholderTextColor="#9A8478"
-            placeholder="Enter email"
-            onChangeText={(email) => setEmailAddress(email)}
-          />
-          <TextInput
-            style={[styles.input, error && styles.errorInput]}
-            placeholderTextColor="#9A8478"
-            placeholder="Enter username"
-            value={username}
-            onChangeText={(username) => setUsername(username)}
-          />
-          <View style={styles.phoneinputcontainer}>
-            <View style={{ width: 120, height: 50, padding: 0 }}>
-              <Picker
-                selectedValue={selectedCountryCode}
-                onValueChange={handleCountryCodeChange}
-                style={styles.picker}
-                mode="dropdown"
-                itemStyle={{ fontSize: 16, height: 50, color: "#000" }}
-              >
-                {countryCodes.map((countryCode: CountryCode) => (
-                  <Picker.Item
-                    key={countryCode.value}
-                    label={countryCode.value}
-                    value={countryCode.value}
-                    style={{ fontSize: 16, color: "#000" }}
-                  />
-                ))}
-              </Picker>
-            </View>
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Email</Text>
             <TextInput
-              style={[styles.phoneInput, error && styles.errorInput]}
-              value={phone}
-              placeholder="Enter phone number"
+              style={[styles.input, error && styles.errorInput]}
+              autoCapitalize="none"
+              value={emailAddress}
               placeholderTextColor="#9A8478"
-              keyboardType="phone-pad"
-              onChangeText={handlePhoneChange}
+              placeholder="✉ Enter email"
+              onChangeText={(email) => setEmailAddress(email)}
             />
           </View>
-          <TextInput
-            style={[styles.input, error && styles.errorInput]}
-            value={password}
-            placeholderTextColor="#9A8478"
-            placeholder="Enter password"
-            secureTextEntry={true}
-            onChangeText={(password) => setPassword(password)}
-          />
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Username</Text>
+            <TextInput
+              style={[styles.input, error && styles.errorInput]}
+              placeholderTextColor="#9A8478"
+              placeholder="👤 Enter username"
+              value={username}
+              onChangeText={(username) => setUsername(username)}
+              autoCapitalize="none"
+            />
+          </View>
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Password</Text>
+            <TextInput
+              style={[styles.input, error && styles.errorInput]}
+              value={password}
+              placeholderTextColor="#9A8478"
+              placeholder="🔒 Enter password"
+              secureTextEntry={true}
+              onChangeText={(password) => setPassword(password)}
+            />
+          </View>
           <TouchableOpacity style={styles.button} onPress={onSignUpPress}>
             <Text style={styles.buttonText}>Sign Up</Text>
           </TouchableOpacity>

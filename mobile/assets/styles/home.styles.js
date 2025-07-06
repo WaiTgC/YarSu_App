@@ -419,12 +419,14 @@ export const styles = StyleSheet.create({
     width: 170,
     height: 58,
     borderRadius: 20,
-    justifyContent: "center",
+    justifyContent: "flex-start",
     alignItems: "center",
-    marginBottom: 12, // Adjusted from mb-3 (12px)
+    padding: 10, // Adjusted from mb-3 (12px)
     flexDirection: "row",
   },
-
+  iconImage: {
+    alignSelf: "center",
+  },
   icon: {
     color: COLORS.white,
     fontSize: 24,
@@ -433,8 +435,9 @@ export const styles = StyleSheet.create({
   cardText: {
     fontSize: 14, // Adjusted from text-sm (14px) to md:text-base (16px) context
     fontWeight: "600", // Adjusted from font-semibold
-    color: COLORS.text,
+    color: COLORS.background,
     textAlign: "center",
+    margin: "auto",
   },
   banner: {
     width: 366,
