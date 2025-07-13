@@ -1,12 +1,481 @@
-import { View, Text } from "react-native";
-import React from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
+import {
+  View,
+  Text,
+  FlatList,
+  TouchableOpacity,
+  TextInput,
+  Alert,
+  Modal,
+  Image,
+  Dimensions,
+  ImageBackground,
+} from "react-native";
+import { useRouter } from "expo-router";
+import { styles } from "@/assets/styles/adminstyles/travel.styles";
+import { useTravel } from "@/hooks/useTravel";
+import { useLanguage } from "@/context/LanguageContext";
+import { labels } from "@/libs/language";
+import Carousel from "react-native-reanimated-carousel";
 
-const adminTravel = () => {
+// Define the TravelPost type based on Travel.tsx
+type TravelPostType = {
+  id: number;
+  name: string;
+  place: string;
+  highlights: string[];
+  images: string[];
+  admin_rating: number;
+  created_at: string;
+};
+
+// Define type for edited values to allow string for array fields during editing
+type EditedTravelPostType = Partial<{
+  name: string;
+  place: string;
+  highlights: string;
+  images: string;
+  admin_rating: string | number;
+}>;
+
+const AdminTravel = () => {
+  const router = useRouter();
+  const { language } = useLanguage();
+  const { travelPosts, loadTravelPosts, fetchTravelPosts } = useTravel() as {
+    travelPosts: TravelPostType[];
+    loadTravelPosts: () => void;
+    fetchTravelPosts: () => void;
+  };
+  const [posts, setPosts] = useState<TravelPostType[]>([]);
+  const [editMode, setEditMode] = useState<{ [key: number]: boolean }>({});
+  const [editedValues, setEditedValues] = useState<{
+    [key: number]: EditedTravelPostType;
+  }>({});
+  const [deleteModalVisible, setDeleteModalVisible] = useState<number | null>(
+    null
+  );
+  const [currentIndices, setCurrentIndices] = useState<{
+    [key: number]: number;
+  }>({});
+  const carouselRefs = useRef<{ [key: number]: any }>({});
+  const [numColumns, setNumColumns] = useState(3); // Default to 3 columns
+
+  // Update numColumns based on screen width
+  useEffect(() => {
+    const updateColumns = () => {
+      const width = Dimensions.get("window").width;
+      setNumColumns(width >= 768 ? 3 : 1);
+    };
+    updateColumns(); // Initial call
+    const subscription = Dimensions.addEventListener("change", updateColumns);
+    return () => subscription?.remove(); // Cleanup on unmount
+  }, []);
+
+  // API functions for edit and delete
+  const editTravelPost = useCallback(
+    async (id: number, updatedPost: Partial<TravelPostType>) => {
+      try {
+        const response = await fetch(
+          `https://yarsu-backend.onrender.com/api/travel-posts/${id}`,
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(updatedPost),
+          }
+        );
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        await fetchTravelPosts();
+      } catch (error) {
+        console.error("Error editing travel post:", error);
+        Alert.alert("Error", "Failed to update travel post");
+      }
+    },
+    [fetchTravelPosts]
+  );
+
+  const deleteTravelPost = useCallback(
+    async (id: number) => {
+      try {
+        const response = await fetch(
+          `https://yarsu-backend.onrender.com/api/travel-posts/${id}`,
+          {
+            method: "DELETE",
+          }
+        );
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        await fetchTravelPosts();
+      } catch (error) {
+        console.error("Error deleting travel post:", error);
+        Alert.alert("Error", "Failed to delete travel post");
+      }
+    },
+    [fetchTravelPosts]
+  );
+
+  useEffect(() => {
+    console.log("AdminTravel: Fetching travel posts", travelPosts);
+    loadTravelPosts();
+    setPosts(travelPosts);
+    // Initialize current indices
+    const initialIndices = travelPosts.reduce((acc, post) => {
+      acc[post.id] = 0;
+      return acc;
+    }, {} as { [key: number]: number });
+    setCurrentIndices(initialIndices);
+  }, [loadTravelPosts, travelPosts]);
+
+  const handleEdit = (id: number, field: string, value: string) => {
+    setEditedValues((prev) => ({
+      ...prev,
+      [id]: { ...prev[id], [field]: value },
+    }));
+  };
+
+  const handleSave = (id: number) => {
+    const updatedPost = editedValues[id] || {};
+    const convertedPost: Partial<TravelPostType> = {};
+
+    // Convert string inputs to appropriate types
+    if (updatedPost.name) {
+      convertedPost.name = updatedPost.name;
+    }
+    if (updatedPost.place) {
+      convertedPost.place = updatedPost.place;
+    }
+    if (updatedPost.highlights !== undefined) {
+      convertedPost.highlights = updatedPost.highlights
+        .split(",")
+        .map((item) => item.trim());
+    }
+    if (updatedPost.images !== undefined) {
+      convertedPost.images = updatedPost.images
+        .split(",")
+        .map((item) => item.trim());
+    }
+    if (updatedPost.admin_rating !== undefined) {
+      const rating = Number(updatedPost.admin_rating);
+      if (!isNaN(rating)) {
+        convertedPost.admin_rating = rating;
+      }
+    }
+
+    if (Object.keys(convertedPost).length > 0) {
+      editTravelPost(id, convertedPost);
+      setEditMode({ ...editMode, [id]: false });
+      setEditedValues((prev) => {
+        const newValues = { ...prev };
+        delete newValues[id];
+        return newValues;
+      });
+      Alert.alert(
+        "Saved",
+        labels[language].saved || "Changes have been saved!"
+      );
+    } else {
+      setEditMode({ ...editMode, [id]: false });
+    }
+  };
+
+  const handleConfirmDelete = (id: number) => {
+    deleteTravelPost(id);
+    setDeleteModalVisible(null);
+    setPosts(posts.filter((post) => post.id !== id));
+    Alert.alert(
+      "Deleted",
+      labels[language].deleted || "Travel post has been deleted!"
+    );
+  };
+
+  const renderStar = (rating: number) => {
+    const stars = [];
+    const fullStars = Math.floor(rating || 0);
+    const hasHalfStar = rating % 1 >= 0.5;
+    for (let i = 1; i <= 5; i++) {
+      if (i <= fullStars) {
+        stars.push(
+          <Text key={i} style={styles.star}>
+            ★
+          </Text>
+        );
+      } else if (i === fullStars + 1 && hasHalfStar) {
+        stars.push(
+          <Text key={i} style={styles.star}>
+            ⯪
+          </Text>
+        );
+      } else {
+        stars.push(
+          <Text key={i} style={styles.star}>
+            ☆
+          </Text>
+        );
+      }
+    }
+    return stars;
+  };
+
+  const handlePrev = (id: number) => {
+    setCurrentIndices((prev) => {
+      const currentIndex = prev[id] || 0;
+      const newIndex =
+        (currentIndex -
+          1 +
+          (posts.find((p) => p.id === id)?.images.length || 1)) %
+        (posts.find((p) => p.id === id)?.images.length || 1);
+      if (carouselRefs.current[id]) {
+        carouselRefs.current[id].scrollTo({ index: newIndex });
+      }
+      return { ...prev, [id]: newIndex };
+    });
+  };
+
+  const handleNext = (id: number) => {
+    setCurrentIndices((prev) => {
+      const currentIndex = prev[id] || 0;
+      const newIndex =
+        (currentIndex + 1) %
+        (posts.find((p) => p.id === id)?.images.length || 1);
+      if (carouselRefs.current[id]) {
+        carouselRefs.current[id].scrollTo({ index: newIndex });
+      }
+      return { ...prev, [id]: newIndex };
+    });
+  };
+
+  const renderItem = ({ item }: { item: TravelPostType }) => (
+    <View style={styles.card}>
+      <View style={styles.imageContainer}>
+        {editMode[item.id] ? (
+          <TextInput
+            style={styles.input}
+            value={
+              editedValues[item.id]?.images || item.images.join(", ") || ""
+            }
+            onChangeText={(text) => handleEdit(item.id, "images", text)}
+            placeholder="Enter image URLs (comma-separated)"
+          />
+        ) : (
+          <>
+            <ImageBackground
+              source={{
+                uri: item.images[0] || "https://via.placeholder.com/150",
+              }}
+              style={styles.imageBackground}
+              imageStyle={styles.image}
+            >
+              <Carousel
+                ref={(ref) => (carouselRefs.current[item.id] = ref)}
+                width={340}
+                height={200}
+                data={item.images}
+                scrollAnimationDuration={300}
+                onSnapToItem={(index) =>
+                  setCurrentIndices((prev) => ({ ...prev, [item.id]: index }))
+                }
+                renderItem={({ item: image }) => (
+                  <Image
+                    source={{ uri: image || "https://via.placeholder.com/150" }}
+                    style={styles.innerImage}
+                    onError={(error) =>
+                      console.error(
+                        "AdminTravel: Image load error for item",
+                        item.id,
+                        error.nativeEvent
+                      )
+                    }
+                  />
+                )}
+              />
+              {item.images.length > 1 && (
+                <View style={styles.sliderControls}>
+                  <TouchableOpacity onPress={() => handlePrev(item.id)}>
+                    <Text style={styles.arrow}>{"<"}</Text>
+                  </TouchableOpacity>
+                  <View style={styles.indicatorContainer}>
+                    {item.images.map((_, index) => (
+                      <Text
+                        key={index}
+                        style={[
+                          styles.indicator,
+                          currentIndices[item.id] === index &&
+                            styles.activeIndicator,
+                        ]}
+                      >
+                        •
+                      </Text>
+                    ))}
+                  </View>
+                  <TouchableOpacity onPress={() => handleNext(item.id)}>
+                    <Text style={styles.arrow}>{">"}</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </ImageBackground>
+          </>
+        )}
+      </View>
+      <View style={styles.detailsContainer}>
+        <View style={styles.fieldRow}>
+          <Text style={styles.label}>{labels[language].name || "Name"}:</Text>
+          {editMode[item.id] ? (
+            <TextInput
+              style={styles.input}
+              value={editedValues[item.id]?.name || item.name || ""}
+              onChangeText={(text) => handleEdit(item.id, "name", text)}
+              placeholder="Enter name"
+            />
+          ) : (
+            <Text style={styles.value}>{item.name || "N/A"}</Text>
+          )}
+        </View>
+        <View style={styles.fieldRow}>
+          <Text style={styles.label}>{labels[language].place || "Place"}:</Text>
+          {editMode[item.id] ? (
+            <TextInput
+              style={styles.input}
+              value={editedValues[item.id]?.place || item.place || ""}
+              onChangeText={(text) => handleEdit(item.id, "place", text)}
+              placeholder="Enter place"
+            />
+          ) : (
+            <Text style={styles.value}>{item.place || "N/A"}</Text>
+          )}
+        </View>
+        <View style={styles.fieldRow}>
+          <Text style={styles.label}>
+            {labels[language].highlights || "Highlights"}:
+          </Text>
+          {editMode[item.id] ? (
+            <TextInput
+              style={styles.input}
+              value={
+                editedValues[item.id]?.highlights ||
+                item.highlights.join(", ") ||
+                ""
+              }
+              onChangeText={(text) => handleEdit(item.id, "highlights", text)}
+              placeholder="Enter highlights (comma-separated)"
+            />
+          ) : (
+            <Text style={styles.value}>
+              {item.highlights.length > 0 ? item.highlights.join(", ") : "N/A"}
+            </Text>
+          )}
+        </View>
+        <View style={styles.fieldRow}>
+          <Text style={styles.label}>
+            {labels[language].adminRating || "Rating"}:
+          </Text>
+          {editMode[item.id] ? (
+            <TextInput
+              style={styles.input}
+              value={
+                editedValues[item.id]?.admin_rating !== undefined
+                  ? String(editedValues[item.id].admin_rating)
+                  : String(item.admin_rating || 0)
+              }
+              onChangeText={(text) => handleEdit(item.id, "admin_rating", text)}
+              placeholder="Enter rating (0-5)"
+              keyboardType="numeric"
+            />
+          ) : (
+            <View style={{ flexDirection: "row", width: "55%" }}>
+              {renderStar(item.admin_rating || 0)}
+            </View>
+          )}
+        </View>
+        <View style={styles.buttonContainer}>
+          {editMode[item.id] ? (
+            <TouchableOpacity
+              style={styles.button}
+              onPress={() => handleSave(item.id)}
+            >
+              <Text style={styles.buttonText}>
+                {labels[language].save || "Save"}
+              </Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={styles.button}
+              onPress={() => setEditMode({ ...editMode, [item.id]: true })}
+            >
+              <Text style={styles.buttonText}>
+                {labels[language].edit || "Edit"}
+              </Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity
+            style={styles.button}
+            onPress={() => setDeleteModalVisible(item.id)}
+          >
+            <Text style={styles.buttonText}>
+              {labels[language].delete || "Delete"}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      <Modal
+        transparent={true}
+        visible={deleteModalVisible === item.id}
+        onRequestClose={() => setDeleteModalVisible(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalText}>
+              {labels[language].deleteConfirm ||
+                "Are you sure you want to delete this travel post?"}
+            </Text>
+            <View style={styles.modalButtonContainer}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => setDeleteModalVisible(null)}
+              >
+                <Text style={styles.modalButtonText}>
+                  {labels[language].cancel || "Cancel"}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.deleteButton]}
+                onPress={() => handleConfirmDelete(item.id)}
+              >
+                <Text style={styles.modalButtonText}>
+                  {labels[language].delete || "Delete"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </View>
+  );
+
   return (
-    <View>
-      <Text>adminTravel</Text>
+    <View style={styles.container}>
+      <View style={styles.listContainer}>
+        <FlatList
+          key={`flatlist-${numColumns}`} // Change key to force re-render
+          data={posts}
+          keyExtractor={(item) => item.id.toString()}
+          renderItem={renderItem}
+          showsHorizontalScrollIndicator={false}
+          numColumns={numColumns} // Dynamically set based on screen width
+          columnWrapperStyle={numColumns > 1 ? styles.row : undefined} // Apply only when numColumns > 1
+          ListEmptyComponent={
+            <Text style={styles.title}>
+              {labels[language].noPosts || "No travel posts available"}
+            </Text>
+          }
+        />
+      </View>
     </View>
   );
 };
 
-export default adminTravel;
+export default AdminTravel;

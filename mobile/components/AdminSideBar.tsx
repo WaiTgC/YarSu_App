@@ -1,12 +1,13 @@
-// app/(admin)/AdminSidebar.tsx
 import { SignedIn, SignedOut, useUser } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
-import { Text, View, TouchableOpacity, FlatList, Animated } from "react-native";
+import { Text, View, TouchableOpacity, Animated, Image } from "react-native";
 import { SignOutButton } from "@/components/SignOutButton";
 import { useState, useEffect, useRef } from "react";
 import { styles } from "@/assets/styles/adminstyles/Sidebar.styles";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { COLORS } from "@/constants/colors";
+import { useLanguage } from "@/context/LanguageContext";
+import { Language } from "@/libs/language";
 
 interface AdminSidebarProps {
   isOpen: boolean;
@@ -16,32 +17,31 @@ interface AdminSidebarProps {
 const AdminSidebar = ({ isOpen, toggleSidebar }: AdminSidebarProps) => {
   const router = useRouter();
   const { user } = useUser();
+  const { language, setLanguage } = useLanguage();
   const translateX = useRef(new Animated.Value(isOpen ? 0 : -250)).current;
 
   useEffect(() => {
-    Animated.timing(translateX, {
+    return Animated.timing(translateX, {
       toValue: isOpen ? 0 : -250,
       duration: 300,
-      useNativeDriver: true,
+      useNativeDriver: false,
     }).start();
   }, [isOpen]);
 
   const handleChangePassword = () => {
-    console.log("Change password clicked");
     router.push("/change-password");
     toggleSidebar();
   };
 
   const handleEditProfile = () => {
-    console.log("Edit profile clicked");
-    router.push("/edit-profile"); // Replace with actual edit profile route
+    router.push("/edit-profile");
     toggleSidebar();
   };
 
-  const navigationItems = [
-    { name: "Dashboard", icon: "speedometer", route: "/(admin)/dashboard" },
-    { name: "Edit Profile", icon: "person", route: "/edit-profile" }, // Add route as needed
-  ];
+  const handleLanguageChange = (lang: Language) => {
+    setLanguage(lang);
+    toggleSidebar();
+  };
 
   return (
     <>
@@ -136,12 +136,32 @@ const AdminSidebar = ({ isOpen, toggleSidebar }: AdminSidebarProps) => {
                 <Text style={styles.menuText}>Change Password</Text>
               </View>
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.menuButton, styles.logoutButton]}>
-              <View style={styles.menuItemContent}>
-                <SignOutButton />
-                <Text style={styles.menuText}>Log Out</Text>
-              </View>
-            </TouchableOpacity>
+
+            <SignOutButton />
+
+            <View style={styles.lanButton}>
+              <TouchableOpacity onPress={() => handleLanguageChange("my")}>
+                <Image
+                  source={require("@/assets/images/MY.png")}
+                  style={[
+                    styles.logo,
+                    language === "my" && styles.selectedLogo,
+                  ]}
+                  resizeMode="contain"
+                />
+              </TouchableOpacity>
+              <View style={styles.separatorcol} />
+              <TouchableOpacity onPress={() => handleLanguageChange("en")}>
+                <Image
+                  source={require("@/assets/images/US.png")}
+                  style={[
+                    styles.logo,
+                    language === "en" && styles.selectedLogo,
+                  ]}
+                  resizeMode="contain"
+                />
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Animated.View>

@@ -209,9 +209,7 @@ export const styles = StyleSheet.create({
     textAlign: "center",
     fontFamily: "SF Pro Text",
     fontWeight: "500",
-    lineHeight: "normal",
     letterSpacing: 0.16,
-    fontStyle: "normal",
   },
   plusButtonContainer: {
     borderWidth: 1,

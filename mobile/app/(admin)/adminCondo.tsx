@@ -1,6 +1,13 @@
 // app/(admin)/admincondo.tsx
 import React, { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, Alert } from "react-native";
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  Alert,
+  FlatList,
+} from "react-native";
 import { useRouter } from "expo-router";
 import { styles } from "@/assets/styles/adminstyles/condo.styles";
 

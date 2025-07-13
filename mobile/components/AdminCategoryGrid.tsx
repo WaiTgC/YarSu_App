@@ -14,13 +14,13 @@ const adminCategories = [
     name: "Admin Condo",
     icon: "home",
     color: COLORS.purple,
-    route: "/(admin)/admincondo",
+    route: "/(admin)/adminCondo",
   },
   {
     name: "Admin Travel",
     icon: "airplane",
     color: COLORS.green,
-    route: "/(admin)/admintravel",
+    route: "/(admin)/adminTravel",
   },
   {
     name: "Admin Courses",

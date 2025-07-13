@@ -34,6 +34,80 @@ export const useTravel = () => {
     }
   }, []);
 
+  const createTravelPost = useCallback(async (postData) => {
+    try {
+      const response = await fetch(`${API_URL}/travel-posts`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(postData),
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+      const newPost = await response.json();
+      setTravelPosts((prevPosts) => [...prevPosts, newPost]);
+      return newPost;
+    } catch (error) {
+      console.error("Error creating travel post:", error);
+      throw error;
+    }
+  }, []);
+
+  const updateTravelPost = useCallback(
+    async (id, postData) => {
+      try {
+        const response = await fetch(`${API_URL}/travel-posts/${id}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(postData),
+        });
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        const updatedPost = await response.json();
+        setTravelPosts((prevPosts) =>
+          prevPosts.map((post) => (post.id === id ? updatedPost : post))
+        );
+        if (selectedPost?.id === id) {
+          setSelectedPost(updatedPost);
+        }
+        return updatedPost;
+      } catch (error) {
+        console.error("Error updating travel post:", error);
+        throw error;
+      }
+    },
+    [selectedPost]
+  );
+
+  const deleteTravelPost = useCallback(
+    async (id) => {
+      try {
+        const response = await fetch(`${API_URL}/travel-posts/${id}`, {
+          method: "DELETE",
+        });
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        setTravelPosts((prevPosts) =>
+          prevPosts.filter((post) => post.id !== id)
+        );
+        if (selectedPost?.id === id) {
+          setSelectedPost(null);
+          setShowDetails(false);
+        }
+      } catch (error) {
+        console.error("Error deleting travel post:", error);
+        throw error;
+      }
+    },
+    [selectedPost]
+  );
+
   const handleMoreInfo = useCallback(
     (post) => {
       fetchTravelPostDetails(post.id);
@@ -50,6 +124,10 @@ export const useTravel = () => {
     selectedPost,
     showDetails,
     fetchTravelPosts,
+    fetchTravelPostDetails,
+    createTravelPost,
+    updateTravelPost,
+    deleteTravelPost,
     handleMoreInfo,
     loadTravelPosts,
     setShowDetails,

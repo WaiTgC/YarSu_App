@@ -86,4 +86,25 @@ export const styles = StyleSheet.create({
     top: 10,
     padding: 10,
   },
+  lanButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 15,
+  },
+  logo: {
+    width: 25,
+    height: 25,
+  },
+  separatorcol: {
+    width: 1,
+    height: 30,
+    backgroundColor: COLORS.white,
+    marginVertical: 10,
+    marginHorizontal: 10,
+  },
+  separator: {
+    height: 1,
+    backgroundColor: COLORS.border,
+    marginVertical: 8,
+  },
 });

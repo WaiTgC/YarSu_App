@@ -1,4 +1,3 @@
-// app/(admin)/adminjob.tsx
 import React, { useEffect, useState } from "react";
 import {
   View,
@@ -7,11 +6,13 @@ import {
   TouchableOpacity,
   TextInput,
   Alert,
+  Modal,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { styles } from "@/assets/styles/adminstyles/job.styles";
 import { useJobs } from "@/hooks/useJobs";
-import { formatDate } from "@/libs/utils";
+import { useLanguage } from "@/context/LanguageContext";
+import { labels } from "@/libs/language";
 
 // Define the Job type
 type JobType = {
@@ -27,111 +28,333 @@ type JobType = {
   stay?: boolean;
 };
 
+// Define type for edited values to allow string for boolean fields during editing
+type EditedJobType = Partial<{
+  title: string;
+  job_location: string;
+  notes: string;
+  pinkcard: string | boolean;
+  thai: string | boolean;
+  payment_type: string | boolean;
+  stay: string | boolean;
+}>;
+
 const AdminJob = () => {
   const router = useRouter();
-  const { jobs, loadJobs } = useJobs() as {
+  const { language } = useLanguage();
+  const {
+    jobs: fetchedJobs,
+    loadJobs,
+    editJob,
+    deleteJob,
+  } = useJobs() as {
     jobs: JobType[];
     loadJobs: () => void;
+    editJob: (id: number, updatedJob: Partial<JobType>) => void;
+    deleteJob: (id: number) => void;
   };
-  const [editedJobs, setEditedJobs] = useState<JobType[]>([]);
-  const [newJob, setNewJob] = useState<Partial<JobType>>({});
+  const [jobs, setJobs] = useState<JobType[]>([]);
+  const [editMode, setEditMode] = useState<{ [key: number]: boolean }>({});
+  const [editedValues, setEditedValues] = useState<{
+    [key: number]: EditedJobType;
+  }>({});
+  const [deleteModalVisible, setDeleteModalVisible] = useState<number | null>(
+    null
+  );
 
   useEffect(() => {
     loadJobs();
-    setEditedJobs([...jobs]); // Initialize with current jobs
-  }, [loadJobs, jobs]);
+    setJobs(fetchedJobs);
+  }, [loadJobs, fetchedJobs]);
 
   const handleEdit = (id: number, field: string, value: string) => {
-    setEditedJobs(
-      editedJobs.map((job) =>
-        job.id === id ? { ...job, [field]: value } : job
-      )
-    );
+    setEditedValues((prev) => ({
+      ...prev,
+      [id]: { ...prev[id], [field]: value },
+    }));
   };
 
-  const handleSave = () => {
-    Alert.alert("Saved", "Changes have been saved!");
-    // Replace with API call to persist changes
-  };
+  const handleSave = (id: number) => {
+    const updatedJob = editedValues[id] || {};
+    const convertedJob: Partial<JobType> = {};
 
-  const handleAddJob = () => {
-    if (newJob.title && newJob.job_location && newJob.created_at) {
-      const jobToAdd = {
-        ...newJob,
-        id: Date.now(), // Temporary ID; replace with real ID from backend
-        pinkcard: false,
-        thai: false,
-        payment_type: false,
-        stay: false,
-      } as JobType;
-      setEditedJobs([...editedJobs, jobToAdd]);
-      setNewJob({});
-      Alert.alert("Added", "New job has been added!");
+    // Convert string inputs to appropriate types
+    if (updatedJob.title) {
+      convertedJob.title = updatedJob.title;
+    }
+    if (updatedJob.job_location) {
+      convertedJob.job_location = updatedJob.job_location;
+    }
+    if (updatedJob.notes !== undefined) {
+      convertedJob.notes = updatedJob.notes;
+    }
+    if (updatedJob.pinkcard !== undefined) {
+      const lowerValue =
+        typeof updatedJob.pinkcard === "string"
+          ? updatedJob.pinkcard.toLowerCase()
+          : updatedJob.pinkcard;
+      if (lowerValue === "yes") {
+        convertedJob.pinkcard = true;
+      } else if (lowerValue === "no") {
+        convertedJob.pinkcard = false;
+      }
+    }
+    if (updatedJob.thai !== undefined) {
+      const lowerValue =
+        typeof updatedJob.thai === "string"
+          ? updatedJob.thai.toLowerCase()
+          : updatedJob.thai;
+      if (lowerValue === "yes") {
+        convertedJob.thai = true;
+      } else if (lowerValue === "no") {
+        convertedJob.thai = false;
+      }
+    }
+    if (updatedJob.payment_type !== undefined) {
+      const lowerValue =
+        typeof updatedJob.payment_type === "string"
+          ? updatedJob.payment_type.toLowerCase()
+          : updatedJob.payment_type;
+      if (lowerValue === "yes") {
+        convertedJob.payment_type = true;
+      } else if (lowerValue === "no") {
+        convertedJob.payment_type = false;
+      }
+    }
+    if (updatedJob.stay !== undefined) {
+      const lowerValue =
+        typeof updatedJob.stay === "string"
+          ? updatedJob.stay.toLowerCase()
+          : updatedJob.stay;
+      if (lowerValue === "yes") {
+        convertedJob.stay = true;
+      } else if (lowerValue === "no") {
+        convertedJob.stay = false;
+      }
+    }
+
+    if (Object.keys(convertedJob).length > 0) {
+      editJob(id, convertedJob);
+      setEditMode({ ...editMode, [id]: false });
+      setEditedValues((prev) => {
+        const newValues = { ...prev };
+        delete newValues[id];
+        return newValues;
+      });
+      Alert.alert(
+        "Saved",
+        labels[language].saved || "Changes have been saved!"
+      );
     } else {
-      Alert.alert("Error", "Please fill all required fields!");
+      setEditMode({ ...editMode, [id]: false });
     }
   };
 
-  const handleBack = () => {
-    router.back();
+  const handleConfirmDelete = (id: number) => {
+    deleteJob(id);
+    setDeleteModalVisible(null);
+    setJobs(jobs.filter((job) => job.id !== id));
+    Alert.alert("Deleted", labels[language].deleted || "Job has been deleted!");
   };
+
+  const renderItem = ({ item }: { item: JobType }) => (
+    <View style={styles.card}>
+      <View style={styles.detailsContainer}>
+        <View style={styles.fieldRow}>
+          <Text style={styles.label}>{labels[language].title}:</Text>
+          {editMode[item.id] ? (
+            <TextInput
+              style={styles.input}
+              value={editedValues[item.id]?.title || item.title}
+              onChangeText={(text) => handleEdit(item.id, "title", text)}
+            />
+          ) : (
+            <Text style={styles.value}>{item.title}</Text>
+          )}
+        </View>
+        <View style={styles.fieldRow}>
+          <Text style={styles.label}>{labels[language].location}:</Text>
+          {editMode[item.id] ? (
+            <TextInput
+              style={styles.input}
+              value={editedValues[item.id]?.job_location || item.job_location}
+              onChangeText={(text) => handleEdit(item.id, "job_location", text)}
+            />
+          ) : (
+            <Text style={styles.value}>{item.job_location}</Text>
+          )}
+        </View>
+        <View style={styles.fieldRow}>
+          <Text style={styles.label}>{labels[language].pinkCard}:</Text>
+          {editMode[item.id] ? (
+            <TextInput
+              style={styles.input}
+              value={
+                editedValues[item.id]?.pinkcard !== undefined
+                  ? String(editedValues[item.id].pinkcard)
+                  : item.pinkcard
+                  ? "Yes"
+                  : "No"
+              }
+              onChangeText={(text) => handleEdit(item.id, "pinkcard", text)}
+              placeholder="Yes or No"
+            />
+          ) : (
+            <Text style={styles.value}>{item.pinkcard ? "Yes" : "No"}</Text>
+          )}
+        </View>
+        <View style={styles.fieldRow}>
+          <Text style={styles.label}>{labels[language].thai}:</Text>
+          {editMode[item.id] ? (
+            <TextInput
+              style={styles.input}
+              value={
+                editedValues[item.id]?.thai !== undefined
+                  ? String(editedValues[item.id].thai)
+                  : item.thai
+                  ? "Yes"
+                  : "No"
+              }
+              onChangeText={(text) => handleEdit(item.id, "thai", text)}
+              placeholder="Yes or No"
+            />
+          ) : (
+            <Text style={styles.value}>{item.thai ? "Yes" : "No"}</Text>
+          )}
+        </View>
+        <View style={styles.fieldRow}>
+          <Text style={styles.label}>{labels[language].paymentType}:</Text>
+          {editMode[item.id] ? (
+            <TextInput
+              style={styles.input}
+              value={
+                editedValues[item.id]?.payment_type !== undefined
+                  ? String(editedValues[item.id].payment_type)
+                  : item.payment_type
+                  ? "Yes"
+                  : "No"
+              }
+              onChangeText={(text) => handleEdit(item.id, "payment_type", text)}
+              placeholder="Monthly or Daily"
+            />
+          ) : (
+            <Text style={styles.value}>
+              {item.payment_type ? "Monthly" : "Daily"}
+            </Text>
+          )}
+        </View>
+        <View style={styles.fieldRow}>
+          <Text style={styles.label}>{labels[language].stay}:</Text>
+          {editMode[item.id] ? (
+            <TextInput
+              style={styles.input}
+              value={
+                editedValues[item.id]?.stay !== undefined
+                  ? String(editedValues[item.id].stay)
+                  : item.stay
+                  ? "Yes"
+                  : "No"
+              }
+              onChangeText={(text) => handleEdit(item.id, "stay", text)}
+              placeholder="Yes or No"
+            />
+          ) : (
+            <Text style={styles.value}>{item.stay ? "Yes" : "No"}</Text>
+          )}
+        </View>
+        <View style={styles.fieldRow}>
+          <Text style={styles.label}>{labels[language].notes}:</Text>
+          {editMode[item.id] ? (
+            <TextInput
+              style={styles.input}
+              value={editedValues[item.id]?.notes || item.notes || ""}
+              onChangeText={(text) => handleEdit(item.id, "notes", text)}
+              placeholder="Enter notes"
+            />
+          ) : (
+            <Text style={styles.value}>{item.notes || "N/A"}</Text>
+          )}
+        </View>
+        <View style={styles.buttonContainer}>
+          {editMode[item.id] ? (
+            <TouchableOpacity
+              style={styles.button}
+              onPress={() => handleSave(item.id)}
+            >
+              <Text style={styles.buttonText}>
+                {labels[language].save || "Save"}
+              </Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={styles.button}
+              onPress={() => setEditMode({ ...editMode, [item.id]: true })}
+            >
+              <Text style={styles.buttonText}>
+                {labels[language].edit || "Edit"}
+              </Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity
+            style={styles.button}
+            onPress={() => setDeleteModalVisible(item.id)}
+          >
+            <Text style={styles.buttonText}>{labels[language].delete}</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      <Modal
+        transparent={true}
+        visible={deleteModalVisible === item.id}
+        onRequestClose={() => setDeleteModalVisible(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalText}>
+              {labels[language].deleteConfirm}
+            </Text>
+            <View style={styles.modalButtonContainer}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => setDeleteModalVisible(null)}
+              >
+                <Text style={styles.modalButtonText}>
+                  {labels[language].cancel}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.deleteButton]}
+                onPress={() => handleConfirmDelete(item.id)}
+              >
+                <Text style={styles.modalButtonText}>
+                  {labels[language].delete}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </View>
+  );
 
   return (
     <View style={styles.container}>
-      <Text style={styles.header}>Admin Job Management</Text>
-      <FlatList
-        data={editedJobs}
-        keyExtractor={(item) => item.id.toString()}
-        renderItem={({ item }) => (
-          <View style={styles.card}>
-            <TextInput
-              style={styles.input}
-              value={item.title}
-              onChangeText={(text) => handleEdit(item.id, "title", text)}
-            />
-            <TextInput
-              style={styles.input}
-              value={item.job_location}
-              onChangeText={(text) => handleEdit(item.id, "job_location", text)}
-            />
-            <TextInput
-              style={styles.input}
-              value={item.created_at}
-              onChangeText={(text) => handleEdit(item.id, "created_at", text)}
-            />
-          </View>
-        )}
-        ListEmptyComponent={<Text style={styles.title}>No jobs available</Text>}
-      />
-      <View style={styles.editSection}>
-        <TextInput
-          style={styles.input}
-          placeholder="Title"
-          value={newJob.title || ""}
-          onChangeText={(text) => setNewJob({ ...newJob, title: text })}
+      {/* <View style={styles.headerContainer}>
+        <Text style={styles.header}>{labels[language].adminJobManagement}</Text>
+      </View> */}
+      <View style={styles.listContainer}>
+        <FlatList
+          horizontal={true}
+          data={jobs}
+          keyExtractor={(item) => item.id.toString()}
+          renderItem={renderItem}
+          showsHorizontalScrollIndicator={false}
+          ListEmptyComponent={
+            <Text style={styles.title}>{labels[language].noJobs}</Text>
+          }
         />
-        <TextInput
-          style={styles.input}
-          placeholder="Location"
-          value={newJob.job_location || ""}
-          onChangeText={(text) => setNewJob({ ...newJob, job_location: text })}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Date (YYYY-MM-DD)"
-          value={newJob.created_at || ""}
-          onChangeText={(text) => setNewJob({ ...newJob, created_at: text })}
-        />
-        <TouchableOpacity style={styles.button} onPress={handleAddJob}>
-          <Text style={styles.buttonText}>Add Job</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.button} onPress={handleSave}>
-          <Text style={styles.buttonText}>Save Changes</Text>
-        </TouchableOpacity>
       </View>
-      <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-        <Text style={styles.buttonText}>Back to Dashboard</Text>
-      </TouchableOpacity>
     </View>
   );
 };

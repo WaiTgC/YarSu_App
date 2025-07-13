@@ -7,11 +7,14 @@ export const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
     padding: 28,
   },
+  listContainer: {
+    flex: 1,
+  },
   card: {
-    width: 455,
-    height: 481,
-    paddingVertical: 40,
-    padding: 29,
+    width: Dimensions.get("window").width >= 768 ? "30%" : "100%", // Responsive width
+    height: 556,
+    paddingVertical: 20,
+    paddingHorizontal: 15,
     backgroundColor: "#F3F3F3",
     borderRadius: 24,
     marginBottom: 20,
@@ -23,7 +26,60 @@ export const styles = StyleSheet.create({
     elevation: 2,
     flexDirection: "column",
     justifyContent: "space-between",
-    marginRight: 28,
+  },
+  imageContainer: {
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  imageBackground: {
+    width: "100%", 
+    height: 200,
+    borderRadius: 24,
+    backgroundColor: "lightgray", 
+    overflow: "hidden", 
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "rgba(0, 0, 0, 0.25)",
+    shadowOffset: { width: 4, height: 4 },
+    shadowRadius: 4,
+    elevation: 4, 
+  },
+  image: {
+    width: "100%",
+    height: 200,
+    borderRadius: 24, 
+    resizeMode: "cover", 
+  },
+  innerImage: {
+    width: "100%",
+    height: 200,
+    borderRadius: 24,
+    resizeMode: "cover",
+  },
+  sliderControls: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    width: "100%", // Responsive width
+    paddingHorizontal: 10,
+    marginTop: 10,
+    gap: 10,
+  },
+  indicatorContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  indicator: {
+    fontSize: 12,
+    color: "#A0A0A0",
+    marginHorizontal: 4,
+  },
+  activeIndicator: {
+    color: "#000000",
+  },
+  arrow: {
+    fontSize: 18,
+    color: "#000000",
   },
   header: {
     fontSize: 20,
@@ -76,14 +132,7 @@ export const styles = StyleSheet.create({
     borderRadius: 15,
     alignItems: "center",
     flex: 1,
-    marginHorizontal: 50,
-  },
-  backButton: {
-    padding: 10,
-    backgroundColor: COLORS.secondary,
-    borderRadius: 5,
-    alignItems: "center",
-    marginTop: 10,
+    marginHorizontal: 10,
   },
   buttonText: {
     color: COLORS.white,
@@ -91,17 +140,8 @@ export const styles = StyleSheet.create({
     textAlign: "center",
     fontSize: 15,
   },
-  editSection: {
-    marginTop: 20,
-  },
   detailsContainer: {
     padding: 10,
-  },
-  headerContainer: {
-    marginBottom: 15,
-  },
-  listContainer: {
-    flexDirection: "row",
   },
   modalOverlay: {
     flex: 1,
@@ -144,5 +184,16 @@ export const styles = StyleSheet.create({
     fontWeight: "500",
     fontFamily: "SF Pro Text",
     color: COLORS.black,
+  },
+  star: {
+    fontSize: 16,
+    color: COLORS.black,
+    marginRight: 2,
+  },
+  row: {
+    justifyContent: "space-between",
+    marginBottom: 10,
+    flexDirection: "row",
+    gap: 20,
   },
 });

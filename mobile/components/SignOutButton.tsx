@@ -1,8 +1,15 @@
 import { useClerk } from "@clerk/clerk-expo";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { Alert, Pressable, Platform } from "react-native";
+import {
+  Alert,
+  Pressable,
+  Platform,
+  View,
+  Text,
+  TouchableOpacity,
+} from "react-native";
 import { COLORS } from "@/constants/colors";
-import { styles } from "@/assets/styles/home.styles";
+import { styles } from "@/assets/styles/Sidebar.styles";
 
 export const SignOutButton = () => {
   const { signOut } = useClerk();
@@ -62,14 +69,17 @@ export const SignOutButton = () => {
   };
 
   return (
-    <Pressable
-      style={styles.logoutButton}
+    <TouchableOpacity
+      style={[styles.menuButton, styles.logoutButton]}
       onPress={() => {
-        console.log("Pressable pressed, Platform:", Platform.OS);
         handleSignOut();
       }}
     >
-      <Ionicons name="log-out" size={22} color={COLORS.shadow} />
-    </Pressable>
+      {" "}
+      <View style={styles.menuItemContent}>
+        <Ionicons name="log-out" size={22} color={COLORS.shadow} />
+        <Text style={styles.menuText}>Log Out</Text>
+      </View>
+    </TouchableOpacity>
   );
 };
