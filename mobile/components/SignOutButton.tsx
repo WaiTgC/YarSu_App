@@ -70,16 +70,13 @@ export const SignOutButton = () => {
 
   return (
     <TouchableOpacity
-      style={[styles.menuButton, styles.logoutButton]}
+      style={[styles.menuButton, styles.logoutButton, styles.menuItemContent]}
       onPress={() => {
         handleSignOut();
       }}
     >
-      {" "}
-      <View style={styles.menuItemContent}>
-        <Ionicons name="log-out" size={22} color={COLORS.shadow} />
-        <Text style={styles.menuText}>Log Out</Text>
-      </View>
+      <Ionicons name="log-out" size={22} color={COLORS.shadow} />
+      <Text style={styles.menuText}>Log Out</Text>
     </TouchableOpacity>
   );
 };

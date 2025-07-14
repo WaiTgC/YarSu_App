@@ -143,10 +143,7 @@ const AdminSidebar = ({ isOpen, toggleSidebar }: AdminSidebarProps) => {
               <TouchableOpacity onPress={() => handleLanguageChange("my")}>
                 <Image
                   source={require("@/assets/images/MY.png")}
-                  style={[
-                    styles.logo,
-                    language === "my" && styles.selectedLogo,
-                  ]}
+                  style={[styles.logo]}
                   resizeMode="contain"
                 />
               </TouchableOpacity>
@@ -154,10 +151,7 @@ const AdminSidebar = ({ isOpen, toggleSidebar }: AdminSidebarProps) => {
               <TouchableOpacity onPress={() => handleLanguageChange("en")}>
                 <Image
                   source={require("@/assets/images/US.png")}
-                  style={[
-                    styles.logo,
-                    language === "en" && styles.selectedLogo,
-                  ]}
+                  style={[styles.logo]}
                   resizeMode="contain"
                 />
               </TouchableOpacity>

@@ -9,7 +9,6 @@ import {
   Modal,
   Image,
   Dimensions,
-  ImageBackground,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { styles } from "@/assets/styles/adminstyles/travel.styles";
@@ -18,7 +17,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import { labels } from "@/libs/language";
 import Carousel from "react-native-reanimated-carousel";
 
-// Define the TravelPost type based on Travel.tsx
+// Define the TravelPost type
 type TravelPostType = {
   id: number;
   name: string;
@@ -29,7 +28,7 @@ type TravelPostType = {
   created_at: string;
 };
 
-// Define type for edited values to allow string for array fields during editing
+// Define type for edited values
 type EditedTravelPostType = Partial<{
   name: string;
   place: string;
@@ -56,9 +55,9 @@ const AdminTravel = () => {
   );
   const [currentIndices, setCurrentIndices] = useState<{
     [key: number]: number;
-  }>({});
-  const carouselRefs = useRef<{ [key: number]: any }>({});
+  }>({}); // Manage index state
   const [numColumns, setNumColumns] = useState(3); // Default to 3 columns
+  const isInitialMount = useRef(true);
 
   // Update numColumns based on screen width
   useEffect(() => {
@@ -75,6 +74,21 @@ const AdminTravel = () => {
   const editTravelPost = useCallback(
     async (id: number, updatedPost: Partial<TravelPostType>) => {
       try {
+        // Filter out blob URLs and use placeholder if no valid image
+        const sanitizedImages =
+          updatedPost.images?.filter((img) => !img.startsWith("blob:")) || [];
+        const finalImages =
+          sanitizedImages.length > 0
+            ? sanitizedImages
+            : ["https://picsum.photos/340/200"];
+        const payload = {
+          ...updatedPost,
+          images: finalImages,
+        };
+        console.log(
+          "Sending payload to backend:",
+          JSON.stringify(payload, null, 2)
+        ); // Debug
         const response = await fetch(
           `https://yarsu-backend.onrender.com/api/travel-posts/${id}`,
           {
@@ -82,7 +96,7 @@ const AdminTravel = () => {
             headers: {
               "Content-Type": "application/json",
             },
-            body: JSON.stringify(updatedPost),
+            body: JSON.stringify(payload),
           }
         );
         if (!response.ok) {
@@ -118,9 +132,18 @@ const AdminTravel = () => {
     [fetchTravelPosts]
   );
 
+  // Initial fetch on mount
   useEffect(() => {
-    console.log("AdminTravel: Fetching travel posts", travelPosts);
-    loadTravelPosts();
+    if (isInitialMount.current) {
+      console.log("AdminTravel: Initial fetch of travel posts");
+      loadTravelPosts();
+      isInitialMount.current = false;
+    }
+  }, [loadTravelPosts]);
+
+  // Update posts when travelPosts changes
+  useEffect(() => {
+    console.log("AdminTravel: Updating posts with travelPosts", travelPosts);
     setPosts(travelPosts);
     // Initialize current indices
     const initialIndices = travelPosts.reduce((acc, post) => {
@@ -128,7 +151,7 @@ const AdminTravel = () => {
       return acc;
     }, {} as { [key: number]: number });
     setCurrentIndices(initialIndices);
-  }, [loadTravelPosts, travelPosts]);
+  }, [travelPosts]);
 
   const handleEdit = (id: number, field: string, value: string) => {
     setEditedValues((prev) => ({
@@ -223,14 +246,8 @@ const AdminTravel = () => {
   const handlePrev = (id: number) => {
     setCurrentIndices((prev) => {
       const currentIndex = prev[id] || 0;
-      const newIndex =
-        (currentIndex -
-          1 +
-          (posts.find((p) => p.id === id)?.images.length || 1)) %
-        (posts.find((p) => p.id === id)?.images.length || 1);
-      if (carouselRefs.current[id]) {
-        carouselRefs.current[id].scrollTo({ index: newIndex });
-      }
+      const totalImages = posts.find((p) => p.id === id)?.images.length || 1;
+      const newIndex = (currentIndex - 1 + totalImages) % totalImages;
       return { ...prev, [id]: newIndex };
     });
   };
@@ -238,12 +255,8 @@ const AdminTravel = () => {
   const handleNext = (id: number) => {
     setCurrentIndices((prev) => {
       const currentIndex = prev[id] || 0;
-      const newIndex =
-        (currentIndex + 1) %
-        (posts.find((p) => p.id === id)?.images.length || 1);
-      if (carouselRefs.current[id]) {
-        carouselRefs.current[id].scrollTo({ index: newIndex });
-      }
+      const totalImages = posts.find((p) => p.id === id)?.images.length || 1;
+      const newIndex = (currentIndex + 1) % totalImages;
       return { ...prev, [id]: newIndex };
     });
   };
@@ -262,25 +275,23 @@ const AdminTravel = () => {
           />
         ) : (
           <>
-            <ImageBackground
-              source={{
-                uri: item.images[0] || "https://via.placeholder.com/150",
-              }}
-              style={styles.imageBackground}
-              imageStyle={styles.image}
-            >
+            <View style={styles.imageBackground}>
               <Carousel
-                ref={(ref) => (carouselRefs.current[item.id] = ref)}
                 width={340}
                 height={200}
-                data={item.images}
+                data={
+                  item.images.length > 0
+                    ? item.images
+                    : ["https://picsum.photos/340/200"]
+                }
                 scrollAnimationDuration={300}
+                defaultIndex={currentIndices[item.id] || 0} // Use state for index
                 onSnapToItem={(index) =>
                   setCurrentIndices((prev) => ({ ...prev, [item.id]: index }))
                 }
                 renderItem={({ item: image }) => (
                   <Image
-                    source={{ uri: image || "https://via.placeholder.com/150" }}
+                    source={{ uri: image }}
                     style={styles.innerImage}
                     onError={(error) =>
                       console.error(
@@ -292,31 +303,31 @@ const AdminTravel = () => {
                   />
                 )}
               />
-              {item.images.length > 1 && (
-                <View style={styles.sliderControls}>
-                  <TouchableOpacity onPress={() => handlePrev(item.id)}>
-                    <Text style={styles.arrow}>{"<"}</Text>
-                  </TouchableOpacity>
-                  <View style={styles.indicatorContainer}>
-                    {item.images.map((_, index) => (
-                      <Text
-                        key={index}
-                        style={[
-                          styles.indicator,
-                          currentIndices[item.id] === index &&
-                            styles.activeIndicator,
-                        ]}
-                      >
-                        •
-                      </Text>
-                    ))}
-                  </View>
-                  <TouchableOpacity onPress={() => handleNext(item.id)}>
-                    <Text style={styles.arrow}>{">"}</Text>
-                  </TouchableOpacity>
+            </View>
+            {item.images.length > 1 && (
+              <View style={styles.sliderControls}>
+                <TouchableOpacity onPress={() => handlePrev(item.id)}>
+                  <Text style={styles.arrow}>{"<"}</Text>
+                </TouchableOpacity>
+                <View style={styles.indicatorContainer}>
+                  {item.images.map((_, index) => (
+                    <Text
+                      key={index}
+                      style={[
+                        styles.indicator,
+                        currentIndices[item.id] === index &&
+                          styles.activeIndicator,
+                      ]}
+                    >
+                      •
+                    </Text>
+                  ))}
                 </View>
-              )}
-            </ImageBackground>
+                <TouchableOpacity onPress={() => handleNext(item.id)}>
+                  <Text style={styles.arrow}>{">"}</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </>
         )}
       </View>

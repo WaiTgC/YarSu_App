@@ -2,6 +2,9 @@ import { useState, useCallback } from "react";
 
 const API_URL = "https://yarsu-backend.onrender.com/api";
 
+// Optional: Replace with your actual auth token if required
+const AUTH_TOKEN = process.env.REACT_APP_API_TOKEN || ""; // Define in .env file
+
 export const useTravel = () => {
   const [travelPosts, setTravelPosts] = useState([]);
   const [selectedPost, setSelectedPost] = useState(null);
@@ -34,16 +37,19 @@ export const useTravel = () => {
     }
   }, []);
 
-  const createTravelPost = useCallback(async (postData) => {
+  const addTravelPost = useCallback(async (postData) => {
     try {
       const response = await fetch(`${API_URL}/travel-posts`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          ...(AUTH_TOKEN && { Authorization: `Bearer ${AUTH_TOKEN}` }), // Add token if required
         },
         body: JSON.stringify(postData),
       });
       if (!response.ok) {
+        const errorText = await response.text(); // Log response body for details
+        console.error("Server response:", errorText);
         throw new Error(`HTTP error! Status: ${response.status}`);
       }
       const newPost = await response.json();
@@ -62,6 +68,7 @@ export const useTravel = () => {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
+            ...(AUTH_TOKEN && { Authorization: `Bearer ${AUTH_TOKEN}` }),
           },
           body: JSON.stringify(postData),
         });
@@ -89,6 +96,9 @@ export const useTravel = () => {
       try {
         const response = await fetch(`${API_URL}/travel-posts/${id}`, {
           method: "DELETE",
+          headers: {
+            ...(AUTH_TOKEN && { Authorization: `Bearer ${AUTH_TOKEN}` }),
+          },
         });
         if (!response.ok) {
           throw new Error(`HTTP error! Status: ${response.status}`);
@@ -125,7 +135,7 @@ export const useTravel = () => {
     showDetails,
     fetchTravelPosts,
     fetchTravelPostDetails,
-    createTravelPost,
+    addTravelPost,
     updateTravelPost,
     deleteTravelPost,
     handleMoreInfo,

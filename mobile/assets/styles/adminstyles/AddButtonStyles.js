@@ -19,8 +19,7 @@ export const styles = StyleSheet.create({
   },
   modalContent: {
     width: 804,
-    height: 649,
-
+    height: "auto",
     backgroundColor: COLORS.white,
     borderRadius: 24,
   },
@@ -103,7 +102,7 @@ export const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "flex-end",
     width: "90%",
-    marginTop: 20,
+    marginVertical: 20,
   },
   modalButton: {
     padding: 12,
@@ -124,5 +123,22 @@ export const styles = StyleSheet.create({
   icon: {
     width: 40,
     height: 40,
+  },
+  imageInput: {
+    width: 90,
+    height: 90,
+    borderColor: COLORS.black,
+    borderWidth: 1,
+    borderBottomWidth: 2, // Underline effect
+    borderRadius: 10,
+    justifyContent: "center",
+    alignItems: "center",
+    flexDirection: "row",
+  },
+  imagePreview: {
+    width: 90,
+    height: 90,
+    borderRadius: 10,
+    resizeMode: "cover",
   },
 });

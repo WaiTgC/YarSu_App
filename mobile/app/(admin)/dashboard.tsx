@@ -1,6 +1,6 @@
 import { SignedIn, SignedOut, useUser } from "@clerk/clerk-expo";
 import { Text, View, FlatList, RefreshControl } from "react-native";
-import { useState, useEffect } from "react";
+import { useState } from "react"; // Removed unused useEffect import
 import { Redirect, useRouter } from "expo-router";
 import { styles } from "@/assets/styles/adminstyles/admin.styles";
 import AdminCategoryGrid from "@/components/AdminCategoryGrid";
@@ -36,11 +36,11 @@ export default function Dashboard({ toggleSidebar }: DashboardProps) {
               <View>
                 <View style={styles.greetingContainer}>
                   <Text style={styles.greetingText}>
-                    {getGreeting()},{" "}
-                    {user?.username ||
+                    {`${getGreeting()}, ${
+                      user?.username ||
                       user?.emailAddresses[0]?.emailAddress ||
-                      "Admin"}
-                    !
+                      "Admin"
+                    }!`}
                   </Text>
                 </View>
                 <AdminCategoryGrid />
@@ -54,7 +54,7 @@ export default function Dashboard({ toggleSidebar }: DashboardProps) {
         </View>
       </SignedIn>
       <SignedOut>
-        <Redirect href={"/(auth)"} />
+        <Redirect href="/(auth)" />
       </SignedOut>
     </View>
   );
