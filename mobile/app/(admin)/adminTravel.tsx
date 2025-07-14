@@ -471,6 +471,7 @@ const AdminTravel = () => {
     <View style={styles.container}>
       <View style={styles.listContainer}>
         <FlatList
+          showsVerticalScrollIndicator={false}
           key={`flatlist-${numColumns}`} // Change key to force re-render
           data={posts}
           keyExtractor={(item) => item.id.toString()}

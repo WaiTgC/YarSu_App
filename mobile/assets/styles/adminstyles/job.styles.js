@@ -8,7 +8,7 @@ export const styles = StyleSheet.create({
     padding: 28,
   },
   card: {
-    width: 455,
+    width: Dimensions.get("window").width >= 768 ? "30%" : "100%",
     height: 481,
     paddingVertical: 40,
     padding: 29,
@@ -76,7 +76,7 @@ export const styles = StyleSheet.create({
     borderRadius: 15,
     alignItems: "center",
     flex: 1,
-    marginHorizontal: 50,
+    marginHorizontal: 20,
   },
   backButton: {
     padding: 10,
@@ -101,7 +101,7 @@ export const styles = StyleSheet.create({
     marginBottom: 15,
   },
   listContainer: {
-    flexDirection: "row",
+    flex: 1,
   },
   modalOverlay: {
     flex: 1,

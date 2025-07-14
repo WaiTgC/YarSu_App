@@ -32,7 +32,7 @@ export const styles = StyleSheet.create({
     marginBottom: 10,
   },
   imageBackground: {
-    width: "auto",
+    width: Dimensions.get("window").width >= 768 ? "30%" : "100%", // Responsive width
     height: 200,
     borderRadius: 24,
     backgroundColor: "lightgray",

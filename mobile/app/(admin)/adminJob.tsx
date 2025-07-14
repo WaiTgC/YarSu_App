@@ -288,7 +288,7 @@ const AdminJob = () => {
           ) : (
             <TouchableOpacity
               style={styles.button}
-              onPress={() => setEditMode({ ...editMode, [item.id]: true })}
+              onPress={() => setEditMode({ ...editMode, [id]: true })}
             >
               <Text style={styles.buttonText}>
                 {labels[language].edit || "Edit"}
@@ -345,11 +345,10 @@ const AdminJob = () => {
       </View> */}
       <View style={styles.listContainer}>
         <FlatList
-          horizontal={true}
           data={jobs}
           keyExtractor={(item) => item.id.toString()}
           renderItem={renderItem}
-          showsHorizontalScrollIndicator={false}
+          showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <Text style={styles.title}>{labels[language].noJobs}</Text>
           }
