@@ -68,7 +68,7 @@ export const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 10,
     paddingHorizontal: 10,
-    backgroundColor: COLORS.white,
+    backgroundColor: "rgba(217, 217, 217, 0.70)",
   },
   booleanInput: {
     width: 120,
@@ -134,11 +134,36 @@ export const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     flexDirection: "row",
+    backgroundColor: "rgba(217, 217, 217, 0.70)",
   },
   imagePreview: {
     width: 90,
     height: 90,
     borderRadius: 10,
     resizeMode: "cover",
+  },
+  serviceContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
+  },
+  radioButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginRight: 15,
+  },
+  radioCircle: {
+    height: 20,
+    width: 20,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: " rgba(217, 217, 217, 0.7)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 5,
+  },
+  radioLabel: {
+    fontSize: 14,
+    color: COLORS.black,
   },
 });

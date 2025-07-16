@@ -7,6 +7,7 @@ import {
   TextInput,
   Alert,
   Modal,
+  Dimensions,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { styles } from "@/assets/styles/adminstyles/job.styles";
@@ -61,6 +62,18 @@ const AdminJob = () => {
   const [deleteModalVisible, setDeleteModalVisible] = useState<number | null>(
     null
   );
+  const [numColumns, setNumColumns] = useState(2); // Default to 2 columns
+
+  // Update numColumns based on screen width
+  useEffect(() => {
+    const updateColumns = () => {
+      const width = Dimensions.get("window").width;
+      setNumColumns(width >= 768 ? 2 : 1); // 2 columns for wide screens, 1 for narrow
+    };
+    updateColumns();
+    const subscription = Dimensions.addEventListener("change", updateColumns);
+    return () => subscription?.remove();
+  }, []);
 
   useEffect(() => {
     loadJobs();
@@ -288,7 +301,7 @@ const AdminJob = () => {
           ) : (
             <TouchableOpacity
               style={styles.button}
-              onPress={() => setEditMode({ ...editMode, [id]: true })}
+              onPress={() => setEditMode({ ...editMode, [item.id]: true })}
             >
               <Text style={styles.buttonText}>
                 {labels[language].edit || "Edit"}
@@ -340,15 +353,15 @@ const AdminJob = () => {
 
   return (
     <View style={styles.container}>
-      {/* <View style={styles.headerContainer}>
-        <Text style={styles.header}>{labels[language].adminJobManagement}</Text>
-      </View> */}
       <View style={styles.listContainer}>
         <FlatList
           data={jobs}
           keyExtractor={(item) => item.id.toString()}
           renderItem={renderItem}
           showsVerticalScrollIndicator={false}
+          numColumns={numColumns} // Use dynamic numColumns
+          key={`flatlist-${numColumns}`} // Force re-render when numColumns changes
+          columnWrapperStyle={numColumns > 1 ? styles.row : undefined} // Apply row styling for multi-column
           ListEmptyComponent={
             <Text style={styles.title}>{labels[language].noJobs}</Text>
           }

@@ -15,7 +15,7 @@ import { styles } from "@/assets/styles/adminstyles/travel.styles";
 import { useTravel } from "@/hooks/useTravel";
 import { useLanguage } from "@/context/LanguageContext";
 import { labels } from "@/libs/language";
-import Carousel from "react-native-reanimated-carousel";
+import Carousel, { ICarouselInstance } from "react-native-reanimated-carousel";
 
 // Define the TravelPost type
 type TravelPostType = {
@@ -40,11 +40,13 @@ type EditedTravelPostType = Partial<{
 const AdminTravel = () => {
   const router = useRouter();
   const { language } = useLanguage();
-  const { travelPosts, loadTravelPosts, fetchTravelPosts } = useTravel() as {
-    travelPosts: TravelPostType[];
-    loadTravelPosts: () => void;
-    fetchTravelPosts: () => void;
-  };
+  const {
+    travelPosts,
+    loadTravelPosts,
+    fetchTravelPosts,
+    editTravelPost,
+    deleteTravelPost,
+  } = useTravel();
   const [posts, setPosts] = useState<TravelPostType[]>([]);
   const [editMode, setEditMode] = useState<{ [key: number]: boolean }>({});
   const [editedValues, setEditedValues] = useState<{
@@ -58,6 +60,7 @@ const AdminTravel = () => {
   }>({}); // Manage index state
   const [numColumns, setNumColumns] = useState(3); // Default to 3 columns
   const isInitialMount = useRef(true);
+  const carouselRefs = useRef<{ [key: number]: ICarouselInstance | null }>({});
 
   // Update numColumns based on screen width
   useEffect(() => {
@@ -69,68 +72,6 @@ const AdminTravel = () => {
     const subscription = Dimensions.addEventListener("change", updateColumns);
     return () => subscription?.remove(); // Cleanup on unmount
   }, []);
-
-  // API functions for edit and delete
-  const editTravelPost = useCallback(
-    async (id: number, updatedPost: Partial<TravelPostType>) => {
-      try {
-        // Filter out blob URLs and use placeholder if no valid image
-        const sanitizedImages =
-          updatedPost.images?.filter((img) => !img.startsWith("blob:")) || [];
-        const finalImages =
-          sanitizedImages.length > 0
-            ? sanitizedImages
-            : ["https://picsum.photos/340/200"];
-        const payload = {
-          ...updatedPost,
-          images: finalImages,
-        };
-        console.log(
-          "Sending payload to backend:",
-          JSON.stringify(payload, null, 2)
-        ); // Debug
-        const response = await fetch(
-          `https://yarsu-backend.onrender.com/api/travel-posts/${id}`,
-          {
-            method: "PUT",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(payload),
-          }
-        );
-        if (!response.ok) {
-          throw new Error(`HTTP error! Status: ${response.status}`);
-        }
-        await fetchTravelPosts();
-      } catch (error) {
-        console.error("Error editing travel post:", error);
-        Alert.alert("Error", "Failed to update travel post");
-      }
-    },
-    [fetchTravelPosts]
-  );
-
-  const deleteTravelPost = useCallback(
-    async (id: number) => {
-      try {
-        const response = await fetch(
-          `https://yarsu-backend.onrender.com/api/travel-posts/${id}`,
-          {
-            method: "DELETE",
-          }
-        );
-        if (!response.ok) {
-          throw new Error(`HTTP error! Status: ${response.status}`);
-        }
-        await fetchTravelPosts();
-      } catch (error) {
-        console.error("Error deleting travel post:", error);
-        Alert.alert("Error", "Failed to delete travel post");
-      }
-    },
-    [fetchTravelPosts]
-  );
 
   // Initial fetch on mount
   useEffect(() => {
@@ -152,6 +93,29 @@ const AdminTravel = () => {
     }, {} as { [key: number]: number });
     setCurrentIndices(initialIndices);
   }, [travelPosts]);
+
+  // Auto-slide images every 5 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentIndices((prev) => {
+        const newIndices = { ...prev };
+        posts.forEach((post) => {
+          if (!editMode[post.id] && carouselRefs.current[post.id]) {
+            const totalImages = post.images.length || 1;
+            const newIndex = (prev[post.id] + 1) % totalImages;
+            newIndices[post.id] = newIndex;
+            carouselRefs.current[post.id]?.scrollTo({
+              index: newIndex,
+              animated: true,
+            });
+          }
+        });
+        return newIndices;
+      });
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [posts, editMode]);
 
   const handleEdit = (id: number, field: string, value: string) => {
     setEditedValues((prev) => ({
@@ -189,7 +153,9 @@ const AdminTravel = () => {
     }
 
     if (Object.keys(convertedPost).length > 0) {
-      editTravelPost(id, convertedPost);
+      editTravelPost(id, convertedPost).catch((error) => {
+        Alert.alert("Error", "Failed to update travel post");
+      });
       setEditMode({ ...editMode, [id]: false });
       setEditedValues((prev) => {
         const newValues = { ...prev };
@@ -206,7 +172,9 @@ const AdminTravel = () => {
   };
 
   const handleConfirmDelete = (id: number) => {
-    deleteTravelPost(id);
+    deleteTravelPost(id).catch((error) => {
+      Alert.alert("Error", "Failed to delete travel post");
+    });
     setDeleteModalVisible(null);
     setPosts(posts.filter((post) => post.id !== id));
     Alert.alert(
@@ -244,21 +212,23 @@ const AdminTravel = () => {
   };
 
   const handlePrev = (id: number) => {
-    setCurrentIndices((prev) => {
-      const currentIndex = prev[id] || 0;
+    if (carouselRefs.current[id]) {
+      const currentIndex = currentIndices[id] || 0;
       const totalImages = posts.find((p) => p.id === id)?.images.length || 1;
       const newIndex = (currentIndex - 1 + totalImages) % totalImages;
-      return { ...prev, [id]: newIndex };
-    });
+      setCurrentIndices((prev) => ({ ...prev, [id]: newIndex }));
+      carouselRefs.current[id]?.scrollTo({ index: newIndex, animated: true });
+    }
   };
 
   const handleNext = (id: number) => {
-    setCurrentIndices((prev) => {
-      const currentIndex = prev[id] || 0;
+    if (carouselRefs.current[id]) {
+      const currentIndex = currentIndices[id] || 0;
       const totalImages = posts.find((p) => p.id === id)?.images.length || 1;
       const newIndex = (currentIndex + 1) % totalImages;
-      return { ...prev, [id]: newIndex };
-    });
+      setCurrentIndices((prev) => ({ ...prev, [id]: newIndex }));
+      carouselRefs.current[id]?.scrollTo({ index: newIndex, animated: true });
+    }
   };
 
   const renderItem = ({ item }: { item: TravelPostType }) => (
@@ -277,6 +247,11 @@ const AdminTravel = () => {
           <>
             <View style={styles.imageBackground}>
               <Carousel
+                ref={(ref) => {
+                  if (ref) {
+                    carouselRefs.current[item.id] = ref;
+                  }
+                }}
                 width={340}
                 height={200}
                 data={
@@ -285,7 +260,7 @@ const AdminTravel = () => {
                     : ["https://picsum.photos/340/200"]
                 }
                 scrollAnimationDuration={300}
-                defaultIndex={currentIndices[item.id] || 0} // Use state for index
+                defaultIndex={currentIndices[item.id] || 0}
                 onSnapToItem={(index) =>
                   setCurrentIndices((prev) => ({ ...prev, [item.id]: index }))
                 }
@@ -309,20 +284,22 @@ const AdminTravel = () => {
                 <TouchableOpacity onPress={() => handlePrev(item.id)}>
                   <Text style={styles.arrow}>{"<"}</Text>
                 </TouchableOpacity>
-                <View style={styles.indicatorContainer}>
-                  {item.images.map((_, index) => (
-                    <Text
-                      key={index}
+                <FlatList
+                  horizontal
+                  contentContainerStyle={styles.indicatorContainer}
+                  data={item.images}
+                  keyExtractor={(item, index) => index.toString()}
+                  renderItem={({ index }) => (
+                    <View
                       style={[
                         styles.indicator,
                         currentIndices[item.id] === index &&
                           styles.activeIndicator,
                       ]}
-                    >
-                      •
-                    </Text>
-                  ))}
-                </View>
+                    />
+                  )}
+                  showsHorizontalScrollIndicator={false}
+                />
                 <TouchableOpacity onPress={() => handleNext(item.id)}>
                   <Text style={styles.arrow}>{">"}</Text>
                 </TouchableOpacity>
@@ -472,6 +449,7 @@ const AdminTravel = () => {
       <View style={styles.listContainer}>
         <FlatList
           showsVerticalScrollIndicator={false}
+
           key={`flatlist-${numColumns}`} // Change key to force re-render
           data={posts}
           keyExtractor={(item) => item.id.toString()}

@@ -8,7 +8,7 @@ export const styles = StyleSheet.create({
     padding: 28,
   },
   card: {
-    width: Dimensions.get("window").width >= 768 ? "30%" : "100%",
+    width: Dimensions.get("window").width >= 600 ? 445 : "100%",
     height: 481,
     paddingVertical: 40,
     padding: 29,
@@ -23,7 +23,6 @@ export const styles = StyleSheet.create({
     elevation: 2,
     flexDirection: "column",
     justifyContent: "space-between",
-    marginRight: 28,
   },
   header: {
     fontSize: 20,
@@ -102,6 +101,11 @@ export const styles = StyleSheet.create({
   },
   listContainer: {
     flex: 1,
+  },
+  row: {
+    marginBottom: 10,
+    flexDirection: "row",
+    gap: 26,
   },
   modalOverlay: {
     flex: 1,

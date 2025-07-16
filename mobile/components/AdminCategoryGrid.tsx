@@ -10,12 +10,7 @@ const adminCategories = [
     color: COLORS.blue,
     route: "/(admin)/adminJob",
   },
-  {
-    name: "Admin Condo",
-    icon: "home",
-    color: COLORS.purple,
-    route: "/(admin)/adminCondo",
-  },
+
   {
     name: "Admin Travel",
     icon: "airplane",
@@ -23,22 +18,41 @@ const adminCategories = [
     route: "/(admin)/adminTravel",
   },
   {
-    name: "Admin Courses",
-    icon: "book",
-    color: COLORS.orange,
-    route: "/(admin)/admincourses",
-  },
-  {
-    name: "Admin Restaurants",
-    icon: "restaurant",
-    color: COLORS.red,
-    route: "/(admin)/adminrestaurants",
+    name: "Admin Condo",
+    icon: "home",
+    color: COLORS.purple,
+    route: "/(admin)/adminCondo",
   },
   {
     name: "Admin Hotels",
     icon: "bed",
     color: COLORS.teal,
-    route: "/(admin)/adminhotels",
+    route: "/(admin)/adminHotel",
+  },
+  {
+    name: "Admin  Details",
+    icon: "book",
+    color: COLORS.orange,
+    route: "/(admin)/adminDetail",
+  },
+
+  {
+    name: "Admin Restaurants",
+    icon: "restaurant",
+    color: COLORS.red,
+    route: "/(admin)/adminRestaurant",
+  },
+  {
+    name: "Admin Courses",
+    icon: "book",
+    color: COLORS.orange,
+    route: "/(admin)/adminCourse",
+  },
+  {
+    name: "Admin General",
+    icon: "book",
+    color: COLORS.orange,
+    route: "/(admin)/adminGeneral",
   },
 ];
 

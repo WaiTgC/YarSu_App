@@ -14,6 +14,9 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { styles } from "@/assets/styles/adminstyles/AddButtonStyles";
 import { useJobs } from "@/hooks/useJobs";
 import { useTravel } from "@/hooks/useTravel";
+import { useCondos } from "@/hooks/useCondos";
+import { useHotels } from "@/hooks/useHotels";
+import { useCourses } from "@/hooks/useCourses"; // Import useCourses hook
 import { useLanguage } from "@/context/LanguageContext";
 import { labels } from "@/libs/language";
 import { COLORS } from "@/constants/colors";
@@ -46,8 +49,45 @@ type TravelPostType = {
   created_at: string;
 };
 
+type CondoType = {
+  id: number;
+  name: string;
+  address: string;
+  rent_fee: number;
+  images: string[];
+  swimming_pool: boolean;
+  free_wifi: boolean;
+  gym: boolean;
+  garden: boolean;
+  co_working_space: boolean;
+};
+
+type HotelType = {
+  id: number;
+  name: string;
+  address: string;
+  price: number;
+  nearby_famous_places: string[];
+  breakfast: boolean;
+  free_wifi: boolean;
+  swimming_pool: boolean;
+  images: string[];
+  notes?: string;
+  admin_rating: number;
+  created_at: string;
+};
+
+type CourseType = {
+  id: number;
+  name: string;
+  duration: string;
+  price: number;
+  centre_name: string;
+  location: string;
+};
+
 interface AddButtonProps {
-  type: "job" | "travel";
+  type: "job" | "travel" | "condo" | "hotel" | "course";
 }
 
 const AddButton: React.FC<AddButtonProps> = ({ type }) => {
@@ -56,8 +96,12 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
     addJob: (job: Partial<JobType>) => Promise<void>;
   };
   const travelHook = useTravel();
-  console.log("useTravel hook result:", travelHook);
   const { addTravelPost } = travelHook || {};
+  const { addCondo, loadCondos } = useCondos();
+  const hotelHook = useHotels();
+  const { addHotel, loadHotels } = hotelHook || {};
+  const courseHook = useCourses(); // Get useCourses hook
+  const { createCourse, loadCourses } = courseHook || {}; // Destructure createCourse and loadCourses
 
   const [modalVisible, setModalVisible] = useState<boolean>(false);
   const [newJob, setNewJob] = useState<Partial<JobType>>({
@@ -77,10 +121,38 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
     images: [],
     admin_rating: "",
   });
-  const [selectedImages, setSelectedImages] = useState<string[]>([]); // For preview
-  const MAX_IMAGES = 3; // Limit to 3 images
-  const MAX_PAYLOAD_SIZE = 5 * 1024 * 1024; // 5MB max payload size
-  const MAX_IMAGE_SIZE = 2 * 1024 * 1024; // 2MB max per image
+  const [newCondo, setNewCondo] = useState<Partial<CondoType>>({
+    name: "",
+    address: "",
+    rent_fee: "",
+    images: [],
+    swimming_pool: undefined,
+    free_wifi: undefined,
+    gym: undefined,
+    garden: undefined,
+    co_working_space: undefined,
+  });
+  const [newHotel, setNewHotel] = useState<Partial<HotelType>>({
+    name: "",
+    address: "",
+    price: "",
+    nearby_famous_places: "",
+    breakfast: undefined,
+    free_wifi: undefined,
+    swimming_pool: undefined,
+    images: [],
+    notes: "",
+    admin_rating: "",
+  });
+  const [newCourse, setNewCourse] = useState<Partial<CourseType>>({
+    name: "",
+    duration: "",
+    price: "",
+    centre_name: "",
+    location: "",
+  }); // State for course
+  const [selectedImages, setSelectedImages] = useState<string[]>([]);
+  const MAX_IMAGES = 3;
 
   // Request permission for image picker
   const requestPermission = async () => {
@@ -132,7 +204,6 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
         return;
       }
 
-      // Compress image
       const compressedImage = await ImageManipulator.manipulateAsync(
         uri,
         [{ resize: { width: 600 } }],
@@ -145,22 +216,23 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
 
       const imageBase64 = compressedImage.base64 || base64;
       const base64String = `data:image/jpeg;base64,${imageBase64}`;
-
-      // Check image size
-      const sizeInBytes = (base64String.length * 3) / 4 - 2;
-      if (sizeInBytes > MAX_IMAGE_SIZE) {
-        Alert.alert(
-          labels[language].error || "Error",
-          labels[language].imageTooLarge || "Image size exceeds 2MB limit"
-        );
-        return;
-      }
-
       setSelectedImages((prev) => [...prev, compressedImage.uri]);
-      setNewTravelPost((prev) => ({
-        ...prev,
-        images: [...(prev.images || []), base64String],
-      }));
+      if (type === "travel") {
+        setNewTravelPost((prev) => ({
+          ...prev,
+          images: [...(prev.images || []), base64String],
+        }));
+      } else if (type === "condo") {
+        setNewCondo((prev) => ({
+          ...prev,
+          images: [...(prev.images || []), base64String],
+        }));
+      } else if (type === "hotel") {
+        setNewHotel((prev) => ({
+          ...prev,
+          images: [...(prev.images || []), base64String],
+        }));
+      }
     } else {
       console.log("Image selection canceled or failed:", result);
     }
@@ -182,9 +254,8 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
     field: K,
     value: TravelPostType[K] | string
   ) => {
-    // For admin_rating, ensure only integer input
     if (field === "admin_rating") {
-      const cleanedValue = value.toString().replace(/[^0-5]/g, ""); // Allow only 0-5
+      const cleanedValue = value.toString().replace(/[^0-5]/g, "");
       setNewTravelPost((prev) => ({
         ...prev,
         [field]: cleanedValue,
@@ -197,25 +268,117 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
     }
   };
 
-  // Render radio button for job form
-  const renderRadioButton = (
-    field: keyof JobType,
-    value: string | boolean,
-    label: string
-  ) => (
+  // Handle condo input changes
+  const handleCondoInputChange = <K extends keyof CondoType>(
+    field: K,
+    value: CondoType[K] | string | boolean
+  ) => {
+    if (
+      [
+        "swimming_pool",
+        "free_wifi",
+        "gym",
+        "garden",
+        "co_working_space",
+      ].includes(field)
+    ) {
+      setNewCondo((prev) => ({
+        ...prev,
+        [field]: value === true,
+      }));
+    } else {
+      setNewCondo((prev) => ({
+        ...prev,
+        [field]: value,
+      }));
+    }
+  };
+
+  // Handle hotel input changes
+  const handleHotelInputChange = <K extends keyof HotelType>(
+    field: K,
+    value: HotelType[K] | string | boolean
+  ) => {
+    if (["breakfast", "free_wifi", "swimming_pool"].includes(field)) {
+      setNewHotel((prev) => ({
+        ...prev,
+        [field]: value === true,
+      }));
+    } else if (field === "price" || field === "admin_rating") {
+      const cleanedValue = value.toString().replace(/[^0-9]/g, "");
+      setNewHotel((prev) => ({
+        ...prev,
+        [field]: cleanedValue,
+      }));
+    } else {
+      setNewHotel((prev) => ({
+        ...prev,
+        [field]: value,
+      }));
+    }
+  };
+
+  // Handle course input changes
+  const handleCourseInputChange = <K extends keyof CourseType>(
+    field: K,
+    value: CourseType[K] | string
+  ) => {
+    if (field === "price") {
+      const cleanedValue = value.toString().replace(/[^0-9]/g, "");
+      setNewCourse((prev) => ({
+        ...prev,
+        [field]: cleanedValue,
+      }));
+    } else {
+      setNewCourse((prev) => ({
+        ...prev,
+        [field]: value,
+      }));
+    }
+  };
+
+  // Render radio button
+  const renderRadioButton = (field: string, value: string, label: string) => (
     <TouchableOpacity
-      key={String(value)}
+      key={field + value}
       style={styles.radioButton}
-      onPress={() =>
-        handleJobInputChange(
-          field,
-          value === "Yes" ? true : value === "No" ? false : value
-        )
-      }
+      onPress={() => {
+        if (type === "job") {
+          handleJobInputChange(
+            field as keyof JobType,
+            value === "Yes" ? true : false
+          );
+        } else if (type === "hotel") {
+          handleHotelInputChange(
+            field as keyof HotelType,
+            value === "Yes" ? true : false
+          );
+        }
+      }}
     >
       <View style={styles.radioCircle}>
-        {newJob[field] ===
-          (value === "Yes" ? true : value === "No" ? false : value) && (
+        {(type === "job" &&
+          newJob[field as keyof JobType] ===
+            (value === "Yes" ? true : false)) ||
+        (type === "hotel" &&
+          newHotel[field as keyof HotelType] ===
+            (value === "Yes" ? true : false)) ? (
+          <Ionicons name="checkmark" size={16} color={COLORS.primary} />
+        ) : null}
+      </View>
+      <Text style={styles.radioLabel}>{label}</Text>
+    </TouchableOpacity>
+  );
+
+  // Render service radio for condo
+  const renderServiceRadio = (field: keyof CondoType, label: string) => (
+    <TouchableOpacity
+      key={field}
+      style={styles.radioButton}
+      onPress={() => handleCondoInputChange(field, !newCondo[field])}
+    >
+      <View style={styles.radioCircle}>
+        {newCondo[field] === true && (
           <Ionicons name="checkmark" size={16} color={COLORS.primary} />
         )}
       </View>
@@ -223,161 +386,84 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
     </TouchableOpacity>
   );
 
-  // Perform job addition
-  const performAddJob = async () => {
-    try {
-      const convertedJob: Partial<JobType> = {
-        title: newJob.title?.trim(),
-        job_location: newJob.job_location?.trim(),
-        address: newJob.stay === true ? newJob.address?.trim() : undefined,
-        notes: newJob.notes?.trim(),
-        pinkcard: newJob.pinkcard,
-        thai: newJob.thai,
-        payment_type: newJob.payment_type,
-        stay: newJob.stay,
-      };
-
-      if (!convertedJob.title || !convertedJob.job_location) {
-        throw new Error(
-          labels[language].requiredFields || "Title and Location are required"
-        );
-      }
-
-      if (
-        newJob.stay === true &&
-        (!newJob.address || newJob.address.trim() === "")
-      ) {
-        throw new Error(
-          labels[language].addressRequired ||
-            "Address is required when Stay is 'Yes'"
-        );
-      }
-
-      await addJob(convertedJob);
-      setModalVisible(false);
-      setNewJob({
-        title: "",
-        job_location: "",
-        address: "",
-        notes: "",
-        pinkcard: undefined,
-        thai: undefined,
-        payment_type: undefined,
-        stay: undefined,
-      });
-      setSelectedImages([]);
-
-      if (Platform.OS !== "web") {
-        Alert.alert(
-          labels[language].added || "Added",
-          labels[language].jobAdded || "Job has been added!"
-        );
-      } else {
-        window.alert(labels[language].jobAdded || "Job has been added!");
-      }
-    } catch (error) {
-      console.error("Error adding job:", error);
-      const errorMessage =
-        error instanceof Error ? error.message : JSON.stringify(error);
-      if (Platform.OS === "web") {
-        window.alert(`Failed to add job: ${errorMessage}`);
-      } else {
-        Alert.alert("Error", `Failed to add job: ${errorMessage}`);
-      }
-    }
-  };
-
-  // Perform travel post addition
-  const performAddTravelPost = async () => {
-    if (!addTravelPost) {
-      console.error("addTravelPost is not defined in useTravel hook");
+  // Perform course addition
+  const performAddCourse = async () => {
+    if (!createCourse) {
+      console.error("createCourse is not defined in useCourses hook");
       Alert.alert(
         labels[language].error || "Error",
         labels[language].errorMessage ||
-          "Failed to add travel post: Function not available"
+          "Failed to add course: Function not available"
       );
       return;
     }
 
     try {
-      const convertedPost: Partial<TravelPostType> = {
-        name: newTravelPost.name?.trim(),
-        place: newTravelPost.place?.trim(),
-        highlights:
-          newTravelPost.highlights
-            ?.split(",")
-            .map((item) => item.trim())
-            .filter((item) => item) || [],
-        images: newTravelPost.images || [],
-        admin_rating: newTravelPost.admin_rating
-          ? parseInt(newTravelPost.admin_rating.toString())
-          : 1, // Default to 1
+      const convertedCourse: Partial<CourseType> = {
+        name: newCourse.name?.trim(),
+        duration: newCourse.duration?.trim(),
+        price: newCourse.price
+          ? parseInt(newCourse.price.toString())
+          : undefined,
+        centre_name: newCourse.centre_name?.trim(),
+        location: newCourse.location?.trim(),
       };
 
-      if (!convertedPost.name || !convertedPost.place) {
+      if (
+        !convertedCourse.name ||
+        !convertedCourse.duration ||
+        !convertedCourse.centre_name ||
+        !convertedCourse.location
+      ) {
         throw new Error(
-          labels[language].requiredFields || "Name and Place are required"
+          labels[language].requiredFields ||
+            "Name, Duration, Centre Name, and Location are required"
         );
       }
 
       if (
-        isNaN(convertedPost.admin_rating) ||
-        convertedPost.admin_rating < 1 ||
-        convertedPost.admin_rating > 5
+        convertedCourse.price !== undefined &&
+        (isNaN(convertedCourse.price) || convertedCourse.price <= 0)
       ) {
         throw new Error(
-          labels[language].invalidRating ||
-            "Rating must be an integer between 1 and 5"
+          labels[language].invalidPrice || "Price must be a positive number"
         );
       }
 
-      // Estimate payload size
-      const payload = JSON.stringify(convertedPost);
-      const payloadSize = new TextEncoder().encode(payload).length;
-      if (payloadSize > MAX_PAYLOAD_SIZE) {
-        throw new Error(
-          labels[language].payloadTooLarge ||
-            "Payload size exceeds server limit (5MB). Try fewer or smaller images."
-        );
-      }
-
-      console.log("Payload size:", payloadSize, "bytes");
-      console.log("Payload:", JSON.stringify(convertedPost, null, 2));
-
-      await addTravelPost(convertedPost);
+      console.log("Payload:", JSON.stringify(convertedCourse, null, 2));
+      await createCourse(convertedCourse);
+      await loadCourses();
       setModalVisible(false);
-      setNewTravelPost({
+      setNewCourse({
         name: "",
-        place: "",
-        highlights: "",
-        images: [],
-        admin_rating: "",
+        duration: "",
+        price: "",
+        centre_name: "",
+        location: "",
       });
       setSelectedImages([]);
 
       if (Platform.OS !== "web") {
         Alert.alert(
           labels[language].added || "Added",
-          labels[language].travelPostAdded || "Travel post has been added!"
+          labels[language].courseAdded || "Course has been added!"
         );
       } else {
-        window.alert(
-          labels[language].travelPostAdded || "Travel post has been added!"
-        );
+        window.alert(labels[language].courseAdded || "Course has been added!");
       }
     } catch (error: any) {
-      console.error("Error adding travel post:", error);
+      console.error("Error adding course:", error);
       const errorMessage = error.response
         ? `Server responded with: ${JSON.stringify(error.response)}`
         : error.message || JSON.stringify(error);
       if (Platform.OS === "web") {
         window.alert(
-          labels[language].error || `Failed to add travel post: ${errorMessage}`
+          labels[language].error || `Failed to add course: ${errorMessage}`
         );
       } else {
         Alert.alert(
           labels[language].error || "Error",
-          `Failed to add travel post: ${errorMessage}`
+          `Failed to add course: ${errorMessage}`
         );
       }
     }
@@ -386,14 +472,47 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
   // Handle addition with platform-specific confirmation
   const handleAdd = () => {
     const isJob = type === "job";
+    const isTravel = type === "travel";
+    const isCondo = type === "condo";
+    const isHotel = type === "hotel";
+    const isCourse = type === "course";
     const confirmMessage = isJob
       ? labels[language].addConfirm || "Are you sure you want to add this job?"
-      : labels[language].addConfirm ||
-        "Are you sure you want to add this travel post?";
+      : isTravel
+      ? labels[language].addConfirm ||
+        "Are you sure you want to add this travel post?"
+      : isCondo
+      ? labels[language].addConfirm ||
+        "Are you sure you want to add this condo?"
+      : isHotel
+      ? labels[language].addConfirm ||
+        "Are you sure you want to add this hotel?"
+      : isCourse
+      ? labels[language].addConfirm ||
+        "Are you sure you want to add this course?"
+      : "";
     const title = isJob
       ? labels[language].addJob || "Add Job"
-      : labels[language].addTravelPost || "Add Travel Post";
-    const performAction = isJob ? performAddJob : performAddTravelPost;
+      : isTravel
+      ? labels[language].addTravelPost || "Add Travel Post"
+      : isCondo
+      ? labels[language].addCondo || "Add Condo"
+      : isHotel
+      ? labels[language].addHotel || "Add Hotel"
+      : isCourse
+      ? labels[language].addCourse || "Add Course"
+      : "";
+    const performAction = isJob
+      ? performAddJob
+      : isTravel
+      ? performAddTravelPost
+      : isCondo
+      ? performAddCondo
+      : isHotel
+      ? performAddHotel
+      : isCourse
+      ? performAddCourse
+      : () => {};
 
     if (Platform.OS === "web") {
       const confirmed = window.confirm(confirmMessage);
@@ -419,6 +538,64 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
       );
     }
   };
+
+  // Render course form
+  const renderCourseForm = () => (
+    <>
+      <View style={styles.fieldRow}>
+        <Text style={styles.label}>{labels[language].name || "Name"}:</Text>
+        <TextInput
+          style={styles.input}
+          value={newCourse.name || ""}
+          onChangeText={(text) => handleCourseInputChange("name", text)}
+          placeholder={labels[language].name || "Enter name"}
+        />
+      </View>
+      <View style={styles.fieldRow}>
+        <Text style={styles.label}>
+          {labels[language].duration || "Duration"}:
+        </Text>
+        <TextInput
+          style={styles.input}
+          value={newCourse.duration || ""}
+          onChangeText={(text) => handleCourseInputChange("duration", text)}
+          placeholder={labels[language].duration || "Enter duration"}
+        />
+      </View>
+      <View style={styles.fieldRow}>
+        <Text style={styles.label}>{labels[language].price || "Price"}:</Text>
+        <TextInput
+          style={styles.input}
+          value={newCourse.price || ""}
+          onChangeText={(text) => handleCourseInputChange("price", text)}
+          placeholder={labels[language].price || "Enter price"}
+          keyboardType="numeric"
+        />
+      </View>
+      <View style={styles.fieldRow}>
+        <Text style={styles.label}>
+          {labels[language].centreName || "Centre Name"}:
+        </Text>
+        <TextInput
+          style={styles.input}
+          value={newCourse.centre_name || ""}
+          onChangeText={(text) => handleCourseInputChange("centre_name", text)}
+          placeholder={labels[language].centreName || "Enter centre name"}
+        />
+      </View>
+      <View style={styles.fieldRow}>
+        <Text style={styles.label}>
+          {labels[language].location || "Location"}:
+        </Text>
+        <TextInput
+          style={styles.input}
+          value={newCourse.location || ""}
+          onChangeText={(text) => handleCourseInputChange("location", text)}
+          placeholder={labels[language].location || "Enter location"}
+        />
+      </View>
+    </>
+  );
 
   // Render job form
   const renderJobForm = () => (
@@ -542,29 +719,24 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
       </View>
       <View style={styles.fieldRow}>
         <Text style={styles.label}>{labels[language].images || "Images"}:</Text>
-        <View style={{ flexDirection: "row", alignItems: "center" }}>
-          <ScrollView
-            horizontal
-            style={{ flexDirection: "row", maxHeight: 100 }}
+        <ScrollView horizontal style={{ flexDirection: "row", maxHeight: 100 }}>
+          {selectedImages.map((uri, index) => (
+            <Image
+              key={index}
+              source={{ uri }}
+              style={[styles.imagePreview, { marginLeft: 10 }]}
+            />
+          ))}
+          <TouchableOpacity
+            style={[
+              styles.imageInput,
+              { marginLeft: selectedImages.length > 0 ? 10 : 0 },
+            ]}
+            onPress={pickImage}
           >
-            {selectedImages.map((uri, index) => (
-              <Image
-                key={index}
-                source={{ uri }}
-                style={[styles.imagePreview, { marginLeft: 10 }]}
-              />
-            ))}
-            <TouchableOpacity
-              style={[
-                styles.imageInput,
-                { marginLeft: selectedImages.length > 0 ? 10 : 0 },
-              ]}
-              onPress={pickImage}
-            >
-              <Ionicons name="add" size={24} color={COLORS.black} />
-            </TouchableOpacity>
-          </ScrollView>
-        </View>
+            <Ionicons name="add" size={24} color={COLORS.black} />
+          </TouchableOpacity>
+        </ScrollView>
       </View>
       <View style={styles.fieldRow}>
         <Text style={styles.label}>
@@ -578,6 +750,223 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
               : ""
           }
           onChangeText={(text) => handleTravelInputChange("admin_rating", text)}
+          placeholder={labels[language].adminRating || "Enter rating (1-5)"}
+          keyboardType="number-pad"
+        />
+      </View>
+    </>
+  );
+
+  // Render condo form
+  const renderCondoForm = () => (
+    <>
+      <View style={styles.fieldRow}>
+        <Text style={styles.label}>{labels[language].name || "Name"}:</Text>
+        <TextInput
+          style={styles.input}
+          value={newCondo.name || ""}
+          onChangeText={(text) => handleCondoInputChange("name", text)}
+          placeholder={labels[language].name || "Enter name"}
+        />
+      </View>
+      <View style={styles.fieldRow}>
+        <Text style={styles.label}>
+          {labels[language].address || "Address"}:
+        </Text>
+        <TextInput
+          style={styles.input}
+          value={newCondo.address || ""}
+          onChangeText={(text) => handleCondoInputChange("address", text)}
+          placeholder={labels[language].address || "Enter address"}
+        />
+      </View>
+      <View style={styles.fieldRow}>
+        <Text style={styles.label}>
+          {labels[language].rentFee || "Rent Fee"}:
+        </Text>
+        <TextInput
+          style={styles.input}
+          value={newCondo.rent_fee || ""}
+          onChangeText={(text) => handleCondoInputChange("rent_fee", text)}
+          placeholder={labels[language].rentFee || "Enter rent fee"}
+          keyboardType="numeric"
+        />
+      </View>
+      <View style={styles.fieldRow}>
+        <Text style={styles.label}>
+          {labels[language].services || "Services"}:
+        </Text>
+        <View style={styles.serviceContainer}>
+          {renderServiceRadio(
+            "swimming_pool",
+            labels[language].swimmingPool || "Swimming Pool"
+          )}
+          {renderServiceRadio(
+            "free_wifi",
+            labels[language].freeWifi || "Free Wi-Fi"
+          )}
+          {renderServiceRadio("gym", labels[language].gym || "Gym")}
+          {renderServiceRadio("garden", labels[language].garden || "Garden")}
+          {renderServiceRadio(
+            "co_working_space",
+            labels[language].coWorkingSpace || "Co-working Space"
+          )}
+        </View>
+      </View>
+      <View style={styles.fieldRow}>
+        <Text style={styles.label}>{labels[language].images || "Images"}:</Text>
+        <ScrollView horizontal style={{ flexDirection: "row", maxHeight: 100 }}>
+          {selectedImages.map((uri, index) => (
+            <Image
+              key={index}
+              source={{ uri }}
+              style={[styles.imagePreview, { marginLeft: 10 }]}
+            />
+          ))}
+          <TouchableOpacity
+            style={[
+              styles.imageInput,
+              { marginLeft: selectedImages.length > 0 ? 10 : 0 },
+            ]}
+            onPress={pickImage}
+          >
+            <Ionicons name="add" size={24} color={COLORS.black} />
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
+      <View style={styles.fieldRow}>
+        <Text style={styles.label}>{labels[language].notes || "Notes"}:</Text>
+        <TextInput
+          style={styles.input}
+          value={newCondo.notes || ""}
+          onChangeText={(text) => handleCondoInputChange("notes", text)}
+          placeholder={labels[language].notes || "Enter notes"}
+        />
+      </View>
+    </>
+  );
+
+  // Render hotel form
+  const renderHotelForm = () => (
+    <>
+      <View style={styles.fieldRow}>
+        <Text style={styles.label}>{labels[language].name || "Name"}:</Text>
+        <TextInput
+          style={styles.input}
+          value={newHotel.name || ""}
+          onChangeText={(text) => handleHotelInputChange("name", text)}
+          placeholder={labels[language].name || "Enter name"}
+        />
+      </View>
+      <View style={styles.fieldRow}>
+        <Text style={styles.label}>
+          {labels[language].address || "Address"}:
+        </Text>
+        <TextInput
+          style={styles.input}
+          value={newHotel.address || ""}
+          onChangeText={(text) => handleHotelInputChange("address", text)}
+          placeholder={labels[language].address || "Enter address"}
+        />
+      </View>
+      <View style={styles.fieldRow}>
+        <Text style={styles.label}>{labels[language].price || "Price"}:</Text>
+        <TextInput
+          style={styles.input}
+          value={newHotel.price || ""}
+          onChangeText={(text) => handleHotelInputChange("price", text)}
+          placeholder={labels[language].price || "Enter price"}
+          keyboardType="numeric"
+        />
+      </View>
+      <View style={styles.fieldRow}>
+        <Text style={styles.label}>
+          {labels[language].nearbyPlaces || "Nearby Places"}:
+        </Text>
+        <TextInput
+          style={styles.input}
+          value={newHotel.nearby_famous_places || ""}
+          onChangeText={(text) =>
+            handleHotelInputChange("nearby_famous_places", text)
+          }
+          placeholder={
+            labels[language].nearbyPlaces ||
+            "Enter nearby places (comma-separated)"
+          }
+        />
+      </View>
+      <View style={styles.fieldRow}>
+        <Text style={styles.label}>
+          {labels[language].breakfast || "Breakfast"}:
+        </Text>
+        <View style={styles.radioGroup}>
+          {["Yes", "No"].map((value) =>
+            renderRadioButton("breakfast", value, value)
+          )}
+        </View>
+      </View>
+      <View style={styles.fieldRow}>
+        <Text style={styles.label}>
+          {labels[language].wifi || "Free Wi-Fi"}:
+        </Text>
+        <View style={styles.radioGroup}>
+          {["Yes", "No"].map((value) =>
+            renderRadioButton("free_wifi", value, value)
+          )}
+        </View>
+      </View>
+      <View style={styles.fieldRow}>
+        <Text style={styles.label}>
+          {labels[language].swimmingPool || "Swimming Pool"}:
+        </Text>
+        <View style={styles.radioGroup}>
+          {["Yes", "No"].map((value) =>
+            renderRadioButton("swimming_pool", value, value)
+          )}
+        </View>
+      </View>
+      <View style={styles.fieldRow}>
+        <Text style={styles.label}>{labels[language].images || "Images"}:</Text>
+        <ScrollView horizontal style={{ flexDirection: "row", maxHeight: 100 }}>
+          {selectedImages.map((uri, index) => (
+            <Image
+              key={index}
+              source={{ uri }}
+              style={[styles.imagePreview, { marginLeft: 10 }]}
+            />
+          ))}
+          <TouchableOpacity
+            style={[
+              styles.imageInput,
+              { marginLeft: selectedImages.length > 0 ? 10 : 0 },
+            ]}
+            onPress={pickImage}
+          >
+            <Ionicons name="add" size={24} color={COLORS.black} />
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
+      <View style={styles.fieldRow}>
+        <Text style={styles.label}>{labels[language].notes || "Notes"}:</Text>
+        <TextInput
+          style={styles.input}
+          value={newHotel.notes || ""}
+          onChangeText={(text) => handleHotelInputChange("notes", text)}
+          placeholder={labels[language].notes || "Enter notes"}
+        />
+      </View>
+      <View style={styles.fieldRow}>
+        <Text style={styles.label}>
+          {labels[language].adminRating || "Rating"}:
+        </Text>
+        <TextInput
+          style={styles.input}
+          value={
+            newHotel.admin_rating !== undefined
+              ? String(newHotel.admin_rating)
+              : ""
+          }
+          onChangeText={(text) => handleHotelInputChange("admin_rating", text)}
           placeholder={labels[language].adminRating || "Enter rating (1-5)"}
           keyboardType="number-pad"
         />
@@ -604,7 +993,15 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
               <Text style={styles.modalText}>
                 {type === "job"
                   ? labels[language].addJob || "Add New Job"
-                  : labels[language].addTravelPost || "Add New Travel Post"}
+                  : type === "travel"
+                  ? labels[language].addTravelPost || "Add New Travel Post"
+                  : type === "condo"
+                  ? labels[language].addCondo || "Add New Condo"
+                  : type === "hotel"
+                  ? labels[language].addHotel || "Add New Hotel"
+                  : type === "course"
+                  ? labels[language].addCourse || "Add New Course" // Add course label
+                  : ""}
               </Text>
               <TouchableOpacity
                 style={styles.closeButton}
@@ -614,7 +1011,17 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
               </TouchableOpacity>
             </View>
             <View style={styles.modalBody}>
-              {type === "job" ? renderJobForm() : renderTravelPostForm()}
+              {type === "job"
+                ? renderJobForm()
+                : type === "travel"
+                ? renderTravelPostForm()
+                : type === "condo"
+                ? renderCondoForm()
+                : type === "hotel"
+                ? renderHotelForm()
+                : type === "course"
+                ? renderCourseForm() // Add course form
+                : null}
               <View style={styles.modalButtonContainer}>
                 <TouchableOpacity
                   style={[styles.modalButton, styles.addButtonModal]}

@@ -11,8 +11,8 @@ export const styles = StyleSheet.create({
     flex: 1,
   },
   card: {
-    width: "auto",
-    height: 556,
+    width: 366,
+    height: "auto",
     paddingVertical: 20,
     paddingHorizontal: 15,
     backgroundColor: "#F3F3F3",
@@ -27,65 +27,8 @@ export const styles = StyleSheet.create({
     flexDirection: "column",
     justifyContent: "space-between",
   },
-  imageContainer: {
-    alignItems: "center",
-    marginBottom: 10,
-  },
-  imageBackground: {
-    width: "100%",
-    height: 200,
-    borderRadius: 24,
-    backgroundColor: "lightgray",
-    overflow: "hidden",
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "rgba(0, 0, 0, 0.25)",
-    shadowOffset: { width: 4, height: 4 },
-    shadowRadius: 4,
-    elevation: 4,
-  },
-
-  image: {
-    width: "100%",
-    height: 200,
-    borderRadius: 24,
-    resizeMode: "cover",
-  },
-  innerImage: {
-    width: "100%",
-    height: 200,
-    borderRadius: 24,
-    resizeMode: "cover",
-  },
-  sliderControls: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    width: "50%",
-    paddingHorizontal: 10,
-    marginTop: 5,
-    gap: 5,
-  },
-  indicatorContainer: {
-    flexDirection: "row",
-    margin: "auto",
-  },
-
-  arrow: {
-    marginBottom: 3,
-    fontSize: 14,
-    color: "#000000",
-  },
-  header: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: COLORS.text,
-    marginBottom: 15,
-  },
-  title: {
-    fontSize: 14,
-    fontWeight: "400",
-    color: COLORS.shadow,
+  detailsContainer: {
+    padding: 10,
   },
   fieldRow: {
     flexDirection: "row",
@@ -94,12 +37,20 @@ export const styles = StyleSheet.create({
   },
   label: {
     fontSize: 15,
+    fontStyle: "normal",
     fontWeight: "400",
+    lineHeight: 10,
+    letterSpacing: 0.15,
     color: COLORS.black,
     marginBottom: 5,
+    width: "45%",
   },
   value: {
-    fontSize: 14,
+    fontSize: 15,
+    fontStyle: "normal",
+    fontWeight: "400",
+    lineHeight: 20, // Increased from 10 to 20 for better wrapping spacing
+    letterSpacing: 0.15,
     color: COLORS.background,
     marginBottom: 15,
     width: "55%",
@@ -116,8 +67,11 @@ export const styles = StyleSheet.create({
   },
   buttonContainer: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 10,
+    justifyContent: "center",
+    alignItems: "center",
+
+    gap: 50,
+    marginHorizontal: "auto",
   },
   button: {
     width: 77,
@@ -126,17 +80,16 @@ export const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
     borderRadius: 15,
     alignItems: "center",
-    flex: 1,
-    marginHorizontal: 10,
+    justifyContent: "center",
   },
   buttonText: {
-    color: COLORS.white,
-    fontWeight: "400",
-    textAlign: "center",
     fontSize: 15,
-  },
-  detailsContainer: {
-    padding: 10,
+    fontStyle: "normal",
+    fontWeight: "400",
+    lineHeight: 10,
+    letterSpacing: 0.15,
+    color: COLORS.white,
+    textAlign: "center",
   },
   modalOverlay: {
     flex: 1,
@@ -174,37 +127,22 @@ export const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.background,
   },
+  cancelButton: {
+    backgroundColor: "#ccc",
+  },
+  deleteButton: {
+    backgroundColor: "#FF3B30",
+  },
   modalButtonText: {
     fontSize: 15,
-    fontWeight: "500",
+    fontStyle: "normal",
+    fontWeight: "400",
     fontFamily: "SF Pro Text",
     color: COLORS.black,
   },
-  star: {
+  title: {
     fontSize: 16,
-    color: COLORS.black,
-    marginRight: 2,
-  },
-  row: {
-    justifyContent: "space-between",
-    marginBottom: 10,
-    flexDirection: "row",
-    gap: 20,
-  },
-  row: {
-    justifyContent: "space-between",
-    marginBottom: 10,
-    flexDirection: "row",
-    gap: 20,
-  },
-  indicator: {
-    width: 5,
-    height: 5,
-    borderRadius: 4,
-    backgroundColor: "#ccc",
-    marginHorizontal: 4,
-  },
-  activeIndicator: {
-    backgroundColor: "#000",
+    textAlign: "center",
+    marginVertical: 10,
   },
 });

@@ -35,6 +35,68 @@ export const useCourses = () => {
     }
   }, []);
 
+  const createCourse = useCallback(async (courseData) => {
+    console.log("Creating course:", courseData);
+    try {
+      const response = await fetch(`${API_URL}/courses`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(courseData),
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+      const newCourse = await response.json();
+      setCourses((prev) => [...prev, newCourse]);
+      return newCourse;
+    } catch (error) {
+      console.error("Error creating course:", error);
+      throw error;
+    }
+  }, []);
+
+  const updateCourse = useCallback(async (id, courseData) => {
+    console.log("Updating course:", id, courseData);
+    try {
+      const response = await fetch(`${API_URL}/courses/${id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(courseData),
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+      const updatedCourse = await response.json();
+      setCourses((prev) =>
+        prev.map((course) => (course.id === id ? updatedCourse : course))
+      );
+      return updatedCourse;
+    } catch (error) {
+      console.error("Error updating course:", error);
+      throw error;
+    }
+  }, []);
+
+  const deleteCourse = useCallback(async (id) => {
+    console.log("Deleting course:", id);
+    try {
+      const response = await fetch(`${API_URL}/courses/${id}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+      setCourses((prev) => prev.filter((course) => course.id !== id));
+    } catch (error) {
+      console.error("Error deleting course:", error);
+      throw error;
+    }
+  }, []);
+
   const handleMoreInfo = useCallback((course) => {
     console.log("Showing details for course:", course.title);
     setSelectedCourse(course);
@@ -103,6 +165,9 @@ export const useCourses = () => {
     showApplyForm,
     formData,
     fetchCourses,
+    createCourse,
+    updateCourse,
+    deleteCourse,
     handleMoreInfo,
     handleApply,
     handleFormChange,

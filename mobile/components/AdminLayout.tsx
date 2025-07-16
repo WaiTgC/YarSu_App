@@ -36,6 +36,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const getButtonType = () => {
     if (pathname.includes("/adminJob")) return "job";
     if (pathname.includes("/adminTravel")) return "travel";
+    if (pathname.includes("/adminCondo")) return "condo";
+    if (pathname.includes("/adminHotel")) return "hotel"; // Add hotel page
+    if (pathname.includes("/adminCourse")) return "course"; // Add course page
     return null; // Hide button on /dashboard, /chat, /members, /settings
   };
 
