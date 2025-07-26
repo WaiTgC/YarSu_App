@@ -1,32 +1,60 @@
-import { SignedIn, SignedOut, useUser } from "@clerk/clerk-expo";
+import React, { useEffect, useRef, useState } from "react";
 import { useRouter } from "expo-router";
 import { Text, View, TouchableOpacity, Animated, Image } from "react-native";
-import { SignOutButton } from "@/components/SignOutButton";
-import { useState, useEffect, useRef } from "react";
 import { styles } from "@/assets/styles/adminstyles/Sidebar.styles";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { COLORS } from "@/constants/colors";
-import { useLanguage } from "@/context/LanguageContext";
-import { Language } from "@/libs/language";
+import { supabase } from "@/libs/supabase";
+import { getUserRole } from "@/services/authService";
+import { SignOutButton } from "@/components/SignOutButton";
+import { useLanguage } from "@/context/LanguageContext"; // Import useLanguage
 
 interface AdminSidebarProps {
   isOpen: boolean;
   toggleSidebar: () => void;
 }
 
-const AdminSidebar = ({ isOpen, toggleSidebar }: AdminSidebarProps) => {
+export default function AdminSidebar({
+  isOpen,
+  toggleSidebar,
+}: AdminSidebarProps) {
   const router = useRouter();
-  const { user } = useUser();
-  const { language, setLanguage } = useLanguage();
+  const { language, setLanguage } = useLanguage(); // Use context to get and set language
+  const [user, setUser] = useState<any>(null);
+  const [isSignedIn, setIsSignedIn] = useState(false);
   const translateX = useRef(new Animated.Value(isOpen ? 0 : -250)).current;
 
   useEffect(() => {
-    return Animated.timing(translateX, {
+    Animated.timing(translateX, {
       toValue: isOpen ? 0 : -250,
       duration: 300,
       useNativeDriver: false,
     }).start();
   }, [isOpen]);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        setIsSignedIn(true);
+        getUserRole()
+          .then((userData) => {
+            setUser(userData);
+            if (userData.role !== "admin") {
+              router.replace("/(root)");
+            }
+          })
+          .catch((error) => {
+            console.error("Error fetching user role:", error);
+            setIsSignedIn(false);
+            router.replace("/(auth)");
+          });
+      } else {
+        setIsSignedIn(false);
+        setUser(null);
+        router.replace("/(auth)");
+      }
+    });
+  }, []);
 
   const handleChangePassword = () => {
     router.push("/change-password");
@@ -38,9 +66,15 @@ const AdminSidebar = ({ isOpen, toggleSidebar }: AdminSidebarProps) => {
     toggleSidebar();
   };
 
-  const handleLanguageChange = (lang: Language) => {
-    setLanguage(lang);
-    toggleSidebar();
+  const handleLanguageChange = (lang: "en" | "my") => {
+    setLanguage(lang); // Update the language in context
+    toggleSidebar(); // Close the sidebar after selection
+  };
+
+  // Function to strip domain from email
+  const getDisplayEmail = (email: string | undefined) => {
+    if (!email) return "Admin";
+    return email.split("@")[0]; // Returns the part before the @ symbol
   };
 
   return (
@@ -81,34 +115,30 @@ const AdminSidebar = ({ isOpen, toggleSidebar }: AdminSidebarProps) => {
         ]}
       >
         <View style={styles.sidebarHeader}>
-          <SignedIn>
+          {isSignedIn ? (
             <View style={styles.userContainer}>
               <View style={styles.avatar}>
                 <Text style={styles.avatarText}>
                   {user?.username?.slice(0, 2).toUpperCase() ||
-                    user?.emailAddresses[0].emailAddress
-                      .slice(0, 2)
-                      .toUpperCase()}
+                    getDisplayEmail(user?.email)?.slice(0, 2).toUpperCase() ||
+                    "US"}
                 </Text>
               </View>
               <View>
                 <Text style={styles.welcomeText}>Welcome,</Text>
                 <Text style={styles.usernameText}>
-                  {user?.username || user?.emailAddresses[0].emailAddress}
+                  {user?.username || getDisplayEmail(user?.email)}
                 </Text>
               </View>
             </View>
-          </SignedIn>
-          <SignedOut>
+          ) : (
             <Text style={styles.welcomeText}>Please sign in</Text>
-          </SignedOut>
+          )}
           <TouchableOpacity style={styles.closeButton} onPress={toggleSidebar}>
             <Ionicons name="chevron-back" size={24} color={COLORS.text} />
           </TouchableOpacity>
         </View>
-
         <View style={styles.separator} />
-
         <View style={styles.sidebarContent}>
           <TouchableOpacity
             style={styles.groupLabel}
@@ -136,9 +166,11 @@ const AdminSidebar = ({ isOpen, toggleSidebar }: AdminSidebarProps) => {
                 <Text style={styles.menuText}>Change Password</Text>
               </View>
             </TouchableOpacity>
-
-            <SignOutButton />
-
+            <TouchableOpacity style={[styles.menuButton, styles.logoutButton]}>
+              <View style={styles.menuItemContent}>
+                <SignOutButton />
+              </View>
+            </TouchableOpacity>
             <View style={styles.lanButton}>
               <TouchableOpacity onPress={() => handleLanguageChange("my")}>
                 <Image
@@ -161,6 +193,4 @@ const AdminSidebar = ({ isOpen, toggleSidebar }: AdminSidebarProps) => {
       </Animated.View>
     </>
   );
-};
-
-export default AdminSidebar;
+}

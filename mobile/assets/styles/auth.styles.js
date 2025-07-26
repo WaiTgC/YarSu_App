@@ -25,6 +25,7 @@ export const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#D9D9D9",
     backgroundColor: "#FFF",
+    flex: 1,
   },
   taphere: {
     color: COLORS.text,

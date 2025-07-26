@@ -1,12 +1,13 @@
 import { Redirect, useRouter, usePathname } from "expo-router";
-import { Text, View, Image, TouchableOpacity } from "react-native";
-import { useState } from "react";
+import { Text, View, Image, TouchableOpacity, Dimensions } from "react-native";
+import { useState, useEffect } from "react";
 import { styles } from "@/assets/styles/adminstyles/dashboard.styles";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import AdminSidebar from "@/components/AdminSideBar";
 import { COLORS } from "@/constants/colors";
 import { LanguageProvider } from "@/context/LanguageContext";
 import AddButton from "@/components/AddButton";
+import ChatButton from "./ChatButton";
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -16,8 +17,18 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  // Temporary admin check; replace with Supabase auth later
   const [isAdmin] = useState(true); // TODO: Replace with Supabase user role check
+  const [windowWidth, setWindowWidth] = useState(
+    Dimensions.get("window").width
+  );
+
+  useEffect(() => {
+    const onChange = ({ window: { width } }: { window: { width: number } }) => {
+      setWindowWidth(width);
+    };
+    const subscription = Dimensions.addEventListener("change", onChange);
+    return () => subscription.remove();
+  }, []);
 
   if (!isAdmin) {
     return <Redirect href="/(auth)" />;
@@ -32,17 +43,18 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     setSidebarOpen(false);
   };
 
-  // Determine AddButton type based on route
   const getButtonType = () => {
     if (pathname.includes("/adminJob")) return "job";
     if (pathname.includes("/adminTravel")) return "travel";
     if (pathname.includes("/adminCondo")) return "condo";
-    if (pathname.includes("/adminHotel")) return "hotel"; // Add hotel page
-    if (pathname.includes("/adminCourse")) return "course"; // Add course page
-    return null; // Hide button on /dashboard, /chat, /members, /settings
+    if (pathname.includes("/adminHotel")) return "hotel";
+    if (pathname.includes("/adminRestaurant")) return "restaurant";
+    if (pathname.includes("/adminCourse")) return "course";
+    return null;
   };
 
   const buttonType = getButtonType();
+  const isSmallScreen = windowWidth < 600; // Threshold for small screens
 
   return (
     <LanguageProvider>
@@ -80,27 +92,33 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               onPress={() => navigateTo("/(admin)/dashboard")}
             >
               <Ionicons name="home-outline" size={40} color={COLORS.shadow} />
-              <Text style={styles.tabText}>Dashboard</Text>
+              {!isSmallScreen && <Text style={styles.tabText}>Dashboard</Text>}
             </TouchableOpacity>
             <View style={styles.separatorcol} />
             <TouchableOpacity
               style={styles.tab}
-              onPress={() => navigateTo("/(admin)/chat")}
+              onPress={() => navigateTo("/(admin)/ChatScreenAdmin")}
             >
-              <Ionicons
-                name="chatbubbles-outline"
-                size={40}
-                color={COLORS.shadow}
-              />
-              <Text style={styles.tabText}>Chat Conversation</Text>
+              <ChatButton chatId="1" />
+              {!isSmallScreen && (
+                <Text style={styles.tabText}>Chat Conversation</Text>
+              )}
             </TouchableOpacity>
-            <View style={styles.separatorcol} />
+            <TouchableOpacity>
+              {!isSmallScreen && (
+                <View style={styles.plusButton}>
+                  <View style={styles.plusInner}>
+                    <Text style={styles.plusText}>+</Text>
+                  </View>
+                </View>
+              )}
+            </TouchableOpacity>
             <TouchableOpacity
               style={styles.tab}
               onPress={() => navigateTo("/(admin)/members")}
             >
               <Ionicons name="people-outline" size={40} color={COLORS.shadow} />
-              <Text style={styles.tabText}>Members</Text>
+              {!isSmallScreen && <Text style={styles.tabText}>Members</Text>}
             </TouchableOpacity>
             <View style={styles.separatorcol} />
             <TouchableOpacity
@@ -112,7 +130,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                 size={40}
                 color={COLORS.shadow}
               />
-              <Text style={styles.tabText}>General Setting</Text>
+              {!isSmallScreen && (
+                <Text style={styles.tabText}>General Setting</Text>
+              )}
             </TouchableOpacity>
           </View>
         </View>

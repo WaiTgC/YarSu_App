@@ -11,8 +11,8 @@ export const styles = StyleSheet.create({
     flex: 1,
   },
   card: {
-    width: "auto",
-    height: 556,
+    width: Dimensions.get("window").width >= 768 ? "30%" : "100%",
+    height: "auto",
     paddingVertical: 20,
     paddingHorizontal: 15,
     backgroundColor: "#F3F3F3",
@@ -32,29 +32,22 @@ export const styles = StyleSheet.create({
     marginBottom: 10,
   },
   imageBackground: {
-    width: "100%",
-    height: 200,
-    borderRadius: 24,
+    width: 200,
+    height: 150,
+    borderRadius: 35,
     backgroundColor: "lightgray",
     overflow: "hidden",
-    justifyContent: "center",
     alignItems: "center",
+    justifyContent: "center",
     shadowColor: "rgba(0, 0, 0, 0.25)",
     shadowOffset: { width: 4, height: 4 },
     shadowRadius: 4,
     elevation: 4,
   },
-
-  image: {
-    width: "100%",
-    height: 200,
-    borderRadius: 24,
-    resizeMode: "cover",
-  },
   innerImage: {
     width: "100%",
-    height: 200,
-    borderRadius: 24,
+    height: 150,
+    borderRadius: 35,
     resizeMode: "cover",
   },
   sliderControls: {
@@ -70,7 +63,6 @@ export const styles = StyleSheet.create({
     flexDirection: "row",
     margin: "auto",
   },
-
   arrow: {
     marginBottom: 3,
     fontSize: 14,
@@ -83,31 +75,70 @@ export const styles = StyleSheet.create({
     marginBottom: 15,
   },
   title: {
-    fontSize: 14,
+    fontSize: 15,
+    fontStyle: "normal",
     fontWeight: "400",
-    color: COLORS.shadow,
+    lineHeight: 20,
+    letterSpacing: 0.15,
+    color: COLORS.background,
+    marginBottom: 15,
+    width: "55%",
   },
   fieldRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     marginBottom: 10,
   },
+  serviceRow: {
+    flexDirection: "row",
+    marginBottom: 10,
+    flexWrap: "wrap",
+  },
+  serviceContainer: {
+    flex: 1,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+  },
+  serviceItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginRight: 15,
+    marginBottom: 5,
+  },
+  bullet: {
+    marginRight: 5,
+  },
   label: {
     fontSize: 15,
+    fontStyle: "normal",
     fontWeight: "400",
+    lineHeight: 20,
+    letterSpacing: 0.15,
     color: COLORS.black,
     marginBottom: 5,
+    width: "45%",
+  },
+  serviceLabel: {
+    fontSize: 13,
+    fontWeight: "400",
+    color: COLORS.background,
+    marginRight: 5,
   },
   value: {
     fontFamily: "SF Pro",
     fontSize: 15,
     fontStyle: "normal",
     fontWeight: "400",
-    lineHeight: 20, // Increased from 10 to 20 for better wrapping spacing
+    lineHeight: 20,
     letterSpacing: 0.15,
     color: COLORS.background,
     marginBottom: 15,
     width: "55%",
+  },
+  serviceValue: {
+    fontSize: 13,
+    color: COLORS.black,
   },
   input: {
     width: "55%",
@@ -119,10 +150,32 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 10,
     backgroundColor: COLORS.white,
   },
-  buttonContainer: {
+  serviceInput: {
+    width: 60,
+    height: 25,
+    borderColor: COLORS.border,
+    borderWidth: 1,
+    borderRadius: 5,
+    paddingHorizontal: 5,
+    backgroundColor: COLORS.white,
+  },
+  bottomContainer: {
     flexDirection: "row",
+    alignItems: "center",
     justifyContent: "space-between",
     marginTop: 10,
+  },
+  star: {
+    fontSize: 18,
+  },
+  buttonContainer: {
+    flexDirection: "column",
+    justifyContent: "flex-end",
+    gap: 10,
+    marginBottom: 20,
+  },
+  noImages: {
+    marginBottom: 25,
   },
   button: {
     width: 77,
@@ -131,8 +184,7 @@ export const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
     borderRadius: 15,
     alignItems: "center",
-    flex: 1,
-    marginHorizontal: 10,
+    justifyContent: "center",
   },
   buttonText: {
     color: COLORS.white,
@@ -160,10 +212,13 @@ export const styles = StyleSheet.create({
   },
   modalText: {
     fontSize: 15,
-    fontWeight: "500",
-    fontFamily: "SF Pro Text",
-    marginBottom: 20,
+    fontStyle: "normal",
+    fontWeight: "400",
+    lineHeight: 20,
+    letterSpacing: 0.15,
     color: COLORS.black,
+    marginBottom: 20,
+    width: "55%",
   },
   modalButtonContainer: {
     flexDirection: "row",
@@ -189,17 +244,6 @@ export const styles = StyleSheet.create({
     fontFamily: "SF Pro Text",
     color: COLORS.black,
   },
-  star: {
-    fontSize: 16,
-    color: COLORS.black,
-    marginRight: 2,
-  },
-  row: {
-    justifyContent: "space-between",
-    marginBottom: 10,
-    flexDirection: "row",
-    gap: 20,
-  },
   row: {
     justifyContent: "space-between",
     marginBottom: 10,
@@ -215,5 +259,32 @@ export const styles = StyleSheet.create({
   },
   activeIndicator: {
     backgroundColor: "#000",
+  },
+  radioButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: 5,
+  },
+  radioCircle: {
+    height: 20,
+    width: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: "#000",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 10,
+  },
+  radioCheck: {
+    color: "#000",
+    fontSize: 14,
+  },
+  radioLabel: {
+    fontSize: 16,
+  },
+  radioGroup: {
+    flexDirection: "row",
+    marginVertical: 5,
+    gap: 10,
   },
 });

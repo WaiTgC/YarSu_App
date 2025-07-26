@@ -1,32 +1,66 @@
-import AppLayout from "@/components/AppLayout";
-import { useUser } from "@clerk/clerk-expo";
-import { useEffect } from "react";
-import { useRouter } from "expo-router";
-import { Stack } from "expo-router/stack";
+import { Stack } from "expo-router";
 import SafeScreen from "@/components/SafeScreen";
+import { supabase } from "@/libs/supabase";
+import { useEffect, useState } from "react";
+import { View, Text, ActivityIndicator } from "react-native";
+import { styles } from "@/assets/styles/auth.styles";
+import AppLayout from "@/components/AppLayout";
 
 export default function RootLayout() {
-  const { isLoaded, user } = useUser();
-  const router = useRouter();
+  const [isCheckingSession, setIsCheckingSession] = useState<boolean>(true);
 
   useEffect(() => {
-    if (isLoaded && user && user.publicMetadata?.role === "admin") {
-      router.replace("/(admin)");
-    }
-  }, [isLoaded, user, router]);
+    let isMounted = true;
 
-  if (!isLoaded) {
-    return null; // Or a loading component
-  }
+    const checkSession = async () => {
+      try {
+        console.log("RootLayout - Checking session...");
+        const {
+          data: { session },
+          error,
+        } = await supabase.auth.getSession();
+        if (!isMounted) return;
 
-  if (user && user.publicMetadata?.role === "admin") {
-    return null; // Redirect handled by useEffect
+        if (error) {
+          console.error("RootLayout - Session check error:", error.message);
+        } else if (session) {
+          console.log(
+            "RootLayout - Session found:",
+            session.user.email,
+            session.user.id
+          );
+        } else {
+          console.log("RootLayout - No session found");
+        }
+      } catch (error: any) {
+        console.error("RootLayout - Error checking session:", error.message);
+      } finally {
+        if (isMounted) setIsCheckingSession(false);
+      }
+    };
+
+    checkSession();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  if (isCheckingSession) {
+    return (
+      <View style={styles.container}>
+        <ActivityIndicator size="large" color="#0000ff" />
+        <Text style={styles.welcomeText}>Loading...</Text>
+      </View>
+    );
   }
 
   return (
     <SafeScreen>
       <AppLayout>
-        <Stack screenOptions={{ headerShown: false }}></Stack>
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="home" />
+        </Stack>
       </AppLayout>
     </SafeScreen>
   );

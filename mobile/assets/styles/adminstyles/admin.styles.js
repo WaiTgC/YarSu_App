@@ -1,6 +1,10 @@
-// app/(admin)/admin.styles.ts
 import { StyleSheet, Dimensions } from "react-native";
 import { COLORS } from "@/constants/colors";
+
+const { width } = Dimensions.get("window");
+const cardWidth = 200;
+const cardsPerRow = 5;
+const gap = 30;
 
 export const styles = StyleSheet.create({
   container: {
@@ -131,7 +135,52 @@ export const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 25,
-    marginTop: -20, // Lift above the footer
+    marginTop: -20,
     elevation: 5,
+  },
+  grid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    padding: 10,
+    gap: gap,
+  },
+  card: {
+    display: "flex",
+    width: cardWidth,
+    height: 177,
+    padding: 25,
+    paddingBottom: 27,
+    flexDirection: "column",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 24,
+    flexShrink: 0,
+    borderRadius: 20,
+    backgroundColor: COLORS.white,
+  },
+  cardText: {
+    fontSize: 14,
+    fontStyle: "normal",
+    fontWeight: "400",
+    lineHeight: 20,
+    letterSpacing: 0.14,
+    color: COLORS.background,
+    textAlign: "center",
+  },
+  cardTextActive: {
+    fontSize: 14,
+    fontStyle: "normal",
+    fontWeight: "400",
+    lineHeight: 20,
+    letterSpacing: 0.14,
+    color: COLORS.text,
+    textAlign: "center",
+  },
+  cardIcon: {
+    marginTop: 20,
+    width: 70,
+    height: 70,
+    margin: "auto",
   },
 });

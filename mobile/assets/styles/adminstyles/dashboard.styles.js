@@ -1,6 +1,5 @@
 import { StyleSheet, Dimensions } from "react-native";
 import { COLORS } from "@/constants/colors";
-import { transform } from "@babel/core";
 
 export const styles = StyleSheet.create({
   container: {
@@ -80,7 +79,6 @@ export const styles = StyleSheet.create({
     backgroundColor: COLORS.white,
     width: 110,
     height: 35,
-
     borderRadius: 10,
     flexShrink: 0,
     alignItems: "center",
@@ -141,7 +139,7 @@ export const styles = StyleSheet.create({
     backgroundColor: COLORS.white,
     borderRadius: 20,
     maxWidth: 200,
-    width: "100% ",
+    width: "100%",
     height: "58px",
     alignItems: "center",
     borderWidth: 1,
@@ -152,7 +150,6 @@ export const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
     transform: [{ scale: 1 }],
-    // Animation inspired by hover:scale-105 and animate-float-up
     animationDuration: "0.3s",
     animationTimingFunction: "ease-in-out",
   },
@@ -162,7 +159,7 @@ export const styles = StyleSheet.create({
     borderRadius: 20,
     justifyContent: "flex-start",
     alignItems: "center",
-    padding: 10, // Adjusted from mb-3 (12px)
+    padding: 10,
     flexDirection: "row",
   },
   iconImage: {
@@ -174,8 +171,8 @@ export const styles = StyleSheet.create({
     display: "flex",
   },
   cardText: {
-    fontSize: 14, // Adjusted from text-sm (14px) to md:text-base (16px) context
-    fontWeight: "600", // Adjusted from font-semibold
+    fontSize: 14,
+    fontWeight: "600",
     color: COLORS.background,
     textAlign: "center",
     margin: "auto",
@@ -211,7 +208,7 @@ export const styles = StyleSheet.create({
     fontWeight: "500",
     letterSpacing: 0.16,
   },
-  plusButtonContainer: {
+  plusButton: {
     borderWidth: 1,
     width: 96,
     height: 83,
@@ -227,7 +224,7 @@ export const styles = StyleSheet.create({
     elevation: 2,
     marginTop: -10,
   },
-  plusButton: {
+  plusInner: {
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#4A90E2",
@@ -235,5 +232,10 @@ export const styles = StyleSheet.create({
     height: 69,
     borderRadius: 7,
     elevation: 5,
+  },
+  plusText: {
+    fontSize: 24,
+    color: COLORS.white,
+    textAlign: "center",
   },
 });

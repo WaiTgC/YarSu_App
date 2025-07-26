@@ -277,7 +277,7 @@ const AdminCondo = () => {
         </View>
         <View style={styles.fieldRow}>
           <Text style={styles.label}>
-            {labels[language].rentFee || "Rent Fee"}:
+            {labels[language].rentFee || "Rent Fee"}
           </Text>
           {editMode[item.id] ? (
             <TextInput
@@ -299,7 +299,7 @@ const AdminCondo = () => {
         </View>
         <View style={styles.serviceRow}>
           <Text style={styles.label}>
-            {labels[language].services || "Services"}:
+            {labels[language].services || "Services"}
           </Text>
           <View style={[styles.serviceContainer, { flexDirection: "column" }]}>
             {!editMode[item.id] && (

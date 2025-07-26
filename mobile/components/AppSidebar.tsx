@@ -1,40 +1,57 @@
-import { SignedIn, SignedOut, useUser } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
-import { Text, View, TouchableOpacity, FlatList, Animated } from "react-native";
-import { SignOutButton } from "@/components/SignOutButton";
+import { Text, View, TouchableOpacity, Animated } from "react-native";
 import { useState, useEffect, useRef } from "react";
 import { styles } from "@/assets/styles/Sidebar.styles";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { COLORS } from "@/constants/colors";
+import { supabase } from "@/libs/supabase";
+import { getUserRole } from "@/services/authService";
+import { SignOutButton } from "@/components/SignOutButton";
 
 interface AppSidebarProps {
   isOpen: boolean;
   toggleSidebar: () => void;
 }
 
-const AppSidebar = ({ isOpen, toggleSidebar }: AppSidebarProps) => {
+export default function AppSidebar({ isOpen, toggleSidebar }: AppSidebarProps) {
   const router = useRouter();
-  const { user } = useUser();
+  const [user, setUser] = useState<any>(null);
+  const [isSignedIn, setIsSignedIn] = useState(false);
   const translateX = useRef(new Animated.Value(isOpen ? 0 : -250)).current;
 
   useEffect(() => {
     Animated.timing(translateX, {
       toValue: isOpen ? 0 : -250,
       duration: 300,
-      useNativeDriver: true,
+      useNativeDriver: false,
     }).start();
   }, [isOpen]);
 
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        setIsSignedIn(true);
+        getUserRole()
+          .then((userData) => {
+            setUser(userData);
+          })
+          .catch((error) => {
+            console.error("Error fetching user role:", error);
+            setIsSignedIn(false);
+          });
+      } else {
+        setIsSignedIn(false);
+        setUser(null);
+      }
+    });
+  }, []);
+
   const handleChangePassword = () => {
-    console.log("Change password clicked");
     router.push("/change-password");
     toggleSidebar();
   };
 
-  const navigationItems = [
-    { name: "Home", icon: "home", route: "/home" },
-    // { name: "Create", icon: "add", route: "/create" },
-  ];
+  const navigationItems = [{ name: "Home", icon: "home", route: "/home" }];
 
   return (
     <>
@@ -50,7 +67,7 @@ const AppSidebar = ({ isOpen, toggleSidebar }: AppSidebarProps) => {
             zIndex: 99,
           }}
           onPress={toggleSidebar}
-          activeOpacity={1}
+          onStartShouldSetResponder={() => true}
         />
       )}
       <Animated.View
@@ -74,34 +91,34 @@ const AppSidebar = ({ isOpen, toggleSidebar }: AppSidebarProps) => {
         ]}
       >
         <View style={styles.sidebarHeader}>
-          <SignedIn>
+          {isSignedIn ? (
             <View style={styles.userContainer}>
               <View style={styles.avatar}>
                 <Text style={styles.avatarText}>
                   {user?.username?.slice(0, 2).toUpperCase() ||
-                    user?.emailAddresses[0].emailAddress
-                      .slice(0, 2)
-                      .toUpperCase()}
+                    user?.email?.split("@")[0].slice(0, 2).toUpperCase() ||
+                    "US"}
                 </Text>
               </View>
               <View>
                 <Text style={styles.welcomeText}>Welcome,</Text>
                 <Text style={styles.usernameText}>
-                  {user?.username || user?.emailAddresses[0].emailAddress}
+                  {user?.username || user?.email?.split("@")[0] || "User"}
                 </Text>
               </View>
             </View>
-          </SignedIn>
-          <SignedOut>
+          ) : (
             <Text style={styles.welcomeText}>Please sign in</Text>
-          </SignedOut>
-          <TouchableOpacity style={styles.closeButton} onPress={toggleSidebar}>
+          )}
+          <TouchableOpacity
+            style={styles.closeButton}
+            onPress={toggleSidebar}
+            onStartShouldSetResponder={() => true}
+          >
             <Ionicons name="chevron-back" size={24} color={COLORS.text} />
           </TouchableOpacity>
         </View>
-
         <View style={styles.separator} />
-
         <View style={styles.sidebarContent}>
           <View style={styles.sidebarGroup}>
             <Text style={styles.groupLabel}>Navigation</Text>
@@ -116,6 +133,7 @@ const AppSidebar = ({ isOpen, toggleSidebar }: AppSidebarProps) => {
                   router.push(item.route);
                   toggleSidebar();
                 }}
+                onStartShouldSetResponder={() => true}
               >
                 <View style={styles.menuItemContent}>
                   <Ionicons
@@ -139,32 +157,28 @@ const AppSidebar = ({ isOpen, toggleSidebar }: AppSidebarProps) => {
               </TouchableOpacity>
             ))}
           </View>
-
-          <SignedIn>
+          {isSignedIn && (
             <View style={styles.sidebarGroup}>
               <Text style={styles.groupLabel}>Account</Text>
               <TouchableOpacity
                 style={styles.menuButton}
                 onPress={handleChangePassword}
+                onStartShouldSetResponder={() => true}
               >
                 <View style={styles.menuItemContent}>
                   <Ionicons name="lock-closed" size={20} color={COLORS.text} />
                   <Text style={styles.menuText}>Change Password</Text>
                 </View>
               </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.menuButton, styles.logoutButton]}
-              >
+              <TouchableOpacity style={[styles.logoutButton]}>
                 <View style={styles.menuItemContent}>
                   <SignOutButton />
                 </View>
               </TouchableOpacity>
             </View>
-          </SignedIn>
+          )}
         </View>
       </Animated.View>
     </>
   );
-};
-
-export default AppSidebar;
+}

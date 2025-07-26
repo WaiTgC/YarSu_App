@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -16,7 +16,8 @@ import { useJobs } from "@/hooks/useJobs";
 import { useTravel } from "@/hooks/useTravel";
 import { useCondos } from "@/hooks/useCondos";
 import { useHotels } from "@/hooks/useHotels";
-import { useCourses } from "@/hooks/useCourses"; // Import useCourses hook
+import { useCourses } from "@/hooks/useCourses";
+import { useRestaurants } from "@/hooks/useRestaurants";
 import { useLanguage } from "@/context/LanguageContext";
 import { labels } from "@/libs/language";
 import { COLORS } from "@/constants/colors";
@@ -60,6 +61,7 @@ type CondoType = {
   gym: boolean;
   garden: boolean;
   co_working_space: boolean;
+  notes?: string;
 };
 
 type HotelType = {
@@ -86,22 +88,47 @@ type CourseType = {
   location: string;
 };
 
+type RestaurantType = {
+  id: number;
+  name: string;
+  location: string;
+  popular_picks: string[];
+  images: string[];
+  admin_rating: number;
+  notes?: string;
+  created_at: string;
+};
+
 interface AddButtonProps {
-  type: "job" | "travel" | "condo" | "hotel" | "course";
+  type: "job" | "travel" | "condo" | "hotel" | "course" | "restaurant";
 }
 
 const AddButton: React.FC<AddButtonProps> = ({ type }) => {
   const { language } = useLanguage();
-  const { addJob } = useJobs() as {
+  const { addJob, loadJobs } = useJobs() as {
     addJob: (job: Partial<JobType>) => Promise<void>;
+    loadJobs: () => Promise<void>;
   };
-  const travelHook = useTravel();
-  const { addTravelPost } = travelHook || {};
-  const { addCondo, loadCondos } = useCondos();
-  const hotelHook = useHotels();
-  const { addHotel, loadHotels } = hotelHook || {};
-  const courseHook = useCourses(); // Get useCourses hook
-  const { createCourse, loadCourses } = courseHook || {}; // Destructure createCourse and loadCourses
+  const { addTravelPost, loadTravelPosts } = useTravel() as {
+    addTravelPost: (post: Partial<TravelPostType>) => Promise<void>;
+    loadTravelPosts: () => Promise<void>;
+  };
+  const { addCondo, loadCondos } = useCondos() as {
+    addCondo: (condo: Partial<CondoType>) => Promise<void>;
+    loadCondos: () => Promise<void>;
+  };
+  const { addHotel, loadHotels } = useHotels() as {
+    addHotel: (hotel: Partial<HotelType>) => Promise<void>;
+    loadHotels: () => Promise<void>;
+  };
+  const { createCourse, loadCourses } = useCourses() as {
+    createCourse: (course: Partial<CourseType>) => Promise<void>;
+    loadCourses: () => Promise<void>;
+  };
+  const { createRestaurant, loadRestaurants } = useRestaurants() as {
+    createRestaurant: (restaurant: Partial<RestaurantType>) => Promise<void>;
+    loadRestaurants: () => Promise<void>;
+  };
 
   const [modalVisible, setModalVisible] = useState<boolean>(false);
   const [newJob, setNewJob] = useState<Partial<JobType>>({
@@ -126,20 +153,21 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
     address: "",
     rent_fee: "",
     images: [],
-    swimming_pool: undefined,
-    free_wifi: undefined,
-    gym: undefined,
-    garden: undefined,
-    co_working_space: undefined,
+    swimming_pool: false,
+    free_wifi: false,
+    gym: false,
+    garden: false,
+    co_working_space: false,
+    notes: "",
   });
   const [newHotel, setNewHotel] = useState<Partial<HotelType>>({
     name: "",
     address: "",
     price: "",
     nearby_famous_places: "",
-    breakfast: undefined,
-    free_wifi: undefined,
-    swimming_pool: undefined,
+    breakfast: false,
+    free_wifi: false,
+    swimming_pool: false,
     images: [],
     notes: "",
     admin_rating: "",
@@ -150,7 +178,15 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
     price: "",
     centre_name: "",
     location: "",
-  }); // State for course
+  });
+  const [newRestaurant, setNewRestaurant] = useState<Partial<RestaurantType>>({
+    name: "",
+    location: "",
+    popular_picks: "",
+    images: [],
+    admin_rating: "",
+    notes: "",
+  });
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
   const MAX_IMAGES = 3;
 
@@ -232,6 +268,11 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
           ...prev,
           images: [...(prev.images || []), base64String],
         }));
+      } else if (type === "restaurant") {
+        setNewRestaurant((prev) => ({
+          ...prev,
+          images: [...(prev.images || []), base64String],
+        }));
       }
     } else {
       console.log("Image selection canceled or failed:", result);
@@ -255,7 +296,7 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
     value: TravelPostType[K] | string
   ) => {
     if (field === "admin_rating") {
-      const cleanedValue = value.toString().replace(/[^0-5]/g, "");
+      const cleanedValue = value.toString().replace(/[^0-5.]/g, "");
       setNewTravelPost((prev) => ({
         ...prev,
         [field]: cleanedValue,
@@ -286,6 +327,12 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
         ...prev,
         [field]: value === true,
       }));
+    } else if (field === "rent_fee") {
+      const cleanedValue = value.toString().replace(/[^0-9]/g, "");
+      setNewCondo((prev) => ({
+        ...prev,
+        [field]: cleanedValue,
+      }));
     } else {
       setNewCondo((prev) => ({
         ...prev,
@@ -305,7 +352,7 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
         [field]: value === true,
       }));
     } else if (field === "price" || field === "admin_rating") {
-      const cleanedValue = value.toString().replace(/[^0-9]/g, "");
+      const cleanedValue = value.toString().replace(/[^0-9.]/g, "");
       setNewHotel((prev) => ({
         ...prev,
         [field]: cleanedValue,
@@ -337,6 +384,25 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
     }
   };
 
+  // Handle restaurant input changes
+  const handleRestaurantInputChange = <K extends keyof RestaurantType>(
+    field: K,
+    value: RestaurantType[K] | string
+  ) => {
+    if (field === "admin_rating") {
+      const cleanedValue = value.toString().replace(/[^0-5.]/g, "");
+      setNewRestaurant((prev) => ({
+        ...prev,
+        [field]: cleanedValue,
+      }));
+    } else {
+      setNewRestaurant((prev) => ({
+        ...prev,
+        [field]: value,
+      }));
+    }
+  };
+
   // Render radio button
   const renderRadioButton = (field: string, value: string, label: string) => (
     <TouchableOpacity
@@ -346,7 +412,7 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
         if (type === "job") {
           handleJobInputChange(
             field as keyof JobType,
-            value === "Yes" ? true : false
+            value === "Yes" ? true : value === "Monthly" ? value : false
           );
         } else if (type === "hotel") {
           handleHotelInputChange(
@@ -359,7 +425,11 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
       <View style={styles.radioCircle}>
         {(type === "job" &&
           newJob[field as keyof JobType] ===
-            (value === "Yes" ? true : false)) ||
+            (value === "Yes"
+              ? true
+              : value === "Monthly" || value === "Daily"
+              ? value
+              : false)) ||
         (type === "hotel" &&
           newHotel[field as keyof HotelType] ===
             (value === "Yes" ? true : false)) ? (
@@ -385,6 +455,359 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
       <Text style={styles.radioLabel}>{label}</Text>
     </TouchableOpacity>
   );
+
+  // Perform job addition
+  const performAddJob = async () => {
+    if (!addJob) {
+      console.error("addJob is not defined in useJobs hook");
+      Alert.alert(
+        labels[language].error || "Error",
+        labels[language].errorMessage ||
+          "Failed to add job: Function not available"
+      );
+      return;
+    }
+
+    try {
+      const convertedJob: Partial<JobType> = {
+        title: newJob.title?.trim(),
+        job_location: newJob.job_location?.trim(),
+        address: newJob.stay ? newJob.address?.trim() : undefined,
+        notes: newJob.notes?.trim(),
+        pinkcard: newJob.pinkcard,
+        thai: newJob.thai,
+        payment_type: newJob.payment_type as "Monthly" | "Daily" | undefined,
+        stay: newJob.stay,
+      };
+
+      if (!convertedJob.title || !convertedJob.job_location) {
+        throw new Error(
+          labels[language].requiredFields || "Title and Location are required"
+        );
+      }
+
+      if (convertedJob.stay && !convertedJob.address) {
+        throw new Error(
+          labels[language].addressRequired ||
+            "Address is required when Stay is Yes"
+        );
+      }
+
+      console.log("Job Payload:", JSON.stringify(convertedJob, null, 2));
+      await addJob(convertedJob);
+      await loadJobs();
+      setModalVisible(false);
+      setNewJob({
+        title: "",
+        job_location: "",
+        address: "",
+        notes: "",
+        pinkcard: undefined,
+        thai: undefined,
+        payment_type: undefined,
+        stay: undefined,
+      });
+      setSelectedImages([]);
+
+      if (Platform.OS !== "web") {
+        Alert.alert(
+          labels[language].added || "Added",
+          labels[language].jobAdded || "Job has been added!"
+        );
+      } else {
+        window.alert(labels[language].jobAdded || "Job has been added!");
+      }
+    } catch (error: any) {
+      console.error("Error adding job:", error);
+      const errorMessage = error.message || JSON.stringify(error);
+      if (Platform.OS === "web") {
+        window.alert(
+          labels[language].error || `Failed to add job: ${errorMessage}`
+        );
+      } else {
+        Alert.alert(
+          labels[language].error || "Error",
+          `Failed to add job: ${errorMessage}`
+        );
+      }
+    }
+  };
+
+  // Perform travel post addition
+  const performAddTravelPost = async () => {
+    if (!addTravelPost) {
+      console.error("addTravelPost is not defined in useTravel hook");
+      Alert.alert(
+        labels[language].error || "Error",
+        labels[language].errorMessage ||
+          "Failed to add travel post: Function not available"
+      );
+      return;
+    }
+
+    try {
+      const convertedTravelPost: Partial<TravelPostType> = {
+        name: newTravelPost.name?.trim(),
+        place: newTravelPost.place?.trim(),
+        highlights: newTravelPost.highlights
+          ? newTravelPost.highlights
+              .split(",")
+              .map((item) => item.trim())
+              .filter((item) => item !== "")
+          : [],
+        images: newTravelPost.images || [],
+        admin_rating: newTravelPost.admin_rating
+          ? parseFloat(newTravelPost.admin_rating.toString())
+          : undefined,
+      };
+
+      if (!convertedTravelPost.name || !convertedTravelPost.place) {
+        throw new Error(
+          labels[language].requiredFields || "Name and Place are required"
+        );
+      }
+
+      if (
+        convertedTravelPost.admin_rating !== undefined &&
+        (isNaN(convertedTravelPost.admin_rating) ||
+          convertedTravelPost.admin_rating < 0 ||
+          convertedTravelPost.admin_rating > 5)
+      ) {
+        throw new Error(
+          labels[language].invalidRating ||
+            "Rating must be a number between 0 and 5"
+        );
+      }
+
+      console.log(
+        "Travel Post Payload:",
+        JSON.stringify(convertedTravelPost, null, 2)
+      );
+      await addTravelPost(convertedTravelPost);
+      await loadTravelPosts();
+      setModalVisible(false);
+      setNewTravelPost({
+        name: "",
+        place: "",
+        highlights: "",
+        images: [],
+        admin_rating: "",
+      });
+      setSelectedImages([]);
+
+      if (Platform.OS !== "web") {
+        Alert.alert(
+          labels[language].added || "Added",
+          labels[language].travelPostAdded || "Travel post has been added!"
+        );
+      } else {
+        window.alert(
+          labels[language].travelPostAdded || "Travel post has been added!"
+        );
+      }
+    } catch (error: any) {
+      console.error("Error adding travel post:", error);
+      const errorMessage = error.message || JSON.stringify(error);
+      if (Platform.OS === "web") {
+        window.alert(
+          labels[language].error || `Failed to add travel post: ${errorMessage}`
+        );
+      } else {
+        Alert.alert(
+          labels[language].error || "Error",
+          `Failed to add travel post: ${errorMessage}`
+        );
+      }
+    }
+  };
+
+  // Perform condo addition
+  const performAddCondo = async () => {
+    if (!addCondo) {
+      console.error("addCondo is not defined in useCondos hook");
+      Alert.alert(
+        labels[language].error || "Error",
+        labels[language].errorMessage ||
+          "Failed to add condo: Function not available"
+      );
+      return;
+    }
+
+    try {
+      const convertedCondo: Partial<CondoType> = {
+        name: newCondo.name?.trim(),
+        address: newCondo.address?.trim(),
+        rent_fee: newCondo.rent_fee
+          ? parseInt(newCondo.rent_fee.toString())
+          : undefined,
+        images: newCondo.images || [],
+        swimming_pool: newCondo.swimming_pool ?? false,
+        free_wifi: newCondo.free_wifi ?? false,
+        gym: newCondo.gym ?? false,
+        garden: newCondo.garden ?? false,
+        co_working_space: newCondo.co_working_space ?? false,
+        notes: newCondo.notes?.trim(),
+      };
+
+      if (!convertedCondo.name || !convertedCondo.address) {
+        throw new Error(
+          labels[language].requiredFields || "Name and Address are required"
+        );
+      }
+
+      if (
+        convertedCondo.rent_fee !== undefined &&
+        (isNaN(convertedCondo.rent_fee) || convertedCondo.rent_fee <= 0)
+      ) {
+        throw new Error(
+          labels[language].invalidRentFee ||
+            "Rent fee must be a positive number"
+        );
+      }
+
+      console.log("Condo Payload:", JSON.stringify(convertedCondo, null, 2));
+      await addCondo(convertedCondo);
+      await loadCondos();
+      setModalVisible(false);
+      setNewCondo({
+        name: "",
+        address: "",
+        rent_fee: "",
+        images: [],
+        swimming_pool: false,
+        free_wifi: false,
+        gym: false,
+        garden: false,
+        co_working_space: false,
+        notes: "",
+      });
+      setSelectedImages([]);
+
+      if (Platform.OS !== "web") {
+        Alert.alert(
+          labels[language].added || "Added",
+          labels[language].condoAdded || "Condo has been added!"
+        );
+      } else {
+        window.alert(labels[language].condoAdded || "Condo has been added!");
+      }
+    } catch (error: any) {
+      console.error("Error adding condo:", error);
+      const errorMessage = error.message || JSON.stringify(error);
+      if (Platform.OS === "web") {
+        window.alert(
+          labels[language].error || `Failed to add condo: ${errorMessage}`
+        );
+      } else {
+        Alert.alert(
+          labels[language].error || "Error",
+          `Failed to add condo: ${errorMessage}`
+        );
+      }
+    }
+  };
+
+  // Perform hotel addition
+  const performAddHotel = async () => {
+    if (!addHotel) {
+      console.error("addHotel is not defined in useHotels hook");
+      Alert.alert(
+        labels[language].error || "Error",
+        labels[language].errorMessage ||
+          "Failed to add hotel: Function not available"
+      );
+      return;
+    }
+
+    try {
+      const convertedHotel: Partial<HotelType> = {
+        name: newHotel.name?.trim(),
+        address: newHotel.address?.trim(),
+        price: newHotel.price ? parseInt(newHotel.price.toString()) : undefined,
+        nearby_famous_places: newHotel.nearby_famous_places
+          ? newHotel.nearby_famous_places
+              .split(",")
+              .map((item) => item.trim())
+              .filter((item) => item !== "")
+          : [],
+        breakfast: newHotel.breakfast ?? false,
+        free_wifi: newHotel.free_wifi ?? false,
+        swimming_pool: newHotel.swimming_pool ?? false,
+        images: newHotel.images || [],
+        notes: newHotel.notes?.trim(),
+        admin_rating: newHotel.admin_rating
+          ? parseFloat(newHotel.admin_rating.toString())
+          : undefined,
+      };
+
+      if (!convertedHotel.name || !convertedHotel.address) {
+        throw new Error(
+          labels[language].requiredFields || "Name and Address are required"
+        );
+      }
+
+      if (
+        convertedHotel.price !== undefined &&
+        (isNaN(convertedHotel.price) || convertedHotel.price <= 0)
+      ) {
+        throw new Error(
+          labels[language].invalidPrice || "Price must be a positive number"
+        );
+      }
+
+      if (
+        convertedHotel.admin_rating !== undefined &&
+        (isNaN(convertedHotel.admin_rating) ||
+          convertedHotel.admin_rating < 0 ||
+          convertedHotel.admin_rating > 5)
+      ) {
+        throw new Error(
+          labels[language].invalidRating ||
+            "Rating must be a number between 0 and 5"
+        );
+      }
+
+      console.log("Hotel Payload:", JSON.stringify(convertedHotel, null, 2));
+      await addHotel(convertedHotel);
+      await loadHotels();
+      setModalVisible(false);
+      setNewHotel({
+        name: "",
+        address: "",
+        price: "",
+        nearby_famous_places: "",
+        breakfast: false,
+        free_wifi: false,
+        swimming_pool: false,
+        images: [],
+        notes: "",
+        admin_rating: "",
+      });
+      setSelectedImages([]);
+
+      if (Platform.OS !== "web") {
+        Alert.alert(
+          labels[language].added || "Added",
+          labels[language].hotelAdded || "Hotel has been added!"
+        );
+      } else {
+        window.alert(labels[language].hotelAdded || "Hotel has been added!");
+      }
+    } catch (error: any) {
+      console.error("Error adding hotel:", error);
+      const errorMessage = error.message || JSON.stringify(error);
+      if (Platform.OS === "web") {
+        window.alert(
+          labels[language].error || `Failed to add hotel: ${errorMessage}`
+        );
+      } else {
+        Alert.alert(
+          labels[language].error || "Error",
+          `Failed to add hotel: ${errorMessage}`
+        );
+      }
+    }
+  };
 
   // Perform course addition
   const performAddCourse = async () => {
@@ -430,7 +853,7 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
         );
       }
 
-      console.log("Payload:", JSON.stringify(convertedCourse, null, 2));
+      console.log("Course Payload:", JSON.stringify(convertedCourse, null, 2));
       await createCourse(convertedCourse);
       await loadCourses();
       setModalVisible(false);
@@ -453,9 +876,7 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
       }
     } catch (error: any) {
       console.error("Error adding course:", error);
-      const errorMessage = error.response
-        ? `Server responded with: ${JSON.stringify(error.response)}`
-        : error.message || JSON.stringify(error);
+      const errorMessage = error.message || JSON.stringify(error);
       if (Platform.OS === "web") {
         window.alert(
           labels[language].error || `Failed to add course: ${errorMessage}`
@@ -469,6 +890,96 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
     }
   };
 
+  // Perform restaurant addition
+  const performAddRestaurant = useCallback(async () => {
+    if (!createRestaurant) {
+      console.error("createRestaurant is not defined in useRestaurants hook");
+      Alert.alert(
+        labels[language].error || "Error",
+        labels[language].errorMessage ||
+          "Failed to add restaurant: Function not available"
+      );
+      return;
+    }
+
+    try {
+      const convertedRestaurant: Partial<RestaurantType> = {
+        name: newRestaurant.name?.trim(),
+        location: newRestaurant.location?.trim(),
+        popular_picks: newRestaurant.popular_picks
+          ? newRestaurant.popular_picks
+              .split(",")
+              .map((item) => item.trim())
+              .filter((item) => item !== "")
+          : [],
+        images: newRestaurant.images || [],
+        admin_rating: newRestaurant.admin_rating
+          ? parseFloat(newRestaurant.admin_rating.toString())
+          : undefined,
+        notes: newRestaurant.notes?.trim(),
+      };
+
+      if (!convertedRestaurant.name || !convertedRestaurant.location) {
+        throw new Error(
+          labels[language].requiredFields || "Name and Location are required"
+        );
+      }
+
+      if (
+        convertedRestaurant.admin_rating !== undefined &&
+        (isNaN(convertedRestaurant.admin_rating) ||
+          convertedRestaurant.admin_rating < 0 ||
+          convertedRestaurant.admin_rating > 5)
+      ) {
+        throw new Error(
+          labels[language].invalidRating ||
+            "Rating must be a number between 0 and 5"
+        );
+      }
+
+      console.log(
+        "Restaurant Payload:",
+        JSON.stringify(convertedRestaurant, null, 2)
+      );
+      await createRestaurant(convertedRestaurant);
+      await loadRestaurants();
+      setModalVisible(false);
+      setNewRestaurant({
+        name: "",
+        location: "",
+        popular_picks: "",
+        images: [],
+        admin_rating: "",
+        notes: "",
+      });
+      setSelectedImages([]);
+
+      if (Platform.OS !== "web") {
+        Alert.alert(
+          labels[language].added || "Added",
+          labels[language].restaurantAdded || "Restaurant has been added!"
+        );
+      } else {
+        window.alert(
+          labels[language].restaurantAdded || "Restaurant has been added!"
+        );
+      }
+    } catch (error: any) {
+      console.error("Error adding restaurant:", error);
+      const errorMessage = error.message || JSON.stringify(error);
+      if (Platform.OS === "web") {
+        window.alert(
+          labels[language].error || `Failed to add restaurant: ${errorMessage}`
+        );
+      } else {
+        Alert.alert(
+          labels[language].error || "Error",
+          `Failed to add restaurant: ${errorMessage}`
+        );
+      }
+    }
+  }, [createRestaurant, loadRestaurants, newRestaurant, language]);
+
   // Handle addition with platform-specific confirmation
   const handleAdd = () => {
     const isJob = type === "job";
@@ -476,6 +987,7 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
     const isCondo = type === "condo";
     const isHotel = type === "hotel";
     const isCourse = type === "course";
+    const isRestaurant = type === "restaurant";
     const confirmMessage = isJob
       ? labels[language].addConfirm || "Are you sure you want to add this job?"
       : isTravel
@@ -490,6 +1002,9 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
       : isCourse
       ? labels[language].addConfirm ||
         "Are you sure you want to add this course?"
+      : isRestaurant
+      ? labels[language].addConfirm ||
+        "Are you sure you want to add this restaurant?"
       : "";
     const title = isJob
       ? labels[language].addJob || "Add Job"
@@ -501,6 +1016,8 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
       ? labels[language].addHotel || "Add Hotel"
       : isCourse
       ? labels[language].addCourse || "Add Course"
+      : isRestaurant
+      ? labels[language].addRestaurant || "Add Restaurant"
       : "";
     const performAction = isJob
       ? performAddJob
@@ -512,6 +1029,8 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
       ? performAddHotel
       : isCourse
       ? performAddCourse
+      : isRestaurant
+      ? performAddRestaurant
       : () => {};
 
     if (Platform.OS === "web") {
@@ -750,7 +1269,7 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
               : ""
           }
           onChangeText={(text) => handleTravelInputChange("admin_rating", text)}
-          placeholder={labels[language].adminRating || "Enter rating (1-5)"}
+          placeholder={labels[language].adminRating || "Enter rating (0-5)"}
           keyboardType="number-pad"
         />
       </View>
@@ -967,8 +1486,98 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
               : ""
           }
           onChangeText={(text) => handleHotelInputChange("admin_rating", text)}
-          placeholder={labels[language].adminRating || "Enter rating (1-5)"}
+          placeholder={labels[language].adminRating || "Enter rating (0-5)"}
           keyboardType="number-pad"
+        />
+      </View>
+    </>
+  );
+
+  // Render restaurant form
+  const renderRestaurantForm = () => (
+    <>
+      <View style={styles.fieldRow}>
+        <Text style={styles.label}>{labels[language].name || "Name"}:</Text>
+        <TextInput
+          style={styles.input}
+          value={newRestaurant.name || ""}
+          onChangeText={(text) => handleRestaurantInputChange("name", text)}
+          placeholder={labels[language].name || "Enter name"}
+        />
+      </View>
+      <View style={styles.fieldRow}>
+        <Text style={styles.label}>
+          {labels[language].location || "Location"}:
+        </Text>
+        <TextInput
+          style={styles.input}
+          value={newRestaurant.location || ""}
+          onChangeText={(text) => handleRestaurantInputChange("location", text)}
+          placeholder={labels[language].location || "Enter location"}
+        />
+      </View>
+      <View style={styles.fieldRow}>
+        <Text style={styles.label}>
+          {labels[language].popular || "Popular Picks"}:
+        </Text>
+        <TextInput
+          style={styles.input}
+          value={newRestaurant.popular_picks || ""}
+          onChangeText={(text) =>
+            handleRestaurantInputChange("popular_picks", text)
+          }
+          placeholder={
+            labels[language].popularPicks ||
+            "Enter popular dishes (comma-separated)"
+          }
+        />
+      </View>
+      <View style={styles.fieldRow}>
+        <Text style={styles.label}>{labels[language].images || "Images"}:</Text>
+        <ScrollView horizontal style={{ flexDirection: "row", maxHeight: 100 }}>
+          {selectedImages.map((uri, index) => (
+            <Image
+              key={index}
+              source={{ uri }}
+              style={[styles.imagePreview, { marginLeft: 10 }]}
+            />
+          ))}
+          <TouchableOpacity
+            style={[
+              styles.imageInput,
+              { marginLeft: selectedImages.length > 0 ? 10 : 0 },
+            ]}
+            onPress={pickImage}
+          >
+            <Ionicons name="add" size={24} color={COLORS.black} />
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
+      <View style={styles.fieldRow}>
+        <Text style={styles.label}>
+          {labels[language].adminRating || "Rating"}:
+        </Text>
+        <TextInput
+          style={styles.input}
+          value={
+            newRestaurant.admin_rating !== undefined
+              ? String(newRestaurant.admin_rating)
+              : ""
+          }
+          onChangeText={(text) =>
+            handleRestaurantInputChange("admin_rating", text)
+          }
+          placeholder={labels[language].adminRating || "Enter rating (0-5)"}
+          keyboardType="number-pad"
+        />
+      </View>
+      <View style={styles.fieldRow}>
+        <Text style={styles.label}>{labels[language].notes || "Notes"}:</Text>
+        <TextInput
+          style={styles.input}
+          value={newRestaurant.notes || ""}
+          onChangeText={(text) => handleRestaurantInputChange("notes", text)}
+          placeholder={labels[language].notes || "Enter notes"}
         />
       </View>
     </>
@@ -1000,7 +1609,9 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
                   : type === "hotel"
                   ? labels[language].addHotel || "Add New Hotel"
                   : type === "course"
-                  ? labels[language].addCourse || "Add New Course" // Add course label
+                  ? labels[language].addCourse || "Add New Course"
+                  : type === "restaurant"
+                  ? labels[language].addRestaurant || "Add New Restaurant"
                   : ""}
               </Text>
               <TouchableOpacity
@@ -1020,7 +1631,9 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
                 : type === "hotel"
                 ? renderHotelForm()
                 : type === "course"
-                ? renderCourseForm() // Add course form
+                ? renderCourseForm()
+                : type === "restaurant"
+                ? renderRestaurantForm()
                 : null}
               <View style={styles.modalButtonContainer}>
                 <TouchableOpacity

@@ -1,20 +1,17 @@
-import { SignedIn, SignedOut, useUser } from "@clerk/clerk-expo";
+// app/(auth)/index.tsx
 import { Link } from "expo-router";
 import { Text, View, Image } from "react-native";
-import { styles } from "@/assets/styles/auth.styles.js";
+import { styles } from "@/assets/styles/auth.styles";
 import { Picker } from "@react-native-picker/picker";
 
 export default function Page() {
-  const { user } = useUser();
-
   return (
-    <View style={styles.container}>
+    <View style={styles.container} onStartShouldSetResponder={() => true}>
       <Text style={styles.title}>Welcome to</Text>
       <Image
         source={require("@/assets/images/YarSuText.png")}
         style={styles.logotext}
       />
-
       <View style={styles.optionContainer}>
         <Text style={styles.optionLabel}>Do you have an account?</Text>
         <Link style={styles.optionButton} href="/(auth)/sign-in">

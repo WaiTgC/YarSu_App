@@ -44,7 +44,7 @@ const AdminTravel = () => {
     travelPosts,
     loadTravelPosts,
     fetchTravelPosts,
-    editTravelPost,
+    updateTravelPost,
     deleteTravelPost,
   } = useTravel();
   const [posts, setPosts] = useState<TravelPostType[]>([]);
@@ -57,8 +57,8 @@ const AdminTravel = () => {
   );
   const [currentIndices, setCurrentIndices] = useState<{
     [key: number]: number;
-  }>({}); // Manage index state
-  const [numColumns, setNumColumns] = useState(3); // Default to 3 columns
+  }>({});
+  const [numColumns, setNumColumns] = useState(3);
   const isInitialMount = useRef(true);
   const carouselRefs = useRef<{ [key: number]: ICarouselInstance | null }>({});
 
@@ -68,9 +68,9 @@ const AdminTravel = () => {
       const width = Dimensions.get("window").width;
       setNumColumns(width >= 768 ? 3 : 1);
     };
-    updateColumns(); // Initial call
+    updateColumns();
     const subscription = Dimensions.addEventListener("change", updateColumns);
-    return () => subscription?.remove(); // Cleanup on unmount
+    return () => subscription?.remove();
   }, []);
 
   // Initial fetch on mount
@@ -86,7 +86,6 @@ const AdminTravel = () => {
   useEffect(() => {
     console.log("AdminTravel: Updating posts with travelPosts", travelPosts);
     setPosts(travelPosts);
-    // Initialize current indices
     const initialIndices = travelPosts.reduce((acc, post) => {
       acc[post.id] = 0;
       return acc;
@@ -124,9 +123,15 @@ const AdminTravel = () => {
     }));
   };
 
-  const handleSave = (id: number) => {
+  const handleSave = async (id: number) => {
     const updatedPost = editedValues[id] || {};
-    const convertedPost: Partial<TravelPostType> = {};
+    const currentPost = posts.find((post) => post.id === id);
+    if (!currentPost) {
+      Alert.alert("Error", "Post not found");
+      return;
+    }
+
+    const convertedPost: TravelPostType = { ...currentPost };
 
     // Convert string inputs to appropriate types
     if (updatedPost.name) {
@@ -138,34 +143,45 @@ const AdminTravel = () => {
     if (updatedPost.highlights !== undefined) {
       convertedPost.highlights = updatedPost.highlights
         .split(",")
-        .map((item) => item.trim());
+        .map((item) => item.trim())
+        .filter((item) => item !== "");
     }
     if (updatedPost.images !== undefined) {
       convertedPost.images = updatedPost.images
         .split(",")
-        .map((item) => item.trim());
+        .map((item) => item.trim())
+        .filter((item) => item !== "");
     }
     if (updatedPost.admin_rating !== undefined) {
       const rating = Number(updatedPost.admin_rating);
-      if (!isNaN(rating)) {
+      if (!isNaN(rating) && rating >= 0 && rating <= 5) {
         convertedPost.admin_rating = rating;
+      } else {
+        Alert.alert("Error", "Rating must be a number between 0 and 5");
+        return;
       }
     }
 
-    if (Object.keys(convertedPost).length > 0) {
-      editTravelPost(id, convertedPost).catch((error) => {
+    if (Object.keys(updatedPost).length > 0) {
+      try {
+        const updated = await updateTravelPost(id, convertedPost);
+        setPosts((prev) =>
+          prev.map((post) => (post.id === id ? updated : post))
+        );
+        setEditMode({ ...editMode, [id]: false });
+        setEditedValues((prev) => {
+          const newValues = { ...prev };
+          delete newValues[id];
+          return newValues;
+        });
+        Alert.alert(
+          "Saved",
+          labels[language].saved || "Changes have been saved!"
+        );
+      } catch (error) {
+        console.error("AdminTravel: Error updating travel post", error);
         Alert.alert("Error", "Failed to update travel post");
-      });
-      setEditMode({ ...editMode, [id]: false });
-      setEditedValues((prev) => {
-        const newValues = { ...prev };
-        delete newValues[id];
-        return newValues;
-      });
-      Alert.alert(
-        "Saved",
-        labels[language].saved || "Changes have been saved!"
-      );
+      }
     } else {
       setEditMode({ ...editMode, [id]: false });
     }
@@ -173,6 +189,7 @@ const AdminTravel = () => {
 
   const handleConfirmDelete = (id: number) => {
     deleteTravelPost(id).catch((error) => {
+      console.error("AdminTravel: Error deleting travel post", error);
       Alert.alert("Error", "Failed to delete travel post");
     });
     setDeleteModalVisible(null);
@@ -449,14 +466,13 @@ const AdminTravel = () => {
       <View style={styles.listContainer}>
         <FlatList
           showsVerticalScrollIndicator={false}
-
-          key={`flatlist-${numColumns}`} // Change key to force re-render
+          key={`flatlist-${numColumns}`}
           data={posts}
           keyExtractor={(item) => item.id.toString()}
           renderItem={renderItem}
           showsHorizontalScrollIndicator={false}
-          numColumns={numColumns} // Dynamically set based on screen width
-          columnWrapperStyle={numColumns > 1 ? styles.row : undefined} // Apply only when numColumns > 1
+          numColumns={numColumns}
+          columnWrapperStyle={numColumns > 1 ? styles.row : undefined}
           ListEmptyComponent={
             <Text style={styles.title}>
               {labels[language].noPosts || "No travel posts available"}

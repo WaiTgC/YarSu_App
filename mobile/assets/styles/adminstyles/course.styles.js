@@ -46,6 +46,7 @@ export const styles = StyleSheet.create({
     width: "45%",
   },
   value: {
+    fontFamily: "SF Pro",
     fontSize: 15,
     fontStyle: "normal",
     fontWeight: "400",
@@ -90,6 +91,7 @@ export const styles = StyleSheet.create({
     letterSpacing: 0.15,
     color: COLORS.white,
     textAlign: "center",
+    margin: "auto",
   },
   modalOverlay: {
     flex: 1,
@@ -126,17 +128,13 @@ export const styles = StyleSheet.create({
     marginHorizontal: 30,
     borderWidth: 1,
     borderColor: COLORS.background,
-  },
-  cancelButton: {
-    backgroundColor: "#ccc",
-  },
-  deleteButton: {
-    backgroundColor: "#FF3B30",
+    width: 74,
+    height: 35,
+    flexshrink: 0,
   },
   modalButtonText: {
-    fontSize: 15,
-    fontStyle: "normal",
-    fontWeight: "400",
+    fontSize: 10,
+    fontWeight: "500",
     fontFamily: "SF Pro Text",
     color: COLORS.black,
   },

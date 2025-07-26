@@ -47,7 +47,12 @@ export const styles = StyleSheet.create({
     marginBottom: 5,
   },
   value: {
-    fontSize: 14,
+    fontFamily: "SF Pro",
+    fontSize: 15,
+    fontStyle: "normal",
+    fontWeight: "400",
+    lineHeight: 20, // Increased from 10 to 20 for better wrapping spacing
+    letterSpacing: 0.15,
     color: COLORS.background,
     marginBottom: 15,
     width: "55%",
@@ -89,6 +94,7 @@ export const styles = StyleSheet.create({
     fontWeight: "400",
     textAlign: "center",
     fontSize: 15,
+    margin: "auto",
   },
   editSection: {
     marginTop: 20,
@@ -142,9 +148,12 @@ export const styles = StyleSheet.create({
     marginHorizontal: 30,
     borderWidth: 1,
     borderColor: COLORS.background,
+    width: 74,
+    height: 35,
+    flexshrink: 0,
   },
   modalButtonText: {
-    fontSize: 15,
+    fontSize: 10,
     fontWeight: "500",
     fontFamily: "SF Pro Text",
     color: COLORS.black,

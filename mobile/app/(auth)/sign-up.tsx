@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+// app/(auth)/sign-up.tsx
 import {
   Text,
   TextInput,
@@ -6,37 +6,34 @@ import {
   View,
   Animated,
 } from "react-native";
-import { useSignUp } from "@clerk/clerk-expo";
-import { Link, useRouter } from "expo-router";
+import { useState, useRef, useEffect } from "react";
+import { router } from "expo-router";
 import { styles } from "@/assets/styles/auth.styles";
 import { COLORS } from "@/constants/colors";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
+import { supabase } from "@/libs/supabase";
+import { getUserRole } from "@/services/authService";
 
 export default function SignUpScreen() {
-  const { isLoaded, signUp, setActive } = useSignUp();
-  const router = useRouter();
-
-  const [emailAddress, setEmailAddress] = useState<string>("");
-  const [password, setPassword] = useState<string>("");
-  const [username, setUsername] = useState<string>("");
-  const [pendingVerification, setPendingVerification] =
-    useState<boolean>(false);
-  const [code, setCode] = useState<string>("");
-  const [error, setError] = useState<string>("");
-
+  const [emailAddress, setEmailAddress] = useState("");
+  const [password, setPassword] = useState("");
+  const [username, setUsername] = useState("");
+  const [pendingVerification, setPendingVerification] = useState(false);
+  const [code, setCode] = useState("");
+  const [error, setError] = useState("");
   const slideAnim = useRef(new Animated.Value(1000)).current;
   const shakeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    const slideUp = Animated.spring(slideAnim, {
+    Animated.spring(slideAnim, {
       toValue: 0,
       friction: 7,
       tension: 40,
       useNativeDriver: true,
-    });
+    }).start();
 
-    const shake = Animated.sequence([
+    Animated.sequence([
       Animated.timing(shakeAnim, {
         toValue: 10,
         duration: 50,
@@ -57,14 +54,10 @@ export default function SignUpScreen() {
         duration: 50,
         useNativeDriver: true,
       }),
-    ]);
-
-    Animated.parallel([slideUp, shake]).start();
-  }, [slideAnim, shakeAnim]);
+    ]).start();
+  }, []);
 
   const onSignUpPress = async () => {
-    if (!isLoaded) return;
-
     if (!emailAddress) {
       setError("Email address is required");
       return;
@@ -91,54 +84,63 @@ export default function SignUpScreen() {
     }
 
     try {
-      await signUp.create({
-        emailAddress,
+      console.log("Attempting sign-up:", emailAddress);
+      const { data, error } = await supabase.auth.signUp({
+        email: emailAddress,
         password,
-        username,
+        options: { data: { username } },
       });
-
-      await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
-      setPendingVerification(true);
+      if (error) throw new Error(error.message);
+      if (data.session) {
+        console.log("Sign-up successful, pending verification");
+        setPendingVerification(true);
+      } else {
+        setError("Sign-up failed. Please try again.");
+      }
     } catch (err: any) {
-      console.error(JSON.stringify(err, null, 2));
-      setError(
-        err.errors?.[0]?.message ||
-          "An error occurred during sign-up. Please check your inputs and try again."
-      );
+      console.error("Sign-up error:", err);
+      setError(err.message || "An error occurred during sign-up.");
     }
   };
 
   const onVerifyPress = async () => {
-    if (!isLoaded) return;
-
     if (!code) {
       setError("Verification code is required");
       return;
     }
 
     try {
-      const signUpAttempt = await signUp.attemptEmailAddressVerification({
-        code,
+      console.log("Verifying OTP for:", emailAddress);
+      const { data, error } = await supabase.auth.verifyOtp({
+        email: emailAddress,
+        token: code,
+        type: "signup",
       });
-
-      if (signUpAttempt.status === "complete") {
-        await setActive({ session: signUpAttempt.createdSessionId });
-        router.replace("/");
+      if (error) throw new Error(error.message);
+      if (data.session) {
+        const user = await getUserRole();
+        console.log(
+          "Verification successful, redirecting to:",
+          user.role === "admin" ? "/(admin)/dashboard" : "/(root)/home"
+        );
+        router.replace(
+          user.role === "admin" ? "/(admin)/dashboard" : "/(root)/home"
+        );
       } else {
-        console.error(JSON.stringify(signUpAttempt, null, 2));
-        setError("Verification failed. Please check the code and try again.");
+        setError("Verification failed. Please check the code.");
       }
     } catch (err: any) {
-      console.error(JSON.stringify(err, null, 2));
-      setError(
-        err.errors?.[0]?.message || "An error occurred during verification"
-      );
+      console.error("Verification error:", err);
+      setError(err.message || "An error occurred during verification.");
     }
   };
 
   if (pendingVerification) {
     return (
-      <View style={styles.verificationContainer}>
+      <View
+        style={styles.verificationContainer}
+        onStartShouldSetResponder={() => true}
+      >
         <Animated.Text
           style={[
             styles.verificationTitle,
@@ -156,7 +158,10 @@ export default function SignUpScreen() {
           >
             <Ionicons name="alert-circle" size={20} color={COLORS.expense} />
             <Text style={styles.errorText}>{error}</Text>
-            <TouchableOpacity onPress={() => setError("")}>
+            <TouchableOpacity
+              onPress={() => setError("")}
+              onStartShouldSetResponder={() => true}
+            >
               <Ionicons name="close" size={20} color={COLORS.textLight} />
             </TouchableOpacity>
           </Animated.View>
@@ -167,7 +172,11 @@ export default function SignUpScreen() {
           placeholder="Enter your verification code"
           onChangeText={(code) => setCode(code)}
         />
-        <TouchableOpacity onPress={onVerifyPress} style={styles.button}>
+        <TouchableOpacity
+          onPress={onVerifyPress}
+          style={styles.button}
+          onStartShouldSetResponder={() => true}
+        >
           <Text style={styles.buttonText}>Verify</Text>
         </TouchableOpacity>
       </View>
@@ -182,7 +191,7 @@ export default function SignUpScreen() {
       enableAutomaticScroll={true}
       extraScrollHeight={60}
     >
-      <View style={styles.containerbg}>
+      <View style={styles.containerbg} onStartShouldSetResponder={() => true}>
         <Animated.Text
           style={[styles.title, { transform: [{ translateX: shakeAnim }] }]}
         >
@@ -197,7 +206,10 @@ export default function SignUpScreen() {
           >
             <Ionicons name="alert-circle" size={20} color={COLORS.expense} />
             <Text style={styles.errorText}>{error}</Text>
-            <TouchableOpacity onPress={() => setError("")}>
+            <TouchableOpacity
+              onPress={() => setError("")}
+              onStartShouldSetResponder={() => true}
+            >
               <Ionicons name="close" size={20} color={COLORS.textLight} />
             </TouchableOpacity>
           </Animated.View>
@@ -214,8 +226,8 @@ export default function SignUpScreen() {
               style={[styles.input, error && styles.errorInput]}
               autoCapitalize="none"
               value={emailAddress}
-              placeholderTextColor="#9A8478"
               placeholder="✉ Enter email"
+              placeholderTextColor="#9A8478"
               onChangeText={(email) => setEmailAddress(email)}
             />
           </View>
@@ -223,9 +235,9 @@ export default function SignUpScreen() {
             <Text style={styles.label}>Username</Text>
             <TextInput
               style={[styles.input, error && styles.errorInput]}
-              placeholderTextColor="#9A8478"
               placeholder="👤 Enter username"
               value={username}
+              placeholderTextColor="#9A8478"
               onChangeText={(username) => setUsername(username)}
               autoCapitalize="none"
             />
@@ -235,20 +247,27 @@ export default function SignUpScreen() {
             <TextInput
               style={[styles.input, error && styles.errorInput]}
               value={password}
-              placeholderTextColor="#9A8478"
               placeholder="🔒 Enter password"
+              placeholderTextColor="#9A8478"
               secureTextEntry={true}
               onChangeText={(password) => setPassword(password)}
             />
           </View>
-          <TouchableOpacity style={styles.button} onPress={onSignUpPress}>
+          <TouchableOpacity
+            style={styles.button}
+            onPress={onSignUpPress}
+            onStartShouldSetResponder={() => true}
+          >
             <Text style={styles.buttonText}>Sign Up</Text>
           </TouchableOpacity>
           <View style={styles.footerContainer}>
             <Text style={styles.footerText}>Already have an account?</Text>
-            <Link href="/sign-in">
+            <TouchableOpacity
+              onPress={() => router.push("/(auth)/sign-in")}
+              onStartShouldSetResponder={() => true}
+            >
               <Text style={styles.linkText}>Sign In</Text>
-            </Link>
+            </TouchableOpacity>
           </View>
         </Animated.View>
       </View>
