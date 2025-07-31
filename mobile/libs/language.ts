@@ -46,7 +46,7 @@ export const labels = {
     adminTravel: "Admin Travel",
     adminCondo: "Admin Condo",
     adminHotels: "Admin Hotels",
-    adminDetails: "Admin Details",
+    adminDetails: "Admin Docmuents",
     adminRestaurants: "Admin Restaurants",
     adminCourses: "Admin Courses",
     adminGeneral: "Admin General",
