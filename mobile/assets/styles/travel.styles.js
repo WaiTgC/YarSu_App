@@ -14,8 +14,8 @@ export const styles = StyleSheet.create({
     borderColor: "rgba(243, 243, 243, 0.6)",
     width: "48%",
     height: 136,
-    borderRadius: 24,
-    marginBottom: 15,
+    borderRadius: 25,
+    marginBottom: 20,
     shadowColor: COLORS.text,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -49,8 +49,8 @@ export const styles = StyleSheet.create({
     fontWeight: "600",
     textAlign: "center",
     textShadowColor: COLORS.background,
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
+    textShadowOffset: { width: 0.5, height: 0.5 },
+    textShadowRadius: 1,
   },
   customModalOverlay: {
     position: "absolute",
@@ -65,21 +65,35 @@ export const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
     height: "100%",
   },
-  modalBody: {
-    flexGrow: 1, // Allow content to grow and fill space
+  customModalContent: {
+    margin: 14,
+    backgroundColor: "rgba(248, 249, 250, 0.80)",
+
+    borderRadius: 24,
   },
-  imageSlider: {
+  modalBody: {
+    flexGrow: 1,
+  },
+  imageContainer: {
     flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 10,
   },
   modalImage: {
-    width: Dimensions.get("window").width,
-    height: 358,
+    width: "100%", // Responsive width
+    height: 260,
+    borderRadius: 24,
+    resizeMode: "cover", // Ensure image fills the space
+    marginTop: 38,
   },
   modalTitle: {
     paddingHorizontal: 10,
     fontSize: 24,
     fontWeight: "500",
-    color: COLORS.text,
+    color: COLORS.black,
+    fontStyle: "normal",
+    letterSpacing: 0.72,
     marginBottom: 10,
     fontFamily: "Avenir Next",
   },
@@ -87,7 +101,9 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 10,
     fontSize: 16,
     fontWeight: "500",
-    color: COLORS.text,
+    color: COLORS.black,
+    fontStyle: "normal",
+    letterSpacing: 0.72,
     marginVertical: 10,
     fontFamily: "Avenir Next",
   },
@@ -107,20 +123,23 @@ export const styles = StyleSheet.create({
   },
   modalText: {
     fontSize: 16,
-    color: COLORS.white,
+    color: COLORS.black,
     fontFamily: "Avenir Next",
     verticalAlign: "center",
     marginLeft: 5,
+    fontStyle: "normal",
+    letterSpacing: 0.72,
   },
   star: {
-    fontSize: 16,
+    fontSize: 20,
     color: COLORS.shadow,
     marginRight: 2,
   },
   indicatorContainer: {
     flexDirection: "row",
     justifyContent: "center",
-    marginVertical: 10,
+    alignItems: "center",
+    margin: "auto",
   },
   indicator: {
     width: 8,
@@ -145,30 +164,86 @@ export const styles = StyleSheet.create({
     fontWeight: "600",
     textAlign: "center",
     fontSize: 14,
+    fontStyle: "normal",
+    letterSpacing: 0.72,
   },
   cardTitle: {
     flexDirection: "column",
     padding: 17,
   },
   cardTitleText1: {
+    fontFamily: "Avenir Next",
+    fontStyle: "normal",
+    fontWeight: "400",
+    letterSpacing: 0.15,
     fontSize: 20,
     fontWeight: "600",
     color: COLORS.white,
-    fontFamily: "Avenir Next",
   },
   cardTitleText2: {
     fontWeight: "600",
     fontSize: 30,
     color: COLORS.text,
     fontFamily: "Avenir Next",
+    fontStyle: "normal",
+    letterSpacing: 0.15,
   },
   detailsContainer: {
     padding: 10,
-    backgroundColor: COLORS.background,
   },
   title: {
     fontSize: 16,
     color: COLORS.text,
     textAlign: "center",
+    fontFamily: "Avenir Next",
+    fontStyle: "normal",
+    letterSpacing: 0.15,
+    fontStyle: "normal",
+    letterSpacing: 0.72,
+  },
+  noteContainer: {
+    backgroundColor: "#FFFFFF",
+    padding: 10,
+    borderRadius: 5,
+    marginVertical: 5,
+    marginLeft: 10,
+  },
+  sliderControls: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 10,
+  },
+  arrowContainer: {
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  arrow: {
+    fontSize: 20,
+    color: COLORS.black,
+    paddingHorizontal: 8,
+  },
+  noteDropdownContainer: {
+    marginVertical: 10,
+  },
+  noteTextContainer: {
+    overflow: "hidden",
+  },
+  collapsedNoteText: {
+    maxHeight: 60, // Limits to ~2-3 lines of text
+  },
+  noteTextBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: COLORS.white,
+    borderWidth: 1,
+    borderColor: COLORS.gray,
+    borderRadius: 5,
+    padding: 10,
+    marginTop: 5,
+    marginLeft: 10,
+  },
+  dropdownArrow: {
+    marginLeft: 10,
   },
 });

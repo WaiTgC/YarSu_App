@@ -26,6 +26,7 @@ export const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
     borderRadius: 24,
+    resizeMode: "cover",
   },
   imageOverlay: {
     position: "absolute",
@@ -49,14 +50,27 @@ export const styles = StyleSheet.create({
   },
   imageSlider: {
     flexDirection: "row",
+    height: 358, // Match Travel modal height
+    borderRadius: 24,
+    resizeMode: "cover",
+  },
+  imageContainer: {
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: 10,
+    flexDirection: "row",
   },
   modalImage: {
-    paddingHorizontal: 16,
-    paddingVertical: 21,
-    width: Dimensions.get("window").width,
-    height: 260,
-    borderRadius: 15,
+    width: "100%",
+    height: "100%",
+    borderRadius: 24,
+    resizeMode: "cover",
+  },
+  checkImage: {
+    width: 16,
+    height: 16,
+    marginRight: 5,
   },
   modalTitle: {
     fontSize: 24,
@@ -109,15 +123,12 @@ export const styles = StyleSheet.create({
     fontWeight: "400",
     marginBottom: 5,
   },
-  star: {
-    fontSize: 16,
-    color: COLORS.shadow,
-    marginRight: 2,
-  },
   indicatorContainer: {
     flexDirection: "row",
     justifyContent: "center",
-    marginBottom: 15,
+    alignItems: "center",
+
+    marginHorizontal: "auto",
   },
   indicator: {
     width: 8,
@@ -134,7 +145,6 @@ export const styles = StyleSheet.create({
     backgroundColor: COLORS.white,
     borderRadius: 10,
     alignItems: "center",
-
     marginHorizontal: 20,
   },
   buttonText: {
@@ -184,5 +194,23 @@ export const styles = StyleSheet.create({
   modalBody: {
     flexGrow: 1,
     padding: 10,
+  },
+  arrowContainer: {
+    zIndex: 1,
+    padding: 10,
+    fontSize: 20,
+    color: COLORS.black,
+    paddingHorizontal: 8,
+  },
+  arrow: {
+    fontSize: 24,
+    color: COLORS.white,
+    fontWeight: "bold",
+  },
+  sliderControls: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 10,
   },
 });

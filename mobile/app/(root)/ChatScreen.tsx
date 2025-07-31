@@ -3,12 +3,13 @@ import {
   View,
   Text,
   TextInput,
-  Button,
   FlatList,
   StyleSheet,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  TouchableOpacity,
+  Image,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { supabase } from "@/libs/supabase";
@@ -16,6 +17,7 @@ import { getUserRole } from "@/services/authService";
 import { getItem } from "@/utils/storage";
 import { api } from "@/libs/api";
 import { COLORS } from "@/constants/colors";
+import * as ImagePicker from "expo-image-picker"; // For media selection
 
 interface Message {
   id: string;
@@ -24,6 +26,7 @@ interface Message {
   created_at?: string;
   sender_username?: string;
   sender_email?: string;
+  media_url?: string; // Add for media support
 }
 
 export default function ChatScreen() {
@@ -189,14 +192,76 @@ export default function ChatScreen() {
     setLoading(false);
   };
 
+  const pickImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      alert("Sorry, we need camera roll permissions to make this work!");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.All,
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 1,
+    });
+    if (!result.canceled && result.assets[0].uri) {
+      await sendMedia(result.assets[0].uri, "image");
+    }
+  };
+
+  const takePhoto = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== "granted") {
+      alert("Sorry, we need camera permissions to make this work!");
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 1,
+    });
+    if (!result.canceled && result.assets[0].uri) {
+      await sendMedia(result.assets[0].uri, "image");
+    }
+  };
+
+  const sendMedia = async (uri: string, type: "image" | "video") => {
+    if (!chatId || !isSignedIn || !user?.id) return;
+    setSending(true);
+    try {
+      const fileName = `${Date.now()}_${user.id}.${
+        type === "image" ? "jpg" : "mp4"
+      }`;
+      const formData = new FormData();
+      formData.append("file", {
+        uri,
+        name: fileName,
+        type: type === "image" ? "image/jpeg" : "video/mp4",
+      } as any);
+      formData.append("chat_id", chatId as string);
+      formData.append("sender_id", user.id);
+      formData.append("type", type);
+
+      const res = await api.post("/messages/media", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      console.log("ChatScreen - Send media response:", res.data);
+      fetchMessages();
+    } catch (err) {
+      console.error("ChatScreen - Error sending media:", err);
+    }
+    setSending(false);
+  };
+
   const sendMessage = async () => {
     if (!input.trim() || !chatId || !isSignedIn) return;
     setSending(true);
     try {
       await api.post("/messages", {
-        chat_id: chatId,
+        chat_id: chatId as string,
         message: input,
         type: "text",
+        sender_id: user?.id,
       });
       setInput("");
       fetchMessages();
@@ -219,6 +284,9 @@ export default function ChatScreen() {
           : item.sender_username || item.sender_email?.split("@")[0] || "Admin"}
       </Text>
       <Text>{item.message}</Text>
+      {item.media_url && (
+        <Image source={{ uri: item.media_url }} style={styles.mediaPreview} />
+      )}
     </View>
   );
 
@@ -265,18 +333,33 @@ export default function ChatScreen() {
         )}
       </View>
       <View style={styles.inputRowFixed}>
+        <TouchableOpacity onPress={pickImage} disabled={sending}>
+          <Image
+            source={require("@/assets/images/gallery.png")} // Replace with your gallery icon
+            style={styles.iconButton}
+          />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={takePhoto} disabled={sending}>
+          <Image
+            source={require("@/assets/images/camera.png")} // Replace with your camera icon
+            style={styles.iconButton}
+          />
+        </TouchableOpacity>
         <TextInput
           value={input}
           onChangeText={setInput}
           style={styles.input}
           placeholder="Type a message..."
         />
-        <Button
-          title={sending ? "Sending..." : "Send"}
+        <TouchableOpacity
           onPress={sendMessage}
           disabled={sending || !isSignedIn}
-          color={COLORS.primary}
-        />
+        >
+          <Image
+            source={require("@/assets/images/send.png")}
+            style={styles.iconButton}
+          />
+        </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
   );
@@ -306,7 +389,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: COLORS.background,
+    backgroundColor: COLORS.lightgray,
     padding: 10,
     paddingBottom: 20,
     borderTopWidth: 1,
@@ -341,5 +424,17 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: COLORS.textSecondary,
     marginBottom: 2,
+  },
+  mediaPreview: {
+    width: 100,
+    height: 100,
+    borderRadius: 10,
+    marginTop: 5,
+  },
+  iconButton: {
+    width: 30,
+    height: 30,
+    marginHorizontal: 5,
+    tintColor: COLORS.black,
   },
 });

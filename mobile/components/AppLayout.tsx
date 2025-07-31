@@ -1,5 +1,5 @@
 import { Redirect, useRouter, usePathname } from "expo-router";
-import { Text, View, Image, TouchableOpacity } from "react-native";
+import { Text, View, Image, TouchableOpacity, Platform } from "react-native";
 import { useState, useEffect } from "react";
 import { styles } from "@/assets/styles/home.styles";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -7,8 +7,8 @@ import AppSidebar from "@/components/AppSidebar";
 import { COLORS } from "@/constants/colors";
 import { supabase } from "@/libs/supabase";
 import { getUserRole, getAuthToken } from "@/services/authService";
-import { SignOutButton } from "@/components/SignOutButton";
 import ChatButton from "./ChatButton";
+import { useLanguage } from "@/context/LanguageContext";
 
 interface AppLayoutProps {
   children?: React.ReactNode;
@@ -25,6 +25,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
     username?: string;
   } | null>(null);
   const [isSignedIn, setIsSignedIn] = useState<boolean | null>(null);
+  const { language, setLanguage } = useLanguage();
 
   const checkSessionWithRetry = async (retries = 3, delay = 500) => {
     for (let attempt = 1; attempt <= retries; attempt++) {
@@ -167,6 +168,11 @@ export default function AppLayout({ children }: AppLayoutProps) {
     checkSessionWithRetry();
   }, []);
 
+  useEffect(() => {
+    console.log(`AppLayout - Current route: ${pathname}`);
+    console.log(`AppLayout - Current language: ${language}`);
+  }, [pathname, language]);
+
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
   };
@@ -174,6 +180,16 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const navigateTo = (route: string) => {
     router.push(route);
     setSidebarOpen(false);
+  };
+
+  const setLanguageToEnglish = () => {
+    console.log("AppLayout - Setting language to English");
+    setLanguage("en");
+  };
+
+  const setLanguageToMyanmar = () => {
+    console.log("AppLayout - Setting language to Myanmar");
+    setLanguage("my");
   };
 
   if (isSignedIn === null) {
@@ -199,12 +215,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 >
                   <Ionicons name="menu" size={24} color={COLORS.text} />
                 </TouchableOpacity>
-                {/* <View style={styles.welcomeContainer}>
-                  <Text style={styles.welcomeText}>Welcome,</Text>
-                  <Text style={styles.usernameText}>
-                    {user.username || user.email || "User"}
-                  </Text>
-                </View> */}
               </View>
               <View style={styles.headerCenter}>
                 <Image
@@ -214,18 +224,37 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 />
               </View>
               <View style={styles.headerRight}>
-                {/* <TouchableOpacity
-                  style={styles.tab}
-                  onPress={() => navigateTo("/(root)/chat")}
-                >
-                  <Ionicons
-                    name="chatbubbles-outline"
-                    size={40}
-                    color={COLORS.shadow}
-                  />
-                  <Text style={styles.tabText}>Chat</Text>
-                </TouchableOpacity> */}
-                <ChatButton chatId={user.id} />
+                {pathname === "/home" ? (
+                  <ChatButton chatId={user.id} />
+                ) : (
+                  <View style={{ flexDirection: "row", alignItems: "center" }}>
+                    <TouchableOpacity
+                      onPress={setLanguageToMyanmar}
+                      {...(Platform.OS !== "web"
+                        ? { onStartShouldSetResponder: () => true }
+                        : {})}
+                    >
+                      <Image
+                        source={require("@/assets/images/MY.png")}
+                        style={styles.logo}
+                        resizeMode="contain"
+                      />
+                    </TouchableOpacity>
+                    <View style={styles.separator1} />
+                    <TouchableOpacity
+                      onPress={setLanguageToEnglish}
+                      {...(Platform.OS !== "web"
+                        ? { onStartShouldSetResponder: () => true }
+                        : {})}
+                    >
+                      <Image
+                        source={require("@/assets/images/US.png")}
+                        style={styles.logo}
+                        resizeMode="contain"
+                      />
+                    </TouchableOpacity>
+                  </View>
+                )}
               </View>
             </View>
             <View style={styles.contentContainer}>{children}</View>

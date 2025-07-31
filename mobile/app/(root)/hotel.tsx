@@ -13,8 +13,8 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { useHotels } from "@/hooks/useHotels";
 import { styles } from "@/assets/styles/hotel.styles";
-import { formatDate } from "@/libs/utils";
-import { COLORS } from "@/constants/colors";
+import { useLanguage } from "@/context/LanguageContext";
+import { labels } from "@/libs/language";
 
 type HotelType = {
   id: number;
@@ -40,7 +40,7 @@ const Hotel = () => {
     loadHotels,
     setShowDetails,
   } = useHotels();
-
+  const { language } = useLanguage();
   const slideAnimDetails = useRef(
     new Animated.Value(Dimensions.get("window").height)
   ).current;
@@ -103,6 +103,27 @@ const Hotel = () => {
     });
   };
 
+  const handlePrev = () => {
+    const prevIndex =
+      (currentImageIndex - 1 + (selectedHotel?.images.length || 1)) %
+      (selectedHotel?.images.length || 1);
+    setCurrentImageIndex(prevIndex);
+    scrollRef.current?.scrollTo({
+      x: prevIndex * Dimensions.get("window").width,
+      animated: true,
+    });
+  };
+
+  const handleNext = () => {
+    const nextIndex =
+      (currentImageIndex + 1) % (selectedHotel?.images.length || 1);
+    setCurrentImageIndex(nextIndex);
+    scrollRef.current?.scrollTo({
+      x: nextIndex * Dimensions.get("window").width,
+      animated: true,
+    });
+  };
+
   const openMap = (address: string) => {
     const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
       address
@@ -116,8 +137,12 @@ const Hotel = () => {
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       <View>
         <View style={styles.cardTitle}>
-          <Text style={styles.cardTitleText1}>Discover Your</Text>
-          <Text style={styles.cardTitleText2}>Perfect Stay</Text>
+          <Text style={styles.cardTitleText1}>
+            {labels[language].discoverYour || "Discover Your"}
+          </Text>
+          <Text style={styles.cardTitleText2}>
+            {labels[language].perfectStay || "Perfect Stay"}
+          </Text>
         </View>
         {hotels.length === 0 ? (
           <Text style={styles.title}>Loading hotels...</Text>
@@ -145,56 +170,93 @@ const Hotel = () => {
               style={styles.modalBody}
               showsVerticalScrollIndicator={false}
             >
-              <Animated.ScrollView
-                ref={scrollRef}
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={styles.imageSlider}
-                pagingEnabled
-                scrollEventThrottle={16}
-                onScroll={Animated.event(
-                  [{ nativeEvent: { contentOffset: { x: scrollX } } }],
-                  { useNativeDriver: false }
-                )}
-                onScrollEndDrag={(event) =>
-                  setCurrentImageIndex(
-                    Math.round(
-                      event.nativeEvent.contentOffset.x /
-                        Dimensions.get("window").width
+              <View style={styles.imageContainer}>
+                <TouchableOpacity
+                  style={styles.arrowContainer}
+                  onPress={handlePrev}
+                >
+                  <Text style={styles.arrow}>{"<"}</Text>
+                </TouchableOpacity>
+                <Animated.ScrollView
+                  ref={scrollRef}
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={[
+                    styles.imageSlider,
+                    { width: Dimensions.get("window").width },
+                  ]}
+                  pagingEnabled
+                  scrollEventThrottle={16}
+                  onScroll={Animated.event(
+                    [{ nativeEvent: { contentOffset: { x: scrollX } } }],
+                    { useNativeDriver: false }
+                  )}
+                  onScrollEndDrag={(event) =>
+                    setCurrentImageIndex(
+                      Math.round(
+                        event.nativeEvent.contentOffset.x /
+                          Dimensions.get("window").width
+                      )
                     )
-                  )
-                }
-                onMomentumScrollEnd={(event) =>
-                  setCurrentImageIndex(
-                    Math.round(
-                      event.nativeEvent.contentOffset.x /
-                        Dimensions.get("window").width
+                  }
+                  onMomentumScrollEnd={(event) =>
+                    setCurrentImageIndex(
+                      Math.round(
+                        event.nativeEvent.contentOffset.x /
+                          Dimensions.get("window").width
+                      )
                     )
-                  )
-                }
-              >
-                {selectedHotel.images.map((image, index) => (
-                  <Image
-                    key={index}
-                    source={{ uri: image }}
-                    style={styles.modalImage}
-                    onError={(error) =>
-                      console.error("Modal image load error", error.nativeEvent)
-                    }
-                  />
-                ))}
-              </Animated.ScrollView>
-              <View style={styles.indicatorContainer}>
-                {selectedHotel.images.map((_, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    onPress={() => handleIndicatorPress(index)}
-                    style={[
-                      styles.indicator,
-                      currentImageIndex === index && styles.activeIndicator,
-                    ]}
-                  />
-                ))}
+                  }
+                >
+                  {selectedHotel.images.map((image, index) => (
+                    <View
+                      key={index}
+                      style={{
+                        width: Dimensions.get("window").width - 90,
+                        height: 358,
+                        borderRadius: 20,
+                        overflow: "hidden",
+                        padding: 10,
+                      }}
+                    >
+                      <Image
+                        source={{ uri: image }}
+                        style={styles.modalImage}
+                        onError={(error) =>
+                          console.error(
+                            "Modal image load error",
+                            error.nativeEvent
+                          )
+                        }
+                      />
+                    </View>
+                  ))}
+                </Animated.ScrollView>
+                <TouchableOpacity
+                  style={styles.arrowContainer}
+                  onPress={handleNext}
+                >
+                  <Text style={styles.arrow}>{">"}</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={styles.sliderControls}>
+                <FlatList
+                  horizontal
+                  contentContainerStyle={styles.indicatorContainer}
+                  data={selectedHotel.images}
+                  keyExtractor={(item, index) => index.toString()}
+                  renderItem={({ index }) => (
+                    <TouchableOpacity
+                      key={index}
+                      onPress={() => handleIndicatorPress(index)}
+                      style={[
+                        styles.indicator,
+                        currentImageIndex === index && styles.activeIndicator,
+                      ]}
+                    />
+                  )}
+                  showsHorizontalScrollIndicator={false}
+                />
               </View>
               <View style={styles.detailsContainer}>
                 <View style={styles.modalTitleContainer}>
@@ -202,7 +264,9 @@ const Hotel = () => {
                   <TouchableOpacity
                     onPress={() => openMap(selectedHotel.address)}
                   >
-                    <Text style={styles.modalTextmap}>View Map</Text>
+                    <Text style={styles.modalTextmap}>
+                      {labels[language].viewMap || "View Map"}
+                    </Text>
                   </TouchableOpacity>
                 </View>
                 <Text style={styles.modalHighlightTitle}>
@@ -214,12 +278,14 @@ const Hotel = () => {
                   night
                 </Text>
                 <View style={styles.separator} />
-                <Text style={styles.modalHighlightTitle}>Stay Include:</Text>
+                <Text style={styles.modalHighlightTitle}>
+                  {labels[language].stayInclude || "Stay Include:"}
+                </Text>
                 {selectedHotel.breakfast && (
                   <View style={styles.highlightItem}>
                     <Image
                       source={require("@/assets/images/check.png")}
-                      style={{ width: 16, height: 16 }}
+                      style={styles.checkImage}
                     />
                     <Text style={styles.modalText}>
                       Breakfast: {selectedHotel.breakfast ? "Yes" : "No"}
@@ -230,7 +296,7 @@ const Hotel = () => {
                   <View style={styles.highlightItem}>
                     <Image
                       source={require("@/assets/images/check.png")}
-                      style={{ width: 16, height: 16 }}
+                      style={styles.checkImage}
                     />
                     <Text style={styles.modalText}>
                       Free Wi-Fi: {selectedHotel.free_wifi ? "Yes" : "No"}
@@ -250,7 +316,9 @@ const Hotel = () => {
                   </View>
                 )}
                 <View style={styles.separator} />
-                <Text style={styles.modalHighlightTitle}>🌆 Nearby Places</Text>
+                <Text style={styles.modalHighlightTitle}>
+                  {labels[language].nearbyPlaces || "Nearby Places"}
+                </Text>
                 {selectedHotel.nearby_famous_places.map((place, index) => (
                   <View key={index} style={styles.highlightItem}>
                     <LinearGradient
@@ -263,7 +331,8 @@ const Hotel = () => {
                   </View>
                 ))}
                 <Text style={styles.modalHighlightTitle}>
-                  Notes: {selectedHotel.notes || "N/A"}
+                  {labels[language].notes || "Notes"}:{" "}
+                  {selectedHotel.notes || "N/A"}
                 </Text>
               </View>
               <TouchableOpacity

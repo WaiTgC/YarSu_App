@@ -1,0 +1,69 @@
+import { StyleSheet } from "react-native";
+import { COLORS } from "@/constants/colors";
+
+export const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  card: {
+    width: 550,
+    height: 330,
+    backgroundColor: COLORS.background,
+    borderWidth: 1,
+    borderColor: COLORS.white,
+    borderRadius: 15,
+    padding: 20,
+    alignItems: "center",
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: COLORS.text,
+    marginBottom: 20,
+  },
+  fieldRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 15,
+    width: "100%",
+  },
+  label: {
+    width: 150,
+    fontSize: 16,
+    color: COLORS.text,
+  },
+  inputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    width: 308,
+    height: 40,
+    borderWidth: 1,
+    borderColor: COLORS.gray,
+    borderRadius: 10,
+  },
+  input: {
+    flex: 1,
+    paddingHorizontal: 10,
+    color: COLORS.text,
+  },
+  eyeButton: {
+    padding: 10,
+  },
+  saveButton: {
+    width: 550,
+    height: 40,
+    backgroundColor: COLORS.primary,
+    borderRadius: 15,
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 20,
+  },
+  saveButtonText: {
+    color: COLORS.white,
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+});

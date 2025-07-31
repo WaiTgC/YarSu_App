@@ -17,7 +17,12 @@ export const useTravel = () => {
         throw new Error(`HTTP error! Status: ${response.status}`);
       }
       const data = await response.json();
-      setTravelPosts(data);
+      // Sanitize notes to avoid null
+      const sanitizedData = data.map((post) => ({
+        ...post,
+        notes: post.notes ?? "",
+      }));
+      setTravelPosts(sanitizedData);
     } catch (error) {
       console.error("Error fetching travel posts:", error);
     }
@@ -30,7 +35,8 @@ export const useTravel = () => {
         throw new Error(`HTTP error! Status: ${response.status}`);
       }
       const data = await response.json();
-      setSelectedPost(data);
+      // Sanitize notes
+      setSelectedPost({ ...data, notes: data.notes ?? "" });
       setShowDetails(true);
     } catch (error) {
       console.error("Error fetching travel post details:", error);
@@ -43,23 +49,98 @@ export const useTravel = () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(AUTH_TOKEN && { Authorization: `Bearer ${AUTH_TOKEN}` }), // Add token if required
+          ...(AUTH_TOKEN && { Authorization: `Bearer ${AUTH_TOKEN}` }),
         },
         body: JSON.stringify(postData),
       });
       if (!response.ok) {
-        const errorText = await response.text(); // Log response body for details
+        const errorText = await response.text();
         console.error("Server response:", errorText);
         throw new Error(`HTTP error! Status: ${response.status}`);
       }
       const newPost = await response.json();
-      setTravelPosts((prevPosts) => [...prevPosts, newPost]);
-      return newPost;
+      // Sanitize notes
+      const sanitizedPost = { ...newPost, notes: newPost.notes ?? "" };
+      setTravelPosts((prevPosts) => [...prevPosts, sanitizedPost]);
+      return sanitizedPost;
     } catch (error) {
       console.error("Error creating travel post:", error);
       throw error;
     }
   }, []);
+
+  const createTravelPostWithNotes = useCallback(async (postData) => {
+    try {
+      const defaultPost = {
+        id: 0, // Will be set by the server
+        name: "",
+        place: "",
+        highlights: [],
+        images: [],
+        admin_rating: 0,
+        created_at: new Date().toISOString(),
+        notes: "",
+        ...postData,
+      };
+
+      const response = await fetch(`${API_URL}/travel-posts`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(AUTH_TOKEN && { Authorization: `Bearer ${AUTH_TOKEN}` }),
+        },
+        body: JSON.stringify(defaultPost),
+      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Server response:", errorText);
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+      const newPost = await response.json();
+      const sanitizedPost = { ...newPost, notes: newPost.notes ?? "" };
+      setTravelPosts((prevPosts) => [...prevPosts, sanitizedPost]);
+      return sanitizedPost;
+    } catch (error) {
+      console.error("Error creating travel post with notes:", error);
+      throw error;
+    }
+  }, []);
+
+  const createNote = useCallback(
+    async (postId, notes) => {
+      try {
+        const response = await fetch(`${API_URL}/travel-posts/${postId}`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            ...(AUTH_TOKEN && { Authorization: `Bearer ${AUTH_TOKEN}` }),
+          },
+          body: JSON.stringify({ notes }),
+        });
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error("Server response:", errorText);
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        const updatedPost = await response.json();
+        const sanitizedPost = {
+          ...updatedPost,
+          notes: updatedPost.notes ?? "",
+        };
+        setTravelPosts((prevPosts) =>
+          prevPosts.map((post) => (post.id === postId ? sanitizedPost : post))
+        );
+        if (selectedPost?.id === postId) {
+          setSelectedPost(sanitizedPost);
+        }
+        return sanitizedPost;
+      } catch (error) {
+        console.error("Error creating notes for travel post:", error);
+        throw error;
+      }
+    },
+    [selectedPost]
+  );
 
   const updateTravelPost = useCallback(
     async (id, postData) => {
@@ -73,16 +154,22 @@ export const useTravel = () => {
           body: JSON.stringify(postData),
         });
         if (!response.ok) {
+          const errorText = await response.text();
+          console.error("Server response:", errorText);
           throw new Error(`HTTP error! Status: ${response.status}`);
         }
         const updatedPost = await response.json();
+        const sanitizedPost = {
+          ...updatedPost,
+          notes: updatedPost.notes ?? "",
+        };
         setTravelPosts((prevPosts) =>
-          prevPosts.map((post) => (post.id === id ? updatedPost : post))
+          prevPosts.map((post) => (post.id === id ? sanitizedPost : post))
         );
         if (selectedPost?.id === id) {
-          setSelectedPost(updatedPost);
+          setSelectedPost(sanitizedPost);
         }
-        return updatedPost;
+        return sanitizedPost;
       } catch (error) {
         console.error("Error updating travel post:", error);
         throw error;
@@ -101,6 +188,8 @@ export const useTravel = () => {
           },
         });
         if (!response.ok) {
+          const errorText = await response.text();
+          console.error("Server response:", errorText);
           throw new Error(`HTTP error! Status: ${response.status}`);
         }
         setTravelPosts((prevPosts) =>
@@ -136,6 +225,8 @@ export const useTravel = () => {
     fetchTravelPosts,
     fetchTravelPostDetails,
     addTravelPost,
+    createTravelPostWithNotes,
+    createNote,
     updateTravelPost,
     deleteTravelPost,
     handleMoreInfo,

@@ -17,7 +17,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import { labels } from "@/libs/language";
 import Carousel, { ICarouselInstance } from "react-native-reanimated-carousel";
 
-// Define the Condo type
+// Define the Condo type with 'notes'
 type CondoType = {
   id: number;
   name: string;
@@ -29,9 +29,10 @@ type CondoType = {
   gym: boolean;
   garden: boolean;
   co_working_space: boolean;
+  notes?: string;
 };
 
-// Define type for edited values
+// Define type for edited values with 'notes'
 type EditedCondoType = Partial<{
   name: string;
   address: string;
@@ -42,6 +43,7 @@ type EditedCondoType = Partial<{
   gym: string | boolean;
   garden: string | boolean;
   co_working_space: string | boolean;
+  notes: string;
 }>;
 
 const AdminCondo = () => {
@@ -165,6 +167,10 @@ const AdminCondo = () => {
     }
     if (updatedCondo.co_working_space !== undefined) {
       convertedCondo.co_working_space = updatedCondo.co_working_space === "Yes";
+    }
+    if (updatedCondo.notes) {
+      // Added notes handling
+      convertedCondo.notes = updatedCondo.notes;
     }
 
     if (Object.keys(convertedCondo).length > 0) {
@@ -403,6 +409,19 @@ const AdminCondo = () => {
               </View>
             )}
           </View>
+        </View>
+        <View style={styles.fieldRow}>
+          <Text style={styles.label}>{labels[language].notes || "Notes"}:</Text>
+          {editMode[item.id] ? (
+            <TextInput
+              style={styles.input}
+              value={editedValues[item.id]?.notes || item.notes || ""}
+              onChangeText={(text) => handleEdit(item.id, "notes", text)}
+              placeholder="Enter notes"
+            />
+          ) : (
+            <Text style={styles.value}>{item.notes || "N/A"}</Text>
+          )}
         </View>
       </View>
       <View style={styles.bottomContainer}>

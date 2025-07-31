@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/libs/supabase";
 import { router } from "expo-router";
 import { getUserRole } from "@/services/authService";
+import { UserProvider } from "@/context/UserContext";
 
 export default function ALayout() {
   const [isCheckingSession, setIsCheckingSession] = useState(true);
@@ -37,10 +38,12 @@ export default function ALayout() {
   }
 
   return (
-    <SafeScreen>
-      <AdminLayout>
-        <Stack screenOptions={{ headerShown: false }} />
-      </AdminLayout>
-    </SafeScreen>
+    <UserProvider>
+      <SafeScreen>
+        <AdminLayout>
+          <Stack screenOptions={{ headerShown: false }} />
+        </AdminLayout>
+      </SafeScreen>
+    </UserProvider>
   );
 }

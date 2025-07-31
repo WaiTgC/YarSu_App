@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { View, Text, ActivityIndicator } from "react-native";
 import { styles } from "@/assets/styles/auth.styles";
 import { StatusBar } from "expo-status-bar";
+import { LanguageProvider } from "@/context/LanguageContext";
 
 export default function Layout() {
   const [isCheckingSession, setIsCheckingSession] = useState<boolean>(true);
@@ -49,8 +50,10 @@ export default function Layout() {
   }
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="index" />
-    </Stack>
+    <LanguageProvider>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="index" />
+      </Stack>
+    </LanguageProvider>
   );
 }

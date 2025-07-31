@@ -22,6 +22,8 @@ const YarSuTheme = {
   income: "#2ECC71",
   card: "#FFFFFF",
   shadow: "#000000",
+  black: "#000000",
+  lightgray: "#F3F3F3",
 };
 
 const forestTheme = {

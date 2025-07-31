@@ -12,7 +12,7 @@ export const styles = StyleSheet.create({
   },
   card: {
     width: "auto",
-    height: 556,
+    height: "auto",
     paddingVertical: 20,
     paddingHorizontal: 15,
     backgroundColor: "#F3F3F3",
@@ -108,6 +108,7 @@ export const styles = StyleSheet.create({
     color: COLORS.background,
     marginBottom: 15,
     width: "55%",
+    height: 20,
   },
   input: {
     width: "55%",
@@ -215,5 +216,28 @@ export const styles = StyleSheet.create({
   },
   activeIndicator: {
     backgroundColor: "#000",
+  },
+  noteDropdownContainer: {
+    marginVertical: 10,
+  },
+  noteTextContainer: {
+    overflow: "hidden",
+    width: "70%",
+  },
+  collapsedNoteText: {
+    maxHeight: 60, // Limits to ~2-3 lines of text
+  },
+  noteTextBox: {
+    width: "55%",
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: COLORS.white,
+    borderWidth: 1,
+    borderColor: COLORS.gray,
+    borderRadius: 5,
+    padding: 10,
+  },
+  dropdownArrow: {
+    marginLeft: 10,
   },
 });

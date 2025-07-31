@@ -107,4 +107,10 @@ export const styles = StyleSheet.create({
     backgroundColor: COLORS.border,
     marginVertical: 8,
   },
+  avatarImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    resizeMode: "cover",
+  },
 });

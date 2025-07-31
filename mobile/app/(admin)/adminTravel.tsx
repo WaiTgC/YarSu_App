@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   View,
   Text,
@@ -10,12 +10,14 @@ import {
   Image,
   Dimensions,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { styles } from "@/assets/styles/adminstyles/travel.styles";
 import { useTravel } from "@/hooks/useTravel";
 import { useLanguage } from "@/context/LanguageContext";
 import { labels } from "@/libs/language";
 import Carousel, { ICarouselInstance } from "react-native-reanimated-carousel";
+import { COLORS } from "@/constants/colors";
 
 // Define the TravelPost type
 type TravelPostType = {
@@ -26,6 +28,7 @@ type TravelPostType = {
   images: string[];
   admin_rating: number;
   created_at: string;
+  notes?: string; // Changed from 'note' to 'notes' to match backend
 };
 
 // Define type for edited values
@@ -35,6 +38,7 @@ type EditedTravelPostType = Partial<{
   highlights: string;
   images: string;
   admin_rating: string | number;
+  notes: string; // Changed from 'note' to 'notes'
 }>;
 
 const AdminTravel = () => {
@@ -57,6 +61,9 @@ const AdminTravel = () => {
   );
   const [currentIndices, setCurrentIndices] = useState<{
     [key: number]: number;
+  }>({});
+  const [isNoteExpanded, setIsNoteExpanded] = useState<{
+    [key: number]: boolean;
   }>({});
   const [numColumns, setNumColumns] = useState(3);
   const isInitialMount = useRef(true);
@@ -91,6 +98,11 @@ const AdminTravel = () => {
       return acc;
     }, {} as { [key: number]: number });
     setCurrentIndices(initialIndices);
+    const initialNoteExpanded = travelPosts.reduce((acc, post) => {
+      acc[post.id] = false;
+      return acc;
+    }, {} as { [key: number]: boolean });
+    setIsNoteExpanded(initialNoteExpanded);
   }, [travelPosts]);
 
   // Auto-slide images every 5 seconds
@@ -161,6 +173,9 @@ const AdminTravel = () => {
         return;
       }
     }
+    if (updatedPost.notes !== undefined) {
+      convertedPost.notes = updatedPost.notes || undefined; // Changed from 'note' to 'notes'
+    }
 
     if (Object.keys(updatedPost).length > 0) {
       try {
@@ -169,6 +184,7 @@ const AdminTravel = () => {
           prev.map((post) => (post.id === id ? updated : post))
         );
         setEditMode({ ...editMode, [id]: false });
+        setIsNoteExpanded({ ...isNoteExpanded, [id]: false });
         setEditedValues((prev) => {
           const newValues = { ...prev };
           delete newValues[id];
@@ -184,6 +200,7 @@ const AdminTravel = () => {
       }
     } else {
       setEditMode({ ...editMode, [id]: false });
+      setIsNoteExpanded({ ...isNoteExpanded, [id]: false });
     }
   };
 
@@ -194,6 +211,11 @@ const AdminTravel = () => {
     });
     setDeleteModalVisible(null);
     setPosts(posts.filter((post) => post.id !== id));
+    setIsNoteExpanded((prev) => {
+      const newExpanded = { ...prev };
+      delete newExpanded[id];
+      return newExpanded;
+    });
     Alert.alert(
       "Deleted",
       labels[language].deleted || "Travel post has been deleted!"
@@ -395,6 +417,46 @@ const AdminTravel = () => {
             </View>
           )}
         </View>
+        <View style={styles.fieldRow}>
+          <Text style={styles.label}>{labels[language].notes || "Notes"}:</Text>
+          {editMode[item.id] ? (
+            <TextInput
+              style={[styles.input, styles.noteInput]}
+              value={editedValues[item.id]?.notes || item.notes || ""}
+              onChangeText={(text) => handleEdit(item.id, "notes", text)}
+              placeholder="Enter notes"
+              multiline
+              numberOfLines={3}
+            />
+          ) : (
+            <TouchableOpacity
+              style={styles.noteTextBox}
+              onPress={() =>
+                setIsNoteExpanded((prev) => ({
+                  ...prev,
+                  [item.id]: !prev[item.id],
+                }))
+              }
+            >
+              <View
+                style={[
+                  styles.noteTextContainer,
+                  !isNoteExpanded[item.id] && styles.collapsedNoteText,
+                ]}
+              >
+                <Text style={styles.value}>
+                  {item.notes || "No additional notes available"}
+                </Text>
+              </View>
+              <Ionicons
+                name={isNoteExpanded[item.id] ? "chevron-up" : "chevron-down"}
+                size={20}
+                color={COLORS.black}
+                style={styles.dropdownArrow}
+              />
+            </TouchableOpacity>
+          )}
+        </View>
         <View style={styles.buttonContainer}>
           {editMode[item.id] ? (
             <TouchableOpacity
@@ -408,7 +470,10 @@ const AdminTravel = () => {
           ) : (
             <TouchableOpacity
               style={styles.button}
-              onPress={() => setEditMode({ ...editMode, [item.id]: true })}
+              onPress={() => {
+                setEditMode({ ...editMode, [item.id]: true });
+                setIsNoteExpanded({ ...isNoteExpanded, [item.id]: false });
+              }}
             >
               <Text style={styles.buttonText}>
                 {labels[language].edit || "Edit"}

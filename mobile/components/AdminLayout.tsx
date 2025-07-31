@@ -7,7 +7,8 @@ import AdminSidebar from "@/components/AdminSideBar";
 import { COLORS } from "@/constants/colors";
 import { LanguageProvider } from "@/context/LanguageContext";
 import AddButton from "@/components/AddButton";
-import ChatButton from "./ChatButton";
+import ChatButtonAdmin from "./ChatButtonAdmin";
+import MainAddButton from "@/components/mainAddButton";
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -99,20 +100,13 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               style={styles.tab}
               onPress={() => navigateTo("/(admin)/ChatScreenAdmin")}
             >
-              <ChatButton chatId="1" />
+              <ChatButtonAdmin chatId="1" />
               {!isSmallScreen && (
                 <Text style={styles.tabText}>Chat Conversation</Text>
               )}
             </TouchableOpacity>
-            <TouchableOpacity>
-              {!isSmallScreen && (
-                <View style={styles.plusButton}>
-                  <View style={styles.plusInner}>
-                    <Text style={styles.plusText}>+</Text>
-                  </View>
-                </View>
-              )}
-            </TouchableOpacity>
+            <MainAddButton />
+
             <TouchableOpacity
               style={styles.tab}
               onPress={() => navigateTo("/(admin)/members")}

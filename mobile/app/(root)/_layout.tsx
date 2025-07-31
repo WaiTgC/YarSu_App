@@ -2,9 +2,11 @@ import { Stack } from "expo-router";
 import SafeScreen from "@/components/SafeScreen";
 import { supabase } from "@/libs/supabase";
 import { useEffect, useState } from "react";
-import { View, Text, ActivityIndicator } from "react-native";
+import { View, Text, ActivityIndicator, StatusBar } from "react-native";
 import { styles } from "@/assets/styles/auth.styles";
 import AppLayout from "@/components/AppLayout";
+import { LanguageProvider } from "@/context/LanguageContext";
+import { UserProvider } from "@/context/UserContext";
 
 export default function RootLayout() {
   const [isCheckingSession, setIsCheckingSession] = useState<boolean>(true);
@@ -56,12 +58,15 @@ export default function RootLayout() {
   }
 
   return (
-    <SafeScreen>
-      <AppLayout>
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="home" />
-        </Stack>
-      </AppLayout>
-    </SafeScreen>
+    <UserProvider>
+      <SafeScreen>
+        <AppLayout>
+          <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="home" />
+          </Stack>
+        </AppLayout>
+        <StatusBar style="auto" />
+      </SafeScreen>
+    </UserProvider>
   );
 }

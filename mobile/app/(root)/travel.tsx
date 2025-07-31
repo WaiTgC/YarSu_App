@@ -9,10 +9,15 @@ import {
   Animated,
   ScrollView,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useTravel } from "@/hooks/useTravel";
 import { styles } from "@/assets/styles/travel.styles";
 import { formatDate } from "@/libs/utils";
+import { useLanguage } from "@/context/LanguageContext";
+import { labels } from "@/libs/language";
+import Carousel, { ICarouselInstance } from "react-native-reanimated-carousel";
+import { COLORS } from "@/constants/colors";
 
 type TravelPostType = {
   id: number;
@@ -22,6 +27,7 @@ type TravelPostType = {
   images: string[];
   admin_rating: number;
   created_at: string;
+  note?: string;
 };
 
 const Travel = () => {
@@ -33,14 +39,14 @@ const Travel = () => {
     loadTravelPosts,
     setShowDetails,
   } = useTravel();
-
+  const { language } = useLanguage();
   const slideAnimDetails = useRef(
     new Animated.Value(Dimensions.get("window").height)
   ).current;
-  const scrollX = useRef(new Animated.Value(0)).current;
-  const scrollRef = useRef<ScrollView | null>(null);
+  const carouselRef = useRef<ICarouselInstance | null>(null);
   const headerHeight = 0;
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isNoteExpanded, setIsNoteExpanded] = useState(false);
 
   useEffect(() => {
     console.log("Travel: useEffect triggered, calling loadTravelPosts");
@@ -55,13 +61,8 @@ const Travel = () => {
         const nextIndex = (currentImageIndex + 1) % selectedPost.images.length;
         console.log("Travel: Sliding to index", nextIndex);
         setCurrentImageIndex(nextIndex);
-        if (scrollRef.current) {
-          scrollRef.current.scrollTo({
-            x: nextIndex * Dimensions.get("window").width,
-            animated: true,
-          });
-        } else {
-          console.log("Travel: scrollRef is not set");
+        if (carouselRef.current) {
+          carouselRef.current.scrollTo({ index: nextIndex, animated: true });
         }
       }, 5000);
     }
@@ -91,24 +92,30 @@ const Travel = () => {
     console.log(`Travel: Rendering item ${item.id} at index ${index}`);
     const baseHeight = 150;
     const doubleHeight = baseHeight * 2 + 8;
+    const reducedHeight = baseHeight;
 
-    const isDiv1 = index === 0;
-    const isDiv3 = index === 3;
+    const isDiv1 = index % 4 === 0;
+    const isDiv2 = index % 4 === 1;
+    const isDiv3 = index % 4 === 2;
+    const isDiv4 = index % 4 === 3;
 
     return (
       <TouchableOpacity
         style={[
           styles.card,
           isDiv1 && { height: doubleHeight - 118 },
-          isDiv3 && {
+          isDiv2 && { height: reducedHeight },
+          isDiv3 && { height: reducedHeight },
+          isDiv4 && {
             height: doubleHeight - 118,
-            marginTop: -baseHeight * 0.36,
+            marginTop: -baseHeight * 0.27,
           },
         ]}
         onPress={() => {
           console.log(`Travel: handleMoreInfo called for item ${item.id}`);
           handleMoreInfo(item);
           setShowDetails(true);
+          setIsNoteExpanded(false); // Reset dropdown state when opening modal
         }}
       >
         <Image
@@ -157,22 +164,34 @@ const Travel = () => {
     return stars;
   };
 
-  const handleIndicatorPress = (index: number) => {
-    console.log("Travel: Indicator pressed, moving to index", index);
-    setCurrentImageIndex(index);
-    if (scrollRef.current) {
-      scrollRef.current.scrollTo({
-        x: index * Dimensions.get("window").width,
-        animated: true,
-      });
+  const handlePrev = () => {
+    const prevIndex =
+      (currentImageIndex - 1 + (selectedPost?.images.length || 1)) %
+      (selectedPost?.images.length || 1);
+    setCurrentImageIndex(prevIndex);
+    if (carouselRef.current) {
+      carouselRef.current.scrollTo({ index: prevIndex, animated: true });
+    }
+  };
+
+  const handleNext = () => {
+    const nextIndex =
+      (currentImageIndex + 1) % (selectedPost?.images.length || 1);
+    setCurrentImageIndex(nextIndex);
+    if (carouselRef.current) {
+      carouselRef.current.scrollTo({ index: nextIndex, animated: true });
     }
   };
 
   return (
     <View style={styles.container}>
       <View style={styles.cardTitle}>
-        <Text style={styles.cardTitleText1}>Make every trip a</Text>
-        <Text style={styles.cardTitleText2}>Memory</Text>
+        <Text style={styles.cardTitleText1}>
+          {labels[language].makeEveryTrip || "Make every trip a"}
+        </Text>
+        <Text style={styles.cardTitleText2}>
+          {labels[language].memory || "Memory"}
+        </Text>
       </View>
       {travelPosts.length === 0 ? (
         <Text style={styles.title}>
@@ -187,6 +206,7 @@ const Travel = () => {
           contentContainerStyle={styles.gridContainer}
           columnWrapperStyle={{ justifyContent: "space-between" }}
           ListEmptyComponent={<Text>Travel: No travel posts available</Text>}
+          showsVerticalScrollIndicator={false}
         />
       )}
 
@@ -198,116 +218,148 @@ const Travel = () => {
           ]}
         >
           <View style={styles.modalContainer}>
-            <View style={styles.customModalContent}>
-              <ScrollView
-                style={styles.modalBody}
-                showsVerticalScrollIndicator={false}
-              >
-                <>
-                  <Animated.ScrollView
-                    ref={scrollRef}
+            <ScrollView
+              style={styles.customModalContent}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.modalBody}
+            >
+              <View style={styles.imageContainer}>
+                <TouchableOpacity
+                  style={styles.arrowContainer}
+                  onPress={handlePrev}
+                >
+                  <Text style={styles.arrow}>{"<"}</Text>
+                </TouchableOpacity>
+                <Carousel
+                  ref={carouselRef}
+                  width={Dimensions.get("window").width - 90}
+                  height={300}
+                  data={
+                    selectedPost.images.length > 0
+                      ? selectedPost.images
+                      : ["https://picsum.photos/340/200"]
+                  }
+                  scrollAnimationDuration={300}
+                  defaultIndex={currentImageIndex}
+                  onSnapToItem={(index) => {
+                    console.log("Travel: Snapped to index", index);
+                    setCurrentImageIndex(index);
+                  }}
+                  renderItem={({ item: image }) => (
+                    <Image
+                      source={{ uri: image }}
+                      style={styles.modalImage}
+                      onError={(error) =>
+                        console.error(
+                          "Travel: Modal image load error for",
+                          selectedPost.id,
+                          error.nativeEvent
+                        )
+                      }
+                    />
+                  )}
+                />
+                <TouchableOpacity
+                  style={styles.arrowContainer}
+                  onPress={handleNext}
+                >
+                  <Text style={styles.arrow}>{">"}</Text>
+                </TouchableOpacity>
+              </View>
+              {selectedPost.images.length > 1 && (
+                <View style={styles.sliderControls}>
+                  <FlatList
                     horizontal
-                    showsHorizontalScrollIndicator={false}
-                    style={styles.imageSlider}
-                    pagingEnabled
-                    scrollEventThrottle={16}
-                    onScroll={Animated.event(
-                      [{ nativeEvent: { contentOffset: { x: scrollX } } }],
-                      { useNativeDriver: false }
-                    )}
-                    onScrollEndDrag={(event) => {
-                      const newIndex = Math.round(
-                        event.nativeEvent.contentOffset.x /
-                          Dimensions.get("window").width
-                      );
-                      console.log("Travel: Scrolled to index (drag)", newIndex);
-                      setCurrentImageIndex(newIndex);
-                    }}
-                    onMomentumScrollEnd={(event) => {
-                      const newIndex = Math.round(
-                        event.nativeEvent.contentOffset.x /
-                          Dimensions.get("window").width
-                      );
-                      console.log("Travel: Scrolled to index", newIndex);
-                      setCurrentImageIndex(newIndex);
-                    }}
-                  >
-                    {selectedPost.images.map((image, index) => (
-                      <Image
-                        key={index}
-                        source={{ uri: image }}
-                        style={styles.modalImage}
-                        onError={(error) =>
-                          console.error(
-                            "Travel: Modal image load error for",
-                            selectedPost.id,
-                            error.nativeEvent
-                          )
-                        }
-                      />
-                    ))}
-                  </Animated.ScrollView>
-                  <View style={styles.indicatorContainer}>
-                    {selectedPost.images.map((_, index) => (
-                      <TouchableOpacity
-                        key={index}
-                        onPress={() => handleIndicatorPress(index)}
+                    contentContainerStyle={styles.indicatorContainer}
+                    data={selectedPost.images}
+                    keyExtractor={(item, index) => index.toString()}
+                    renderItem={({ index }) => (
+                      <View
                         style={[
                           styles.indicator,
                           currentImageIndex === index && styles.activeIndicator,
                         ]}
                       />
-                    ))}
+                    )}
+                    showsHorizontalScrollIndicator={false}
+                  />
+                </View>
+              )}
+              <View style={styles.detailsContainer}>
+                <Text style={styles.modalTitle}>{selectedPost.name}</Text>
+                <View style={{ flexDirection: "row" }}>
+                  <Image
+                    source={require("@/assets/images/ping.png")}
+                    style={{ height: 24, width: 24 }}
+                  />
+                  <Text style={styles.modalText}>
+                    {labels[language].place || "Place"}: {selectedPost.place}
+                  </Text>
+                </View>
+                <Text style={styles.modalHighlightTitle}>
+                  {labels[language].highlights || "Highlights"}
+                </Text>
+                {selectedPost.highlights.map((highlight, index) => (
+                  <View style={styles.highlightItem} key={index}>
+                    <LinearGradient
+                      colors={["#FFF236", "#FFBA30"]}
+                      style={styles.highlightDot}
+                      start={{ x: 0.25, y: 0.15 }}
+                      end={{ x: 0.75, y: 0.85 }}
+                    />
+                    <Text style={styles.modalText}>{highlight}</Text>
                   </View>
-                  <View style={styles.detailsContainer}>
-                    <Text style={styles.modalTitle}>{selectedPost.name}</Text>
-                    <View style={{ flexDirection: "row" }}>
-                      <Image
-                        source={require("@/assets/images/ping.png")}
-                        style={{ height: 24, width: 24 }}
-                      />
-                      <Text style={styles.modalText}>
-                        Place: {selectedPost.place}
-                      </Text>
-                    </View>
-                    <Text style={styles.modalHighlightTitle}>Highlights</Text>
-                    {selectedPost.highlights.map((highlight, index) => (
-                      <View style={styles.highlightItem}>
-                        <LinearGradient
-                          key={index}
-                          colors={["#FFF236", "#FFBA30"]}
-                          style={styles.highlightDot}
-                          start={{ x: 0.25, y: 0.15 }}
-                          end={{ x: 0.75, y: 0.85 }}
-                        />
-                        <Text style={styles.modalText}>{highlight}</Text>
+                ))}
+                <Text style={styles.modalHighlightTitle}>
+                  {labels[language].rating || "Rating"} - {renderStar()}
+                </Text>
+                <Text style={styles.modalHighlightTitle}>
+                  {labels[language].posted || "Posted"} -
+                  <Text style={styles.modalText}>
+                    {formatDate(selectedPost.created_at)}
+                  </Text>
+                </Text>
+                <View style={styles.noteDropdownContainer}>
+                  <Text style={styles.modalHighlightTitle}>
+                    {labels[language].note || "Note"} - 
+                    <TouchableOpacity
+                      style={styles.noteTextBox}
+                      onPress={() => setIsNoteExpanded(!isNoteExpanded)}
+                    >
+                      <View
+                        style={[
+                          styles.noteTextContainer,
+                          !isNoteExpanded && styles.collapsedNoteText,
+                        ]}
+                      >
+                        <Text style={styles.modalText}>
+                          {selectedPost.note || "No additional notes available"}
+                        </Text>
                       </View>
-                    ))}
-                    <Text style={styles.modalHighlightTitle}>
-                      Rating - {renderStar()}{" "}
-                    </Text>
-                    <Text style={styles.modalHighlightTitle}>
-                      Posted -
-                      <Text style={styles.modalText}>
-                        {formatDate(selectedPost.created_at)}
-                      </Text>
-                    </Text>
-                  </View>
-                </>
-                <TouchableOpacity
-                  style={styles.closeButton}
-                  onPress={() => {
-                    console.log(
-                      "Travel: Close button pressed for",
-                      selectedPost?.id
-                    );
-                    setShowDetails(false);
-                  }}
-                >
-                  <Text style={styles.buttonText}>Close</Text>
-                </TouchableOpacity>
-              </ScrollView>
-            </View>
+                      <Ionicons
+                        name={isNoteExpanded ? "chevron-up" : "chevron-down"}
+                        size={20}
+                        color={COLORS.black}
+                        style={styles.dropdownArrow}
+                      />
+                    </TouchableOpacity>
+                  </Text>
+                </View>
+              </View>
+            </ScrollView>
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => {
+                console.log(
+                  "Travel: Close button pressed for",
+                  selectedPost?.id
+                );
+                setShowDetails(false);
+                setIsNoteExpanded(false);
+              }}
+            >
+              <Text style={styles.buttonText}>Close</Text>
+            </TouchableOpacity>
           </View>
         </Animated.View>
       )}
