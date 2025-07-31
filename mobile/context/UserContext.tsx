@@ -18,6 +18,10 @@ interface UserProfile {
   facebook?: string;
   tiktok?: string;
   youtube?: string;
+  bannerImage1?: string; // Added for banner images
+  bannerImage2?: string; // Added for banner images
+  bannerImage3?: string; // Added for banner images
+  bannerImage4?: string; // Added for banner images
 }
 
 interface UserContextType {
@@ -39,6 +43,10 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     facebook: "john.doe",
     tiktok: "@johndoe",
     youtube: "UC123456789",
+    bannerImage1: undefined,
+    bannerImage2: undefined,
+    bannerImage3: undefined,
+    bannerImage4: undefined,
   });
 
   useEffect(() => {
@@ -91,7 +99,6 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       const { data } = supabase.storage
         .from("profile-images")
         .getPublicUrl(filePath);
-      await updateProfile({ imageUrl: data.publicUrl });
       return data.publicUrl;
     } catch (error) {
       console.error("Error uploading image:", error);

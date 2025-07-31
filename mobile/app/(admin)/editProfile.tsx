@@ -3,7 +3,6 @@ import {
   View,
   Text,
   ScrollView,
-  Switch,
   TouchableOpacity,
   Image,
   TextInput,
@@ -16,9 +15,9 @@ import { COLORS } from "@/constants/colors";
 import { useUser } from "@/context/UserContext";
 import * as ImagePicker from "expo-image-picker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { styles } from "@/assets/styles/adminstyles/settings.styles";
+import { styles } from "@/assets/styles/adminstyles/editProfile.styles";
 
-const Settings = () => {
+const EditProfile = () => {
   const router = useRouter();
   const { language } = useLanguage();
   const { profile, updateProfile, uploadImage } = useUser();
@@ -93,7 +92,7 @@ const Settings = () => {
             />
           ) : (
             <View style={styles.valueContainer}>
-              <Text style={styles.value}>{profile.name}</Text>
+              <Text style={styles.value}>{profile.name || "Not set"}</Text>
             </View>
           )}
         </View>
@@ -109,7 +108,9 @@ const Settings = () => {
             />
           ) : (
             <View style={styles.valueContainer}>
-              <Text style={styles.value}>{profile.phoneNumber || ""}</Text>
+              <Text style={styles.value}>
+                {profile.phoneNumber || "Not set"}
+              </Text>
             </View>
           )}
         </View>
@@ -124,75 +125,15 @@ const Settings = () => {
             />
           ) : (
             <View style={styles.valueContainer}>
-              <Text style={styles.value}>{profile.address || ""}</Text>
+              <Text style={styles.value}>{profile.address || "Not set"}</Text>
             </View>
           )}
         </View>
         <View style={styles.fieldRow}>
           <Text style={styles.label}>Email</Text>
           <View style={styles.valueContainer}>
-            <Text style={styles.value}>{profile.email || ""}</Text>
+            <Text style={styles.value}>{profile.email || "Not set"}</Text>
           </View>
-        </View>
-        <View style={styles.fieldRow}>
-          <Text style={styles.label}>Telegram</Text>
-          {isEditing ? (
-            <TextInput
-              style={styles.input}
-              value={profile.telegram || ""}
-              onChangeText={(text) => handleChange("telegram", text)}
-              placeholder="Enter Telegram link"
-            />
-          ) : (
-            <View style={styles.valueContainer}>
-              <Text style={styles.value}>{profile.telegram || ""}</Text>
-            </View>
-          )}
-        </View>
-        <View style={styles.fieldRow}>
-          <Text style={styles.label}>Facebook</Text>
-          {isEditing ? (
-            <TextInput
-              style={styles.input}
-              value={profile.facebook || ""}
-              onChangeText={(text) => handleChange("facebook", text)}
-              placeholder="Enter Facebook link"
-            />
-          ) : (
-            <View style={styles.valueContainer}>
-              <Text style={styles.value}>{profile.facebook || ""}</Text>
-            </View>
-          )}
-        </View>
-        <View style={styles.fieldRow}>
-          <Text style={styles.label}>TikTok</Text>
-          {isEditing ? (
-            <TextInput
-              style={styles.input}
-              value={profile.tiktok || ""}
-              onChangeText={(text) => handleChange("tiktok", text)}
-              placeholder="Enter TikTok link"
-            />
-          ) : (
-            <View style={styles.valueContainer}>
-              <Text style={styles.value}>{profile.tiktok || ""}</Text>
-            </View>
-          )}
-        </View>
-        <View style={styles.fieldRow}>
-          <Text style={styles.label}>YouTube</Text>
-          {isEditing ? (
-            <TextInput
-              style={styles.input}
-              value={profile.youtube || ""}
-              onChangeText={(text) => handleChange("youtube", text)}
-              placeholder="Enter YouTube link"
-            />
-          ) : (
-            <View style={styles.valueContainer}>
-              <Text style={styles.value}>{profile.youtube || ""}</Text>
-            </View>
-          )}
         </View>
         <TouchableOpacity
           style={styles.actionButton}
@@ -205,4 +146,4 @@ const Settings = () => {
   );
 };
 
-export default Settings;
+export default EditProfile;

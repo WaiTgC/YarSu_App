@@ -105,8 +105,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                 <Text style={styles.tabText}>Chat Conversation</Text>
               )}
             </TouchableOpacity>
+            {isSmallScreen && <View style={styles.separatorcol} />}
             <MainAddButton />
-
             <TouchableOpacity
               style={styles.tab}
               onPress={() => navigateTo("/(admin)/members")}
@@ -117,7 +117,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             <View style={styles.separatorcol} />
             <TouchableOpacity
               style={styles.tab}
-              onPress={() => navigateTo("/(admin)/settings")}
+              onPress={() => navigateTo("/(admin)/generalsettings")}
             >
               <Ionicons
                 name="settings-outline"

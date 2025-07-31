@@ -255,12 +255,12 @@ export default function AdminSidebar({
   }, []);
 
   const handleChangePassword = () => {
-    router.push("/change-password");
+    router.push("/forgetPassword");
     toggleSidebar();
   };
 
   const handleEditProfile = () => {
-    router.push("/edit-profile");
+    router.push("/editProfile");
     toggleSidebar();
   };
 

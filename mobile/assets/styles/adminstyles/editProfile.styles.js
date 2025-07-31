@@ -4,7 +4,7 @@ import { COLORS } from "@/constants/colors";
 export const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
+    backgroundColor: COLORS.background,
     padding: 16,
   },
   contentContainer: {
@@ -18,9 +18,9 @@ export const styles = StyleSheet.create({
     textAlign: "center",
   },
   card: {
-    backgroundColor: "#fff",
+    backgroundColor: COLORS.background,
     width: 550,
-    height: 648,
+    height: "auto",
     borderRadius: 15,
     padding: 16,
     shadowColor: "#000",
@@ -29,6 +29,8 @@ export const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
     alignItems: "center",
+    borderWidth: 1,
+    borderColor: " rgba(248, 249, 250, 0.50)",
   },
   profileImageContainer: {
     width: 90,
@@ -60,7 +62,9 @@ export const styles = StyleSheet.create({
     fontWeight: "650",
     lineHeight: "normal",
     letterSpacing: 0.96,
-    color: "#F3F3F3",
+    color: COLORS.white,
+    width: "180px",
+    textAlign: "right",
   },
   valueContainer: {
     width: 308,
@@ -77,13 +81,13 @@ export const styles = StyleSheet.create({
     fontWeight: "650",
     lineHeight: "normal",
     letterSpacing: 0.96,
-    color: "#F3F3F3",
+    color: COLORS.black,
   },
   input: {
     width: 308,
     height: 40,
     borderRadius: 10,
-    backgroundColor: "#fff",
+    backgroundColor: COLORS.white,
     paddingHorizontal: 12,
     fontFamily: "SF Pro",
     fontSize: 14,
@@ -91,10 +95,10 @@ export const styles = StyleSheet.create({
     fontWeight: "650",
     lineHeight: "normal",
     letterSpacing: 0.96,
-    color: "#F3F3F3",
+    color: COLORS.black,
   },
   actionButton: {
-    width: 550,
+    width: 100,
     height: 48,
     borderRadius: 15,
     backgroundColor: COLORS.primary,
