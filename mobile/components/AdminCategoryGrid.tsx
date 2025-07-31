@@ -28,7 +28,7 @@ const adminCategories = [
     route: "/(admin)/adminHotel",
   },
   {
-    name: "adminDetails",
+    name: "adminDocument",
     icon: require("@/assets/images/detailicon.png"),
     route: "/(admin)/adminDetail",
   },

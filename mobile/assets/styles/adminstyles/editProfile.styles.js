@@ -13,7 +13,7 @@ export const styles = StyleSheet.create({
   header: {
     fontSize: 24,
     fontWeight: "bold",
-    color: "#333",
+    color: COLORS.white,
     marginBottom: 16,
     textAlign: "center",
   },

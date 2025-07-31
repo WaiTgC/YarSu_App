@@ -19,6 +19,7 @@ export const styles = StyleSheet.create({
   },
   modalContent: {
     width: 804,
+    minHeight: 600,
     height: "auto",
     backgroundColor: COLORS.white,
     borderRadius: 24,
