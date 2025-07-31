@@ -16,6 +16,8 @@ import { useHotels } from "@/hooks/useHotels";
 import { useLanguage } from "@/context/LanguageContext";
 import { labels } from "@/libs/language";
 import Carousel, { ICarouselInstance } from "react-native-reanimated-carousel";
+import * as ImagePicker from "expo-image-picker";
+import { supabase } from "@/libs/supabase";
 
 // Define the Hotel type
 type HotelType = {
@@ -42,7 +44,7 @@ type EditedHotelType = Partial<{
   breakfast: string | boolean;
   free_wifi: string | boolean;
   swimming_pool: string | boolean;
-  images: string;
+  images: string[]; // Changed to array of URIs
   notes: string;
   admin_rating: string | number;
 }>;
@@ -66,6 +68,21 @@ const AdminHotel = () => {
   const isInitialMount = useRef(true);
   const carouselRefs = useRef<{ [key: number]: ICarouselInstance | null }>({});
 
+  // Request permissions for image picker
+  useEffect(() => {
+    (async () => {
+      const { status } =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert(
+          "Permission Denied",
+          "Please grant permission to access the photo library to add images."
+        );
+      }
+    })();
+  }, []);
+
+  // Update numColumns based on screen width
   useEffect(() => {
     const updateColumns = () => {
       const width = Dimensions.get("window").width;
@@ -76,6 +93,7 @@ const AdminHotel = () => {
     return () => subscription?.remove();
   }, []);
 
+  // Initial fetch on mount
   useEffect(() => {
     if (isInitialMount.current) {
       console.log("AdminHotel: Initial fetch of hotels");
@@ -84,6 +102,7 @@ const AdminHotel = () => {
     }
   }, [loadHotels]);
 
+  // Update posts when hotels changes
   useEffect(() => {
     console.log("AdminHotel: Updating posts with hotels", hotels);
     setPosts(hotels);
@@ -94,6 +113,7 @@ const AdminHotel = () => {
     setCurrentIndices(initialIndices);
   }, [hotels]);
 
+  // Auto-slide images every 5 seconds
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentIndices((prev) => {
@@ -115,6 +135,25 @@ const AdminHotel = () => {
     return () => clearInterval(interval);
   }, [posts, editMode]);
 
+  const pickImages = async (id: number) => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsMultipleSelection: true,
+      quality: 1,
+    });
+
+    if (!result.canceled && result.assets) {
+      const newImages = result.assets.map((asset) => asset.uri);
+      setEditedValues((prev) => ({
+        ...prev,
+        [id]: {
+          ...prev[id],
+          images: [...(prev[id]?.images || []), ...newImages],
+        },
+      }));
+    }
+  };
+
   const handleEdit = (id: number, field: string, value: string) => {
     setEditedValues((prev) => ({
       ...prev,
@@ -122,7 +161,7 @@ const AdminHotel = () => {
     }));
   };
 
-  const handleSave = (id: number) => {
+  const handleSave = async (id: number) => {
     const updatedHotel = editedValues[id] || {};
     const convertedHotel: Partial<HotelType> = {};
 
@@ -146,31 +185,50 @@ const AdminHotel = () => {
     if (updatedHotel.swimming_pool !== undefined) {
       convertedHotel.swimming_pool = updatedHotel.swimming_pool === "Yes";
     }
-    if (updatedHotel.images !== undefined) {
-      convertedHotel.images = updatedHotel.images
-        .split(",")
-        .map((item) => item.trim());
-    }
     if (updatedHotel.notes) convertedHotel.notes = updatedHotel.notes;
     if (updatedHotel.admin_rating !== undefined) {
       const rating = Number(updatedHotel.admin_rating);
       if (!isNaN(rating)) convertedHotel.admin_rating = rating;
     }
+    if (updatedHotel.images && updatedHotel.images.length > 0) {
+      const uploadedUrls: string[] = [];
+      for (let i = 0; i < updatedHotel.images.length; i++) {
+        const uri = updatedHotel.images[i];
+        const fileName = `hotel-${id}-${Date.now()}-${i}.jpg`;
+        const response = await fetch(uri);
+        const blob = await response.blob();
+        const { error } = await supabase.storage
+          .from("hotel-images")
+          .upload(fileName, blob, { contentType: "image/jpeg" });
+        if (error) {
+          console.error("Image upload error:", error);
+          Alert.alert("Error", "Failed to upload image.");
+          return;
+        }
+        const { data } = supabase.storage
+          .from("hotel-images")
+          .getPublicUrl(fileName);
+        uploadedUrls.push(data.publicUrl);
+      }
+      convertedHotel.images = uploadedUrls;
+    }
 
     if (Object.keys(convertedHotel).length > 0) {
-      updateHotel(id, convertedHotel).catch((error) => {
+      try {
+        await updateHotel(id, convertedHotel);
+        setEditMode({ ...editMode, [id]: false });
+        setEditedValues((prev) => {
+          const newValues = { ...prev };
+          delete newValues[id];
+          return newValues;
+        });
+        Alert.alert(
+          "Saved",
+          labels[language].saved || "Changes have been saved!"
+        );
+      } catch (error) {
         Alert.alert("Error", "Failed to update hotel");
-      });
-      setEditMode({ ...editMode, [id]: false });
-      setEditedValues((prev) => {
-        const newValues = { ...prev };
-        delete newValues[id];
-        return newValues;
-      });
-      Alert.alert(
-        "Saved",
-        labels[language].saved || "Changes have been saved!"
-      );
+      }
     } else {
       setEditMode({ ...editMode, [id]: false });
     }
@@ -428,14 +486,27 @@ const AdminHotel = () => {
       <View style={styles.bottomContainer}>
         <View style={styles.imageContainer}>
           {editMode[item.id] ? (
-            <TextInput
-              style={styles.input}
-              value={
-                editedValues[item.id]?.images || item.images.join(", ") || ""
-              }
-              onChangeText={(text) => handleEdit(item.id, "images", text)}
-              placeholder="Enter image URLs (comma-separated)"
-            />
+            <>
+              <TouchableOpacity
+                style={styles.imagePickerButton}
+                onPress={() => pickImages(item.id)}
+              >
+                <Text style={styles.imagePickerButtonText}>
+                  {labels[language].addImages || "Add Images"}
+                </Text>
+              </TouchableOpacity>
+              {editedValues[item.id]?.images?.length > 0 && (
+                <View style={styles.previewContainer}>
+                  {editedValues[item.id].images.map((uri, index) => (
+                    <Image
+                      key={index}
+                      source={{ uri }}
+                      style={styles.previewImage}
+                    />
+                  ))}
+                </View>
+              )}
+            </>
           ) : (
             <>
               <View style={styles.imageBackground}>
@@ -443,7 +514,7 @@ const AdminHotel = () => {
                   ref={(ref) => {
                     if (ref) carouselRefs.current[item.id] = ref;
                   }}
-                  width={200}
+                  width={styles.imageBackground.width}
                   height={150}
                   data={
                     item.images.length > 0

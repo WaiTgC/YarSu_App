@@ -100,7 +100,7 @@ const ForgetPassword = () => {
               <Ionicons
                 name={showOldPassword ? "eye-off" : "eye"}
                 size={20}
-                color={COLORS.text}
+                color={COLORS.white}
               />
             </TouchableOpacity>
           </View>
@@ -126,7 +126,7 @@ const ForgetPassword = () => {
               <Ionicons
                 name={showNewPassword ? "eye-off" : "eye"}
                 size={20}
-                color={COLORS.text}
+                color={COLORS.white}
               />
             </TouchableOpacity>
           </View>
@@ -152,7 +152,7 @@ const ForgetPassword = () => {
               <Ionicons
                 name={showRetypePassword ? "eye-off" : "eye"}
                 size={20}
-                color={COLORS.text}
+                color={COLORS.white}
               />
             </TouchableOpacity>
           </View>

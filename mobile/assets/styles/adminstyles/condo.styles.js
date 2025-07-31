@@ -1,6 +1,8 @@
 import { StyleSheet, Dimensions } from "react-native";
 import { COLORS } from "@/constants/colors";
 
+const { width } = Dimensions.get("window");
+
 export const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -11,7 +13,7 @@ export const styles = StyleSheet.create({
     flex: 1,
   },
   card: {
-    width: Dimensions.get("window").width >= 768 ? "30%" : "100%",
+    width: width >= 768 ? "30%" : "100%",
     height: "auto",
     paddingVertical: 20,
     paddingHorizontal: 15,
@@ -30,9 +32,10 @@ export const styles = StyleSheet.create({
   imageContainer: {
     alignItems: "center",
     marginBottom: 10,
+    flex: 1,
   },
   imageBackground: {
-    width: 200, // Smaller width for row layout
+    width: width >= 768 ? 200 : width * 0.6, // Responsive width
     height: 150,
     borderRadius: 35,
     backgroundColor: "lightgray",
@@ -63,7 +66,6 @@ export const styles = StyleSheet.create({
     flexDirection: "row",
     margin: "auto",
   },
-
   arrow: {
     marginBottom: 3,
     fontSize: 14,
@@ -118,7 +120,7 @@ export const styles = StyleSheet.create({
     fontWeight: "400",
     color: COLORS.background,
     marginRight: 5,
-    lineHeight: 20, // Increased from 10 to 20 for better wrapping spacing
+    lineHeight: 20,
     letterSpacing: 0.15,
   },
   value: {
@@ -126,7 +128,7 @@ export const styles = StyleSheet.create({
     fontSize: 15,
     fontStyle: "normal",
     fontWeight: "400",
-    lineHeight: 20, // Increased from 10 to 20 for better wrapping spacing
+    lineHeight: 20,
     letterSpacing: 0.15,
     color: COLORS.background,
     marginBottom: 15,
@@ -156,16 +158,19 @@ export const styles = StyleSheet.create({
     backgroundColor: COLORS.white,
   },
   bottomContainer: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: width >= 768 ? "row" : "column", // Stack vertically on small screens
+    alignItems: width >= 768 ? "center" : "stretch",
     justifyContent: "space-between",
     marginTop: 10,
+    gap: width >= 768 ? 10 : 20,
   },
   buttonContainer: {
     flexDirection: "column",
     justifyContent: "flex-end",
+    alignItems: width >= 768 ? "flex-end" : "center",
     gap: 10,
     marginBottom: 20,
+    flex: width >= 768 ? undefined : 1,
   },
   noImages: {
     marginBottom: 25,
@@ -185,6 +190,34 @@ export const styles = StyleSheet.create({
     textAlign: "center",
     fontSize: 15,
     margin: "auto",
+  },
+  imagePickerButton: {
+    width: width >= 768 ? 200 : width * 0.6, // Match imageBackground width
+    height: 45,
+    padding: 10,
+    backgroundColor: COLORS.primary,
+    borderRadius: 15,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 10,
+  },
+  imagePickerButtonText: {
+    color: COLORS.white,
+    fontWeight: "400",
+    textAlign: "center",
+    fontSize: 15,
+  },
+  previewImage: {
+    width: width >= 768 ? 100 : width * 0.3,
+    height: 75,
+    borderRadius: 10,
+    margin: 5,
+  },
+  previewContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    marginBottom: 10,
   },
   detailsContainer: {
     padding: 10,
@@ -226,7 +259,7 @@ export const styles = StyleSheet.create({
     borderColor: COLORS.background,
     width: 74,
     height: 35,
-    flexshrink: 0,
+    flexShrink: 0,
   },
   modalButtonText: {
     fontSize: 10,

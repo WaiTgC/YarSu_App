@@ -21,7 +21,7 @@ export const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: "bold",
-    color: COLORS.text,
+    color: COLORS.white,
     marginBottom: 20,
   },
   fieldRow: {
@@ -33,7 +33,7 @@ export const styles = StyleSheet.create({
   label: {
     width: 150,
     fontSize: 16,
-    color: COLORS.text,
+    color: COLORS.white,
   },
   inputContainer: {
     flexDirection: "row",
@@ -47,13 +47,14 @@ export const styles = StyleSheet.create({
   input: {
     flex: 1,
     paddingHorizontal: 10,
-    color: COLORS.text,
+    color: COLORS.white,
   },
   eyeButton: {
     padding: 10,
   },
   saveButton: {
-    width: 550,
+    minWidth: 150,
+    width: "auto",
     height: 40,
     backgroundColor: COLORS.primary,
     borderRadius: 15,

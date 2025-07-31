@@ -16,6 +16,8 @@ import { useCondos } from "@/hooks/useCondos";
 import { useLanguage } from "@/context/LanguageContext";
 import { labels } from "@/libs/language";
 import Carousel, { ICarouselInstance } from "react-native-reanimated-carousel";
+import * as ImagePicker from "expo-image-picker";
+import { supabase } from "@/libs/supabase";
 
 // Define the Condo type with 'notes'
 type CondoType = {
@@ -32,12 +34,12 @@ type CondoType = {
   notes?: string;
 };
 
-// Define type for edited values with 'notes'
+// Define type for edited values with 'notes' and images as array
 type EditedCondoType = Partial<{
   name: string;
   address: string;
   rent_fee: string | number;
-  images: string;
+  images: string[]; // Changed to array of URIs
   swimming_pool: string | boolean;
   free_wifi: string | boolean;
   gym: string | boolean;
@@ -69,6 +71,20 @@ const AdminCondo = () => {
   const [numColumns, setNumColumns] = useState(3);
   const isInitialMount = useRef(true);
   const carouselRefs = useRef<{ [key: number]: ICarouselInstance | null }>({});
+
+  // Request permissions for image picker
+  useEffect(() => {
+    (async () => {
+      const { status } =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert(
+          "Permission Denied",
+          "Please grant permission to access the photo library to add images."
+        );
+      }
+    })();
+  }, []);
 
   // Update numColumns based on screen width
   useEffect(() => {
@@ -124,6 +140,25 @@ const AdminCondo = () => {
     return () => clearInterval(interval);
   }, [posts, editMode]);
 
+  const pickImages = async (id: number) => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsMultipleSelection: true,
+      quality: 1,
+    });
+
+    if (!result.canceled && result.assets) {
+      const newImages = result.assets.map((asset) => asset.uri);
+      setEditedValues((prev) => ({
+        ...prev,
+        [id]: {
+          ...prev[id],
+          images: [...(prev[id]?.images || []), ...newImages],
+        },
+      }));
+    }
+  };
+
   const handleEdit = (id: number, field: string, value: string) => {
     setEditedValues((prev) => ({
       ...prev,
@@ -131,7 +166,7 @@ const AdminCondo = () => {
     }));
   };
 
-  const handleSave = (id: number) => {
+  const handleSave = async (id: number) => {
     const updatedCondo = editedValues[id] || {};
     const convertedCondo: Partial<CondoType> = {};
 
@@ -147,11 +182,6 @@ const AdminCondo = () => {
       if (!isNaN(rentFee)) {
         convertedCondo.rent_fee = rentFee;
       }
-    }
-    if (updatedCondo.images !== undefined) {
-      convertedCondo.images = updatedCondo.images
-        .split(",")
-        .map((item) => item.trim());
     }
     if (updatedCondo.swimming_pool !== undefined) {
       convertedCondo.swimming_pool = updatedCondo.swimming_pool === "Yes";
@@ -169,8 +199,29 @@ const AdminCondo = () => {
       convertedCondo.co_working_space = updatedCondo.co_working_space === "Yes";
     }
     if (updatedCondo.notes) {
-      // Added notes handling
       convertedCondo.notes = updatedCondo.notes;
+    }
+    if (updatedCondo.images && updatedCondo.images.length > 0) {
+      const uploadedUrls: string[] = [];
+      for (let i = 0; i < updatedCondo.images.length; i++) {
+        const uri = updatedCondo.images[i];
+        const fileName = `condo-${id}-${Date.now()}-${i}.jpg`;
+        const response = await fetch(uri);
+        const blob = await response.blob();
+        const { error } = await supabase.storage
+          .from("condo-images")
+          .upload(fileName, blob, { contentType: "image/jpeg" });
+        if (error) {
+          console.error("Image upload error:", error);
+          Alert.alert("Error", "Failed to upload image.");
+          return;
+        }
+        const { data } = supabase.storage
+          .from("condo-images")
+          .getPublicUrl(fileName);
+        uploadedUrls.push(data.publicUrl);
+      }
+      convertedCondo.images = uploadedUrls;
     }
 
     if (Object.keys(convertedCondo).length > 0) {
@@ -427,14 +478,27 @@ const AdminCondo = () => {
       <View style={styles.bottomContainer}>
         <View style={styles.imageContainer}>
           {editMode[item.id] ? (
-            <TextInput
-              style={styles.input}
-              value={
-                editedValues[item.id]?.images || item.images.join(", ") || ""
-              }
-              onChangeText={(text) => handleEdit(item.id, "images", text)}
-              placeholder="Enter image URLs (comma-separated)"
-            />
+            <>
+              <TouchableOpacity
+                style={styles.imagePickerButton}
+                onPress={() => pickImages(item.id)}
+              >
+                <Text style={styles.imagePickerButtonText}>
+                  {labels[language].addImages || "Add Images"}
+                </Text>
+              </TouchableOpacity>
+              {editedValues[item.id]?.images?.length > 0 && (
+                <View style={styles.previewContainer}>
+                  {editedValues[item.id].images.map((uri, index) => (
+                    <Image
+                      key={index}
+                      source={{ uri }}
+                      style={styles.previewImage}
+                    />
+                  ))}
+                </View>
+              )}
+            </>
           ) : (
             <>
               <View style={styles.imageBackground}>
@@ -444,7 +508,7 @@ const AdminCondo = () => {
                       carouselRefs.current[item.id] = ref;
                     }
                   }}
-                  width={200}
+                  width={styles.imageBackground.width}
                   height={150}
                   data={
                     item.images.length > 0
@@ -454,7 +518,7 @@ const AdminCondo = () => {
                   scrollAnimationDuration={300}
                   defaultIndex={currentIndices[item.id] || 0}
                   onSnapToItem={(index) =>
-                    setCurrentIndices((prev) => ({ ...prev, [item.id]: index }))
+                    setCurrentIndices((prev) => ({ ...prev, [id]: index }))
                   }
                   renderItem={({ item: image }) => (
                     <Image
