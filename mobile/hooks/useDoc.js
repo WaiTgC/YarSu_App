@@ -78,16 +78,6 @@ export const useDoc = () => {
   const addDocPost = useCallback(
     async (postData) => {
       try {
-        if (
-          !postData.text &&
-          (!postData.images || postData.images.length === 0) &&
-          (!postData.videos || postData.videos.length === 0)
-        ) {
-          throw new Error(
-            "At least one of text, images, or videos must be provided"
-          );
-        }
-
         const formData = new FormData();
         formData.append("text", postData.text || "");
 
@@ -160,16 +150,6 @@ export const useDoc = () => {
   const updateDocPost = useCallback(
     async (id, postData) => {
       try {
-        if (
-          !postData.text &&
-          (!postData.images || postData.images.length === 0) &&
-          (!postData.videos || postData.videos.length === 0)
-        ) {
-          throw new Error(
-            "At least one of text, images, or videos must be provided"
-          );
-        }
-
         const formData = new FormData();
         formData.append("text", postData.text || "");
 

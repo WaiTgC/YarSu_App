@@ -19,7 +19,6 @@ import { useHotels } from "@/hooks/useHotels";
 import { useCourses } from "@/hooks/useCourses";
 import { useRestaurants } from "@/hooks/useRestaurants";
 import { useDoc } from "@/hooks/useDoc";
-import { useGeneral } from "@/hooks/useGeneral";
 import { useLanguage } from "@/context/LanguageContext";
 import { labels } from "@/libs/language";
 import { COLORS } from "@/constants/colors";
@@ -106,25 +105,11 @@ type DocPostType = {
   text: string;
   images: string[];
   videos: string[];
-};
-
-type GeneralPostType = {
-  id: number;
-  text: string;
-  images: string[];
-  videos: string[];
+  created_at: string;
 };
 
 interface AddButtonProps {
-  type:
-    | "job"
-    | "travel"
-    | "condo"
-    | "hotel"
-    | "course"
-    | "restaurant"
-    | "doc"
-    | "general";
+  type: "job" | "travel" | "condo" | "hotel" | "course" | "restaurant" | "doc";
 }
 
 const AddButton: React.FC<AddButtonProps> = ({ type }) => {
@@ -156,10 +141,6 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
   const { addDocPost, loadDocPosts } = useDoc() as {
     addDocPost: (post: Partial<DocPostType>) => Promise<void>;
     loadDocPosts: () => Promise<void>;
-  };
-  const { addGeneralPost, loadGeneralPosts } = useGeneral() as {
-    addGeneralPost: (post: Partial<GeneralPostType>) => Promise<void>;
-    loadGeneralPosts: () => Promise<void>;
   };
 
   const [modalVisible, setModalVisible] = useState<boolean>(false);
@@ -220,13 +201,6 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
     notes: "",
   });
   const [newDocPost, setNewDocPost] = useState<Partial<DocPostType>>({
-    text: "",
-    images: [],
-    videos: [],
-  });
-  const [newGeneralPost, setNewGeneralPost] = useState<
-    Partial<GeneralPostType>
-  >({
     text: "",
     images: [],
     videos: [],
@@ -324,11 +298,6 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
           ...prev,
           images: [...(prev.images || []), base64String],
         }));
-      } else if (type === "general") {
-        setNewGeneralPost((prev) => ({
-          ...prev,
-          images: [...(prev.images || []), base64String],
-        }));
       }
     } else {
       console.log("Image selection canceled or failed:", result);
@@ -369,11 +338,6 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
       setSelectedVideos((prev) => [...prev, uri]);
       if (type === "doc") {
         setNewDocPost((prev) => ({
-          ...prev,
-          videos: [...(prev.videos || []), base64String],
-        }));
-      } else if (type === "general") {
-        setNewGeneralPost((prev) => ({
           ...prev,
           videos: [...(prev.videos || []), base64String],
         }));
@@ -513,17 +477,6 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
     value: DocPostType[K]
   ) => {
     setNewDocPost((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-  };
-
-  // Handle general post input changes
-  const handleGeneralInputChange = <K extends keyof GeneralPostType>(
-    field: K,
-    value: GeneralPostType[K]
-  ) => {
-    setNewGeneralPost((prev) => ({
       ...prev,
       [field]: value,
     }));
@@ -1177,80 +1130,6 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
     }
   }, [addDocPost, loadDocPosts, newDocPost, language]);
 
-  // Perform general post addition
-  const performAddGeneralPost = useCallback(async () => {
-    if (!addGeneralPost) {
-      console.error("addGeneralPost is not defined in useGeneral hook");
-      Alert.alert(
-        labels[language].error || "Error",
-        labels[language].errorMessage ||
-          "Failed to add general post: Function not available"
-      );
-      return;
-    }
-
-    try {
-      const convertedGeneralPost: Partial<GeneralPostType> = {
-        text: newGeneralPost.text?.trim(),
-        images: newGeneralPost.images || [],
-        videos: newGeneralPost.videos || [],
-      };
-
-      if (
-        !convertedGeneralPost.text &&
-        (!convertedGeneralPost.images ||
-          convertedGeneralPost.images.length === 0) &&
-        (!convertedGeneralPost.videos ||
-          convertedGeneralPost.videos.length === 0)
-      ) {
-        throw new Error(
-          labels[language].requiredFields ||
-            "At least one of text, images, or videos is required"
-        );
-      }
-
-      console.log(
-        "General Post Payload:",
-        JSON.stringify(convertedGeneralPost, null, 2)
-      );
-      await addGeneralPost(convertedGeneralPost);
-      await loadGeneralPosts();
-      setModalVisible(false);
-      setNewGeneralPost({
-        text: "",
-        images: [],
-        videos: [],
-      });
-      setSelectedImages([]);
-      setSelectedVideos([]);
-
-      if (Platform.OS !== "web") {
-        Alert.alert(
-          labels[language].added || "Added",
-          labels[language].generalPostAdded || "General post has been added!"
-        );
-      } else {
-        window.alert(
-          labels[language].generalPostAdded || "General post has been added!"
-        );
-      }
-    } catch (error: any) {
-      console.error("Error adding general post:", error);
-      const errorMessage = error.message || JSON.stringify(error);
-      if (Platform.OS === "web") {
-        window.alert(
-          labels[language].error ||
-            `Failed to add general post: ${errorMessage}`
-        );
-      } else {
-        Alert.alert(
-          labels[language].error || "Error",
-          `Failed to add general post: ${errorMessage}`
-        );
-      }
-    }
-  }, [addGeneralPost, loadGeneralPosts, newGeneralPost, language]);
-
   // Handle addition with platform-specific confirmation
   const handleAdd = () => {
     const isJob = type === "job";
@@ -1260,7 +1139,6 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
     const isCourse = type === "course";
     const isRestaurant = type === "restaurant";
     const isDoc = type === "doc";
-    const isGeneral = type === "general";
     const confirmMessage = isJob
       ? labels[language].addConfirm || "Are you sure you want to add this job?"
       : isTravel
@@ -1281,9 +1159,6 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
       : isDoc
       ? labels[language].addConfirm ||
         "Are you sure you want to add this document post?"
-      : isGeneral
-      ? labels[language].addConfirm ||
-        "Are you sure you want to add this general post?"
       : "";
     const title = isJob
       ? labels[language].addJob || "Add Job"
@@ -1299,8 +1174,6 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
       ? labels[language].addRestaurant || "Add Restaurant"
       : isDoc
       ? labels[language].addDocPost || "Add Document Post"
-      : isGeneral
-      ? labels[language].addGeneralPost || "Add General Post"
       : "";
     const performAction = isJob
       ? performAddJob
@@ -1316,8 +1189,6 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
       ? performAddRestaurant
       : isDoc
       ? performAddDocPost
-      : isGeneral
-      ? performAddGeneralPost
       : () => {};
 
     if (Platform.OS === "web") {
@@ -1872,7 +1743,7 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
 
   // Render doc post form
   const renderDocForm = () => (
-    <>
+    <View style={styles.formContainer}>
       <View style={styles.fieldRow}>
         <Text style={styles.label}>{labels[language].text || "Text"}:</Text>
         <TextInput
@@ -1925,70 +1796,17 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
           </TouchableOpacity>
         </ScrollView>
       </View>
-    </>
-  );
-
-  // Render general post form
-  const renderGeneralForm = () => (
-    <>
-      <View style={styles.fieldRow}>
-        <Text style={styles.label}>{labels[language].text || "Text"}:</Text>
-        <TextInput
-          style={[styles.input, { height: 100 }]}
-          value={newGeneralPost.text || ""}
-          onChangeText={(text) => handleGeneralInputChange("text", text)}
-          placeholder={labels[language].text || "Enter text"}
-          multiline
-        />
-      </View>
-      <View style={styles.fieldRow}>
-        <Text style={styles.label}>{labels[language].images || "Images"}:</Text>
-        <ScrollView horizontal style={{ flexDirection: "row", maxHeight: 100 }}>
-          {selectedImages.map((uri, index) => (
-            <Image
-              key={index}
-              source={{ uri }}
-              style={[styles.imagePreview, { marginLeft: 10 }]}
-            />
-          ))}
-          <TouchableOpacity
-            style={[
-              styles.imageInput,
-              { marginLeft: selectedImages.length > 0 ? 10 : 0 },
-            ]}
-            onPress={pickImage}
-          >
-            <Ionicons name="add" size={24} color={COLORS.black} />
-          </TouchableOpacity>
-        </ScrollView>
-      </View>
-      <View style={styles.fieldRow}>
-        <Text style={styles.label}>{labels[language].videos || "Videos"}:</Text>
-        <ScrollView horizontal style={{ flexDirection: "row", maxHeight: 100 }}>
-          {selectedVideos.map((uri, index) => (
-            <Image
-              key={index}
-              source={{ uri }}
-              style={[styles.imagePreview, { marginLeft: 10 }]}
-            />
-          ))}
-          <TouchableOpacity
-            style={[
-              styles.imageInput,
-              { marginLeft: selectedVideos.length > 0 ? 10 : 0 },
-            ]}
-            onPress={pickVideo}
-          >
-            <Ionicons name="add" size={24} color={COLORS.black} />
-          </TouchableOpacity>
-        </ScrollView>
-      </View>
-    </>
+    </View>
   );
 
   return (
     <>
-      <TouchableOpacity onPress={() => setModalVisible(true)}>
+      <TouchableOpacity
+        onPress={() => {
+          console.log("Opening modal for type:", type);
+          setModalVisible(true);
+        }}
+      >
         <Image
           source={require("@/assets/images/add.png")}
           style={styles.icon}
@@ -1997,7 +1815,10 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
       <Modal
         transparent={true}
         visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)}
+        onRequestClose={() => {
+          console.log("Closing modal");
+          setModalVisible(false);
+        }}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
@@ -2016,9 +1837,7 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
                   : type === "restaurant"
                   ? labels[language].addRestaurant || "Add New Restaurant"
                   : type === "doc"
-                  ? labels[language].addDocPost || "Add New Document Post"
-                  : type === "general"
-                  ? labels[language].addGeneralPost || "Add New General Post"
+                  ? labels[language].addDoc || "Add New Document Post"
                   : ""}
               </Text>
               <TouchableOpacity
@@ -2043,8 +1862,6 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
                 ? renderRestaurantForm()
                 : type === "doc"
                 ? renderDocForm()
-                : type === "general"
-                ? renderGeneralForm()
                 : null}
               <View style={styles.modalButtonContainer}>
                 <TouchableOpacity

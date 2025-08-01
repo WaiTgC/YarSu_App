@@ -15,6 +15,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
 import * as MediaLibrary from "expo-media-library";
+import * as FileSystem from "expo-file-system";
 import { useDoc } from "@/hooks/useDoc";
 import { styles } from "@/assets/styles/adminstyles/doc.styles";
 import { useLanguage } from "@/context/LanguageContext";
@@ -26,14 +27,16 @@ type DocType = {
   id: number;
   text: string;
   media: string[];
+  images: string[];
+  videos: string[];
   created_at: string;
-  users: { email: string };
 };
 
-type EditedDocType = Partial<{
-  text: string;
-  media: { uri: string; type: string; name: string }[];
-}>;
+type EditedDocType = {
+  text?: string;
+  media?: { uri: string; type: string; name: string; base64?: string }[];
+  existingMedia?: string[];
+};
 
 const AdminDoc = () => {
   const { docPosts, loadDocPosts, updateDocPost, deleteDocPost } = useDoc();
@@ -56,20 +59,21 @@ const AdminDoc = () => {
   const isInitialMount = useRef(true);
   const carouselRefs = useRef<{ [key: number]: ICarouselInstance | null }>({});
 
+  // Request media library permissions
   useEffect(() => {
     (async () => {
       const { status } = await MediaLibrary.requestPermissionsAsync();
       if (status !== "granted") {
         Alert.alert(
           "Permission Denied",
-          "Please grant permission to access the media library to add files. Check app settings."
+          labels[language].permissionDenied ||
+            "Please grant permission to access the media library to add files."
         );
-      } else {
-        console.log("Media permissions granted:", status);
       }
     })();
-  }, []);
+  }, [language]);
 
+  // Adjust number of columns based on screen width
   useEffect(() => {
     const updateColumns = () => {
       const width = Dimensions.get("window").width;
@@ -80,6 +84,7 @@ const AdminDoc = () => {
     return () => subscription?.remove();
   }, []);
 
+  // Load posts on initial mount
   useEffect(() => {
     if (isInitialMount.current) {
       loadDocPosts();
@@ -87,6 +92,7 @@ const AdminDoc = () => {
     }
   }, [loadDocPosts]);
 
+  // Sync posts and initialize states
   useEffect(() => {
     setPosts(docPosts);
     const initialIndices = docPosts.reduce((acc, post) => {
@@ -101,6 +107,7 @@ const AdminDoc = () => {
     setExpandedNotes(initialExpanded);
   }, [docPosts]);
 
+  // Auto-scroll carousel for non-editing posts
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentIndices((prev) => {
@@ -122,144 +129,159 @@ const AdminDoc = () => {
     return () => clearInterval(interval);
   }, [posts, editMode]);
 
-  const handleEdit = (id: number, field: string, value: string) => {
+  // Handle text input changes
+  const handleEditText = (id: number, value: string) => {
     setEditedValues((prev) => ({
       ...prev,
-      [id]: { ...prev[id], [field]: value },
+      [id]: { ...prev[id], text: value },
     }));
   };
 
+  // Handle media selection
   const handlePickMedia = async (id: number) => {
     try {
-      const { status } = await MediaLibrary.getPermissionsAsync();
-      if (status !== "granted") {
-        const { status: requestStatus } =
-          await MediaLibrary.requestPermissionsAsync();
-        if (requestStatus !== "granted") {
-          Alert.alert(
-            "Permission Denied",
-            "Media library access denied. Please enable permissions in settings."
-          );
-          return;
-        }
-      }
-      console.log("Attempting to pick media for post ID:", id);
-
       const result = await DocumentPicker.getDocumentAsync({
         type: ["image/*", "video/*"],
         multiple: true,
       });
-      console.log("DocumentPicker result:", result);
-
       if (result.assets) {
-        const files = result.assets.map((asset) => {
-          if (Platform.OS === "web") {
+        const files = await Promise.all(
+          result.assets.map(async (asset) => {
+            let base64;
+            if (Platform.OS !== "web") {
+              base64 = await FileSystem.readAsStringAsync(asset.uri, {
+                encoding: FileSystem.EncodingType.Base64,
+              });
+              base64 = `data:${
+                asset.mimeType || "application/octet-stream"
+              };base64,${base64}`;
+            }
             return {
               uri: asset.uri,
               type: asset.mimeType || "application/octet-stream",
               name:
                 asset.name ||
                 `file_${Date.now()}.${asset.uri.split(".").pop() || "jpg"}`,
+              base64,
             };
-          }
-          return {
-            uri: asset.uri,
-            type: asset.mimeType || "application/octet-stream",
-            name:
-              asset.name ||
-              `file_${Date.now()}.${asset.uri.split(".").pop() || "jpg"}`,
-          };
-        });
-        console.log("Processed files:", files);
+          })
+        );
         setEditedValues((prev) => ({
           ...prev,
           [id]: {
             ...prev[id],
             media: [...(prev[id]?.media || []), ...files],
+            existingMedia:
+              prev[id]?.existingMedia ||
+              posts.find((p) => p.id === id)?.media ||
+              [],
           },
         }));
-      } else if (result.type === "cancel") {
-        console.log("User cancelled media picker");
-      } else {
-        console.warn("Unexpected result format:", result);
       }
     } catch (err) {
-      console.error("Error picking media:", err);
       Alert.alert(
         "Error",
-        "Failed to pick media files. Check console for Docs."
+        labels[language].mediaError || "Failed to pick media files."
       );
     }
   };
 
+  // Handle media removal
   const handleRemoveMedia = (id: number, index: number) => {
     setEditedValues((prev) => {
       const currentMedia = prev[id]?.media || [];
-      if (index < 0 || index >= currentMedia.length) {
-        console.warn(
-          "Invalid index for removal:",
-          index,
-          "Length:",
-          currentMedia.length
+      const currentExistingMedia =
+        prev[id]?.existingMedia || posts.find((p) => p.id === id)?.media || [];
+      if (index < currentExistingMedia.length) {
+        // Removing an existing media URL
+        const newExistingMedia = currentExistingMedia.filter(
+          (_, i) => i !== index
         );
-        return prev;
+        return {
+          ...prev,
+          [id]: { ...prev[id], existingMedia: newExistingMedia },
+        };
+      } else {
+        // Removing a newly added file
+        const newMedia = currentMedia.filter(
+          (_, i) => i !== index - currentExistingMedia.length
+        );
+        return {
+          ...prev,
+          [id]: { ...prev[id], media: newMedia },
+        };
       }
-      const newMedia = currentMedia.filter((_, i) => i !== index);
-      return {
-        ...prev,
-        [id]: { ...prev[id], media: newMedia },
-      };
     });
   };
 
+  // Save changes
   const handleSave = async (id: number) => {
     const updatedDoc = editedValues[id] || {};
-    const convertedDoc: Partial<DocType> = {};
-    const files = updatedDoc.media || [];
+    const originalPost = posts.find((p) => p.id === id);
+    if (!originalPost) return;
 
-    if (updatedDoc.text) convertedDoc.text = updatedDoc.text;
-    if (files.length > 0) {
-      const formData = new FormData();
-      if (updatedDoc.text) {
-        formData.append("text", updatedDoc.text);
-      }
-      for (const [index, file] of files.entries()) {
-        if (typeof file === "string") {
-          formData.append(`media[${index}]`, file);
-        } else {
-          const blob = await fetch(file.uri).then((res) => res.blob());
-          formData.append(`media[${index}]`, blob, file.name);
-        }
-      }
-      try {
-        await updateDocPost(id, convertedDoc, files);
-      } catch (error) {
-        console.error("Update error:", error);
-        Alert.alert("Error", "Failed to update post. Check console for Docs.");
-        return;
-      }
-    } else if (updatedDoc.text) {
-      try {
-        await updateDocPost(id, convertedDoc);
-      } catch (error) {
-        console.error("Update error:", error);
-        Alert.alert("Error", "Failed to update post. Check console for Docs.");
-        return;
-      }
-    } else {
+    // Check if any changes were made
+    const hasTextChanged =
+      updatedDoc.text !== undefined && updatedDoc.text !== originalPost.text;
+    const hasMediaChanged =
+      (updatedDoc.existingMedia &&
+        updatedDoc.existingMedia.length !== originalPost.media.length) ||
+      (updatedDoc.media && updatedDoc.media.length > 0);
+
+    if (!hasTextChanged && !hasMediaChanged) {
+      Alert.alert(
+        "No Changes",
+        labels[language].noChanges || "No changes were made to the document."
+      );
       setEditMode((prev) => ({ ...prev, [id]: false }));
       return;
     }
 
-    setEditMode((prev) => ({ ...prev, [id]: false }));
-    setEditedValues((prev) => {
-      const newValues = { ...prev };
-      delete newValues[id];
-      return newValues;
-    });
-    Alert.alert("Saved", labels[language].saved || "Changes have been saved!");
+    // Prepare postData for useDoc hook
+    const postData: { text?: string; images?: string[]; videos?: string[] } =
+      {};
+
+    if (updatedDoc.text !== undefined) {
+      postData.text = updatedDoc.text;
+    }
+
+    // Combine existing and new media as base64 strings or URLs
+    const existingMedia = updatedDoc.existingMedia || originalPost.media || [];
+    const newMedia = updatedDoc.media || [];
+    const allImages = [
+      ...existingMedia,
+      ...newMedia
+        .filter((file) => file.type.includes("image") && file.base64)
+        .map((file) => file.base64!),
+    ];
+
+    if (allImages.length > 0) {
+      postData.images = allImages;
+    }
+    postData.videos = []; // Align with useDoc hook's mapping
+
+    try {
+      await updateDocPost(id, postData);
+      setEditMode((prev) => ({ ...prev, [id]: false }));
+      setExpandedNotes((prev) => ({ ...prev, [id]: false }));
+      setEditedValues((prev) => {
+        const newValues = { ...prev };
+        delete newValues[id];
+        return newValues;
+      });
+      Alert.alert(
+        "Saved",
+        labels[language].saved || "Changes have been saved!"
+      );
+    } catch (error) {
+      Alert.alert(
+        "Error",
+        labels[language].updateError || "Failed to update post."
+      );
+    }
   };
 
+  // Confirm and delete post
   const handleConfirmDelete = async (id: number) => {
     try {
       await deleteDocPost(id);
@@ -270,10 +292,14 @@ const AdminDoc = () => {
         labels[language].deleted || "Document has been deleted!"
       );
     } catch (error) {
-      Alert.alert("Error", "Failed to delete document");
+      Alert.alert(
+        "Error",
+        labels[language].deleteError || "Failed to delete document."
+      );
     }
   };
 
+  // Navigate to previous media item
   const handlePrev = (id: number) => {
     const currentRef = carouselRefs.current[id];
     if (currentRef) {
@@ -285,6 +311,7 @@ const AdminDoc = () => {
     }
   };
 
+  // Navigate to next media item
   const handleNext = (id: number) => {
     const currentRef = carouselRefs.current[id];
     if (currentRef) {
@@ -302,6 +329,8 @@ const AdminDoc = () => {
     const isEditing = editMode[item.id] || false;
     const isExpanded = expandedNotes[item.id] || false;
     const currentValues = editedValues[item.id] || {};
+    const displayMedia = currentValues.existingMedia || media;
+    const newMedia = currentValues.media || [];
 
     return (
       <View style={styles.card}>
@@ -324,10 +353,7 @@ const AdminDoc = () => {
                   scrollAnimationDuration={300}
                   defaultIndex={currentIndices[item.id] || 0}
                   onSnapToItem={(index) =>
-                    setCurrentIndices((prev) => ({
-                      ...prev,
-                      [item.id]: index,
-                    }))
+                    setCurrentIndices((prev) => ({ ...prev, [item.id]: index }))
                   }
                   renderItem={({ item: url }) =>
                     url.includes(".mp4") ? (
@@ -337,13 +363,7 @@ const AdminDoc = () => {
                         </Text>
                       </View>
                     ) : (
-                      <Image
-                        source={{ uri: url }}
-                        style={styles.innerImage}
-                        onError={(error) =>
-                          console.error("Image load error:", error.nativeEvent)
-                        }
-                      />
+                      <Image source={{ uri: url }} style={styles.innerImage} />
                     )
                   }
                 />
@@ -351,18 +371,12 @@ const AdminDoc = () => {
               <TouchableOpacity onPress={() => handleNext(item.id)}>
                 <Text style={styles.arrow}>{">"}</Text>
               </TouchableOpacity>
-              {(media.length > 1 ||
-                (media.length === 0 &&
-                  ["https://picsum.photos/340/200"].length > 1)) && (
+              {media.length > 1 && (
                 <View style={styles.sliderControls}>
                   <FlatList
                     horizontal
                     contentContainerStyle={styles.indicatorContainer}
-                    data={
-                      media.length > 0
-                        ? media
-                        : ["https://picsum.photos/340/200"]
-                    }
+                    data={media}
                     keyExtractor={(item, index) => index.toString()}
                     renderItem={({ index }) => (
                       <View
@@ -378,130 +392,119 @@ const AdminDoc = () => {
                 </View>
               )}
             </>
-          ) : null}
-          <ScrollView
-            horizontal
-            style={{ flexDirection: "row", maxHeight: 100 }}
-          >
-            {media.map((uri, index) => (
-              <View key={index} style={styles.mediaPreviewWrapper}>
-                <Image
-                  source={{ uri }}
-                  style={[styles.imagePreview, { marginLeft: 10 }]}
-                  resizeMode="cover"
-                />
-                {isEditing && (
+          ) : (
+            <ScrollView
+              horizontal
+              style={{ flexDirection: "row", maxHeight: 100 }}
+            >
+              {displayMedia.map((uri, index) => (
+                <View
+                  key={`existing-${index}`}
+                  style={styles.mediaPreviewWrapper}
+                >
+                  <Image
+                    source={{ uri }}
+                    style={[styles.imagePreview, { marginLeft: 10 }]}
+                    resizeMode="cover"
+                  />
                   <TouchableOpacity
                     style={styles.closeButton}
                     onPress={() => handleRemoveMedia(item.id, index)}
                   >
                     <Text style={styles.closeButtonText}>×</Text>
                   </TouchableOpacity>
-                )}
-              </View>
-            ))}
-            {isEditing &&
-              currentValues.media &&
-              currentValues.media.map((file, index) => (
+                </View>
+              ))}
+              {newMedia.map((file, index) => (
                 <View key={`new-${index}`} style={styles.mediaPreviewWrapper}>
-                  {typeof file === "string" ? (
-                    <Image
-                      source={{ uri: file }}
-                      style={[styles.imagePreview, { marginLeft: 10 }]}
-                      resizeMode="cover"
-                    />
-                  ) : file.type.includes("image") ? (
-                    <Image
-                      source={{ uri: file.uri }}
-                      style={[styles.imagePreview, { marginLeft: 10 }]}
-                      resizeMode="cover"
-                    />
-                  ) : (
-                    <View style={styles.imagePreview}>
-                      <Text style={styles.previewVideoText}>Video Preview</Text>
-                    </View>
-                  )}
+                  <Image
+                    source={{ uri: file.uri }}
+                    style={[styles.imagePreview, { marginLeft: 10 }]}
+                    resizeMode="cover"
+                  />
                   <TouchableOpacity
                     style={styles.closeButton}
                     onPress={() =>
-                      handleRemoveMedia(item.id, media.length + index)
+                      handleRemoveMedia(item.id, displayMedia.length + index)
                     }
                   >
                     <Text style={styles.closeButtonText}>×</Text>
                   </TouchableOpacity>
                 </View>
               ))}
-            {isEditing && (
               <TouchableOpacity
                 style={[
                   styles.imageInput,
                   {
                     marginLeft:
-                      media.length + (currentValues.media?.length || 0) > 0
-                        ? 10
-                        : 0,
-                    padding: 10,
+                      displayMedia.length + newMedia.length > 0 ? 10 : 0,
                   },
                 ]}
                 onPress={() => handlePickMedia(item.id)}
-                activeOpacity={0.7}
               >
                 <Ionicons name="add" size={24} color={COLORS.black} />
               </TouchableOpacity>
-            )}
-          </ScrollView>
+            </ScrollView>
+          )}
         </View>
         <View style={styles.detailsContainer}>
-          {item.text || isEditing ? (
-            <View style={styles.noteDropdownContainer}>
-              <TouchableOpacity
-                style={styles.noteTextBox}
-                onPress={() =>
+          <View style={styles.noteDropdownContainer}>
+            <TouchableOpacity
+              style={styles.noteTextBox}
+              onPress={() => {
+                if (!isEditing) {
                   setExpandedNotes((prev) => ({
                     ...prev,
                     [item.id]: !prev[item.id],
-                  }))
+                  }));
                 }
+              }}
+            >
+              <View
+                style={[
+                  styles.noteTextContainer,
+                  !isExpanded && !isEditing && styles.collapsedNoteText,
+                ]}
               >
-                <View
-                  style={[
-                    styles.noteTextContainer,
-                    !isExpanded && styles.collapsedNoteText,
-                  ]}
-                >
-                  {isEditing && isExpanded ? (
-                    <TextInput
-                      style={styles.value}
-                      value={currentValues.text || item.text || ""}
-                      onChangeText={(text) => handleEdit(item.id, "text", text)}
-                      placeholder={labels[language].enterText || "Enter text"}
-                      multiline={true}
-                    />
-                  ) : (
-                    <Text style={styles.value}>
-                      {currentValues.text ||
-                        item.text ||
-                        "No additional notes available"}
-                    </Text>
-                  )}
-                </View>
+                {isEditing ? (
+                  <TextInput
+                    style={styles.value}
+                    value={
+                      currentValues.text !== undefined
+                        ? currentValues.text
+                        : item.text || ""
+                    }
+                    onChangeText={(text) => handleEditText(item.id, text)}
+                    placeholder={labels[language].enterText || "Enter text"}
+                    multiline
+                  />
+                ) : (
+                  <Text style={styles.value}>
+                    {currentValues.text !== undefined
+                      ? currentValues.text
+                      : item.text || "No text"}
+                  </Text>
+                )}
+              </View>
+              {!isEditing && (
                 <Ionicons
                   name={isExpanded ? "chevron-up" : "chevron-down"}
                   size={20}
                   color={COLORS.black}
                   style={styles.dropdownArrow}
                 />
-              </TouchableOpacity>
-            </View>
-          ) : null}
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
         <View style={styles.buttonContainer}>
           {!isEditing ? (
             <TouchableOpacity
               style={styles.button}
-              onPress={() =>
-                setEditMode((prev) => ({ ...prev, [item.id]: true }))
-              }
+              onPress={() => {
+                setEditMode((prev) => ({ ...prev, [item.id]: true }));
+                setExpandedNotes((prev) => ({ ...prev, [item.id]: true }));
+              }}
             >
               <Text style={styles.buttonText}>
                 {labels[language].edit || "Edit"}
@@ -527,7 +530,7 @@ const AdminDoc = () => {
           </TouchableOpacity>
         </View>
         <Modal
-          transparent={true}
+          transparent
           visible={deleteModalVisible === item.id}
           onRequestClose={() => setDeleteModalVisible(null)}
         >

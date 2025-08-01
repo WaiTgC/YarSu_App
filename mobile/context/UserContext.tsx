@@ -5,7 +5,7 @@ import React, {
   useEffect,
   ReactNode,
 } from "react";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { supabase } from "@/libs/supabase";
 
 interface UserProfile {
   name: string;
@@ -17,73 +17,73 @@ interface UserProfile {
   facebook?: string;
   tiktok?: string;
   youtube?: string;
-  bannerImage1?: string | null;
-  bannerImage2?: string | null;
-  bannerImage3?: string | null;
-  bannerImage4?: string | null;
 }
 
 interface UserContextType {
   profile: UserProfile;
   updateProfile: (updates: Partial<UserProfile>) => Promise<void>;
+  uploadImage: (file: any) => Promise<string | null>;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
 export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [profile, setProfile] = useState<UserProfile>({
-    name: "John Doe",
+    name: "",
     imageUrl: undefined,
-    phoneNumber: "+1234567890",
-    address: "123 Main St",
-    email: "john@example.com",
-    telegram: "@johndoe",
-    facebook: "john.doe",
-    tiktok: "@johndoe",
-    youtube: "UC123456789",
-    bannerImage1: null,
-    bannerImage2: null,
-    bannerImage3: null,
-    bannerImage4: null,
+    phoneNumber: "",
+    address: "",
+    email: "",
+    telegram: "",
+    facebook: "",
+    tiktok: "",
+    youtube: "",
   });
 
-  // Load profile from AsyncStorage on mount
   useEffect(() => {
-    const loadProfile = async () => {
-      try {
-        const savedProfile = await AsyncStorage.getItem("userProfile");
-        if (savedProfile) {
-          const parsedProfile = JSON.parse(savedProfile);
-          setProfile((prev) => ({ ...prev, ...parsedProfile }));
-          console.log(
-            "UserContext - Loaded profile from AsyncStorage:",
-            parsedProfile
-          );
-        }
-      } catch (error) {
-        console.error(
-          "UserContext - Error loading profile from AsyncStorage:",
-          error
-        );
+    const fetchUserEmail = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (session?.user?.email) {
+        setProfile((prev) => ({ ...prev, email: session.user.email }));
       }
     };
-    loadProfile();
+    fetchUserEmail();
   }, []);
 
   const updateProfile = async (updates: Partial<UserProfile>) => {
+    setProfile((prev) => ({ ...prev, ...updates }));
+  };
+
+  const uploadImage = async (file: any) => {
     try {
-      const newProfile = { ...profile, ...updates };
-      setProfile(newProfile);
-      await AsyncStorage.setItem("userProfile", JSON.stringify(newProfile));
-      console.log("UserContext - Profile saved to AsyncStorage:", newProfile);
+      const fileExt = file.uri.split(".").pop();
+      const fileName = `${Date.now()}.${fileExt}`;
+      const filePath = `profile/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("profile-images")
+        .upload(filePath, file, {
+          cacheControl: "3600",
+          upsert: true,
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage
+        .from("profile-images")
+        .getPublicUrl(filePath);
+      await updateProfile({ imageUrl: data.publicUrl });
+      return data.publicUrl;
     } catch (error) {
-      console.error("UserContext - Error updating profile:", error);
-      throw error;
+      console.error("Error uploading image:", error);
+      return null;
     }
   };
 
   return (
-    <UserContext.Provider value={{ profile, updateProfile }}>
+    <UserContext.Provider value={{ profile, updateProfile, uploadImage }}>
       {children}
     </UserContext.Provider>
   );
