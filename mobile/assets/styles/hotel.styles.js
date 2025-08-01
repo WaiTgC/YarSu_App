@@ -12,7 +12,7 @@ export const styles = StyleSheet.create({
   card: {
     borderWidth: 2,
     borderColor: "rgba(243, 243, 243, 0.6)",
-    width: "100%", // Full width for single column
+    width: "100%",
     height: 200,
     borderRadius: 24,
     marginBottom: 15,
@@ -50,16 +50,15 @@ export const styles = StyleSheet.create({
   },
   imageSlider: {
     flexDirection: "row",
-    height: 358, // Match Travel modal height
+    height: 358,
     borderRadius: 24,
     resizeMode: "cover",
   },
   imageContainer: {
-    flexDirection: "column",
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 10,
-    flexDirection: "row",
   },
   modalImage: {
     width: "100%",
@@ -86,6 +85,8 @@ export const styles = StyleSheet.create({
     color: COLORS.text,
     marginVertical: 10,
     fontFamily: "Avenir Next",
+    marginVertical: "auto",
+    marginRight: 10,
   },
   highlightItem: {
     flexDirection: "row",
@@ -105,7 +106,7 @@ export const styles = StyleSheet.create({
   },
   modalText: {
     fontSize: 14,
-    color: COLORS.white,
+    color: COLORS.black,
     fontFamily: "Avenir Next Condensed",
     marginVertical: 5,
     fontWeight: "600",
@@ -127,7 +128,6 @@ export const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
-
     marginHorizontal: "auto",
   },
   indicator: {
@@ -212,5 +212,30 @@ export const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     paddingVertical: 10,
+  },
+  noteDropdownContainer: {
+    marginVertical: 10,
+    flexDirection: "row",
+  },
+  noteTextBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: COLORS.white,
+    borderWidth: 1,
+    borderColor: COLORS.gray,
+    borderRadius: 5,
+    padding: 10,
+    marginTop: 5,
+    width: "50%",
+  },
+  noteTextContainer: {
+    overflow: "hidden",
+    flex: 1,
+  },
+  collapsedNoteText: {
+    maxHeight: 60,
+  },
+  dropdownArrow: {
+    marginLeft: 10,
   },
 });

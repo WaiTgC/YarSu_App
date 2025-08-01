@@ -91,6 +91,13 @@ export const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   actionButton: {
+    padding: 10,
+    borderRadius: 5,
+    alignItems: "center",
+    flex: 1,
+    marginLeft: 5,
+  },
+  actionButton1: {
     backgroundColor: COLORS.primary,
     padding: 10,
     borderRadius: 5,

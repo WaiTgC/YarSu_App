@@ -51,6 +51,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     if (pathname.includes("/adminHotel")) return "hotel";
     if (pathname.includes("/adminRestaurant")) return "restaurant";
     if (pathname.includes("/adminCourse")) return "course";
+    if (pathname.includes("/adminDoc")) return "document";
+    if (pathname.includes("/adminGeneral")) return "general";
     return null;
   };
 

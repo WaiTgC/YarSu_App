@@ -321,7 +321,7 @@ const Travel = () => {
                 </Text>
                 <View style={styles.noteDropdownContainer}>
                   <Text style={styles.modalHighlightTitle}>
-                    {labels[language].note || "Note"} - 
+                    {labels[language].note || "Note"} -
                     <TouchableOpacity
                       style={styles.noteTextBox}
                       onPress={() => setIsNoteExpanded(!isNoteExpanded)}
@@ -333,7 +333,8 @@ const Travel = () => {
                         ]}
                       >
                         <Text style={styles.modalText}>
-                          {selectedPost.note || "No additional notes available"}
+                          {selectedPost.notes ||
+                            "No additional notes available"}
                         </Text>
                       </View>
                       <Ionicons

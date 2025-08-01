@@ -1,8 +1,15 @@
-import React, { useEffect } from "react";
-import { View, Text, FlatList, Image, TouchableOpacity } from "react-native";
+import React, { useEffect, useState } from "react";
+import {
+  View,
+  Text,
+  FlatList,
+  Image,
+  TouchableOpacity,
+  Modal,
+  ScrollView,
+} from "react-native";
 import { useRestaurants } from "@/hooks/useRestaurants";
 import { styles } from "@/assets/styles/restaurant.styles";
-import { formatDate } from "@/libs/utils";
 
 type RestaurantType = {
   id: number;
@@ -17,6 +24,10 @@ type RestaurantType = {
 
 const Restaurant = () => {
   const { restaurants, loadRestaurants } = useRestaurants();
+  const [selectedRestaurant, setSelectedRestaurant] =
+    useState<RestaurantType | null>(null);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   useEffect(() => {
     loadRestaurants();
@@ -34,19 +45,38 @@ const Restaurant = () => {
     return stars;
   };
 
-  const renderItem = ({ item }) => (
-    <TouchableOpacity style={styles.card} onPress={() => {}}>
+  const handleCardPress = (restaurant: RestaurantType) => {
+    setSelectedRestaurant(restaurant);
+    setCurrentImageIndex(0);
+    setModalVisible(true);
+  };
+
+  const handlePrevImage = () => {
+    if (selectedRestaurant) {
+      setCurrentImageIndex((prev) =>
+        prev === 0 ? selectedRestaurant.images.length - 1 : prev - 1
+      );
+    }
+  };
+
+  const handleNextImage = () => {
+    if (selectedRestaurant) {
+      setCurrentImageIndex((prev) =>
+        prev === selectedRestaurant.images.length - 1 ? 0 : prev + 1
+      );
+    }
+  };
+
+  const renderItem = ({ item }: { item: RestaurantType }) => (
+    <TouchableOpacity style={styles.card} onPress={() => handleCardPress(item)}>
       <Image
-        source={{ uri: item.images[0] }}
+        source={{ uri: item.images[0] || "https://picsum.photos/200" }}
         style={styles.cardImage}
         onError={(error) =>
           console.error("Image load error:", error.nativeEvent)
         }
       />
       <View style={styles.textContainer}>
-        <View style={styles.ratingContainer}>
-          {renderStars(item.admin_rating)}
-        </View>
         <View style={styles.logoContainer}>
           <Image
             source={require("@/assets/images/food.png")}
@@ -54,13 +84,7 @@ const Restaurant = () => {
           />
           <Text style={styles.title}>{item.name}</Text>
         </View>
-        <View style={styles.logoContainer}>
-          <Image
-            source={require("@/assets/images/ping.png")}
-            style={styles.logo}
-          />
-          <Text style={styles.location}>{item.location}</Text>
-        </View>
+
         <View style={styles.logoContainer}>
           <Image
             source={require("@/assets/images/thumb.png")}
@@ -68,7 +92,6 @@ const Restaurant = () => {
           />
           <Text style={styles.detailText}>{item.popular_picks.join(", ")}</Text>
         </View>
-        <Text style={styles.detailText}>Notes: {item.notes || "N/A"}</Text>
       </View>
     </TouchableOpacity>
   );
@@ -87,10 +110,99 @@ const Restaurant = () => {
           contentContainerStyle={styles.gridContainer}
           keyExtractor={(item) => item.id.toString()}
           renderItem={renderItem}
-          numColumns={2} // Two-column layout
-          showsVerticalScrollIndicator={false} // Hide scrollbar
+          numColumns={4}
+          showsVerticalScrollIndicator={false}
           ListEmptyComponent={<Text>No restaurants available</Text>}
         />
+      )}
+      {selectedRestaurant && (
+        <Modal
+          animationType="slide"
+          transparent={true}
+          visible={modalVisible}
+          onRequestClose={() => setModalVisible(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => setModalVisible(false)}
+              >
+                <Text style={styles.closeButtonText}>×</Text>
+              </TouchableOpacity>
+              <View style={styles.modalImageContainer}>
+                <TouchableOpacity
+                  style={styles.arrowButton}
+                  onPress={handlePrevImage}
+                >
+                  <Text style={styles.arrowText}>{"<"}</Text>
+                </TouchableOpacity>
+                <Image
+                  source={{
+                    uri:
+                      selectedRestaurant.images[currentImageIndex] ||
+                      "https://picsum.photos/400",
+                  }}
+                  style={styles.modalImage}
+                  onError={(error) =>
+                    console.error("Modal image load error:", error.nativeEvent)
+                  }
+                />
+                <TouchableOpacity
+                  style={styles.arrowButton}
+                  onPress={handleNextImage}
+                >
+                  <Text style={styles.arrowText}>{">"}</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={styles.indicatorContainer}>
+                {selectedRestaurant.images.map((_, index) => (
+                  <View
+                    key={index}
+                    style={[
+                      styles.indicator,
+                      index === currentImageIndex && styles.activeIndicator,
+                    ]}
+                  />
+                ))}
+              </View>
+              <ScrollView style={styles.modalDetails}>
+                <Text style={styles.modalTitle}>{selectedRestaurant.name}</Text>
+                <View style={styles.modalRatingContainer}>
+                  {renderStars(selectedRestaurant.admin_rating)}
+                </View>
+                <View style={styles.modalDetailRow}>
+                  <Image
+                    source={require("@/assets/images/ping.png")}
+                    style={styles.modalIcon}
+                  />
+                  <Text style={styles.modalDetailText}>
+                    {selectedRestaurant.location}
+                  </Text>
+                </View>
+                <View style={styles.modalDetailRow}>
+                  <Image
+                    source={require("@/assets/images/thumb.png")}
+                    style={styles.modalIcon}
+                  />
+                  <View>
+                    {selectedRestaurant.popular_picks.map((pick, index) => (
+                      <Text key={index} style={styles.modalDetailText}>
+                        {pick}
+                      </Text>
+                    ))}
+                  </View>
+                </View>
+                <View style={styles.modalDetailRow}>
+                  <Text style={styles.detailText}>Notes: </Text>
+                  <View style={styles.notes}>
+                    <Text>{selectedRestaurant.notes || "N/A"}</Text>
+                  </View>
+                </View>
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
       )}
     </View>
   );

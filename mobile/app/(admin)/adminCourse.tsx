@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -7,44 +7,44 @@ import {
   TextInput,
   Alert,
   Modal,
+  Dimensions,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { styles } from "@/assets/styles/adminstyles/course.styles"; // Ensure this path is correct
+import { styles } from "@/assets/styles/adminstyles/course.styles";
 import { useCourses } from "@/hooks/useCourses";
 import { useLanguage } from "@/context/LanguageContext";
 import { labels } from "@/libs/language";
-
-// Define the Course type based on the provided structure
-type CourseType = {
-  id: number;
-  name: string;
-  duration: string;
-  price: number;
-  centre_name: string;
-  location: string;
-};
-
-// Define type for edited values
-type EditedCourseType = Partial<{
-  name: string;
-  duration: string;
-  price: string | number;
-  centre_name: string;
-  location: string;
-}>;
 
 const AdminCourse = () => {
   const router = useRouter();
   const { language } = useLanguage();
   const { courses, loadCourses, updateCourse, deleteCourse } = useCourses();
-  const [posts, setPosts] = useState<CourseType[]>([]);
-  const [editMode, setEditMode] = useState<{ [key: number]: boolean }>({});
-  const [editedValues, setEditedValues] = useState<{
-    [key: number]: EditedCourseType;
-  }>({});
-  const [deleteModalVisible, setDeleteModalVisible] = useState<number | null>(
-    null
-  );
+  const [posts, setPosts] = useState([]);
+  const [editMode, setEditMode] = useState({});
+  const [editedValues, setEditedValues] = useState({});
+  const [deleteModalVisible, setDeleteModalVisible] = useState(null);
+  const [numColumns, setNumColumns] = useState(3);
+  const [refreshKey, setRefreshKey] = useState(0); // Added to force FlatList re-render
+
+  useEffect(() => {
+    const updateNumColumns = () => {
+      const { width } = Dimensions.get("window");
+      const minCardWidth = 200;
+      const padding = 28 * 2;
+      const margin = 10 * 2;
+      const gap = 20;
+      const availableWidth = width - padding - margin;
+      const maxColumns = Math.floor(availableWidth / (minCardWidth + gap));
+      setNumColumns(Math.max(1, Math.min(maxColumns, 3)));
+    };
+
+    updateNumColumns();
+    const subscription = Dimensions.addEventListener(
+      "change",
+      updateNumColumns
+    );
+    return () => subscription?.remove();
+  }, []);
 
   useEffect(() => {
     loadCourses().catch((error) => {
@@ -56,16 +56,17 @@ const AdminCourse = () => {
   useEffect(() => {
     console.log("AdminCourse: Updating posts with courses", courses);
     setPosts(courses || []);
+    setRefreshKey((prev) => prev + 1); // Force FlatList re-render
   }, [courses]);
 
-  const handleEdit = (id: number, field: string, value: string) => {
+  const handleEdit = (id, field, value) => {
     setEditedValues((prev) => ({
       ...prev,
       [id]: { ...prev[id], [field]: value },
     }));
   };
 
-  const handleSave = async (id: number) => {
+  const handleSave = async (id) => {
     const courseData = editedValues[id] || {};
     if (
       courseData.name &&
@@ -75,10 +76,15 @@ const AdminCourse = () => {
       courseData.location
     ) {
       const updatedData = {
-        ...courseData,
+        name: courseData.name,
+        duration: courseData.duration,
         price: Number(courseData.price),
+        centre_name: courseData.centre_name,
+        location: courseData.location,
+        notes: courseData.notes || "",
       };
       try {
+        console.log("Sending update request for course:", id, updatedData);
         await updateCourse(id, updatedData);
         setEditMode((prev) => ({ ...prev, [id]: false }));
         setEditedValues((prev) => {
@@ -86,13 +92,17 @@ const AdminCourse = () => {
           delete newValues[id];
           return newValues;
         });
-        await loadCourses(); // Refresh the course list after update
+        // Add slight delay to ensure loadCourses completes
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        await loadCourses();
+        console.log("Posts after loadCourses:", courses);
         Alert.alert(
           labels[language].saved || "Saved",
           labels[language].changesSaved || "Changes have been saved!"
         );
       } catch (error) {
-        console.error("Failed to update course:", error);
+        console.error("Error updating course:", error);
+        setEditMode((prev) => ({ ...prev, [id]: false }));
         Alert.alert(
           labels[language].error || "Error",
           "Failed to update course"
@@ -101,13 +111,13 @@ const AdminCourse = () => {
     } else {
       Alert.alert(
         labels[language].error || "Error",
-        labels[language].requiredFields || "All fields are required"
+        labels[language].requiredFields || "All required fields must be filled"
       );
       setEditMode((prev) => ({ ...prev, [id]: false }));
     }
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id) => {
     try {
       await deleteCourse(id);
       setDeleteModalVisible(null);
@@ -122,8 +132,8 @@ const AdminCourse = () => {
     }
   };
 
-  const renderItem = ({ item }: { item: CourseType }) => {
-    if (!item) return null; // Safeguard against undefined item
+  const renderItem = ({ item }) => {
+    if (!item) return null;
     const isEditing = editMode[item.id] || false;
     const currentValues = editedValues[item.id] || {};
 
@@ -131,7 +141,9 @@ const AdminCourse = () => {
       <View style={styles.card}>
         <View style={styles.detailsContainer}>
           <View style={styles.fieldRow}>
-            <Text style={styles.label}>{labels[language].coursename || "Name"}:</Text>
+            <Text style={styles.label}>
+              {labels[language].coursename || "Name"}:
+            </Text>
             {isEditing ? (
               <TextInput
                 style={styles.input}
@@ -212,6 +224,22 @@ const AdminCourse = () => {
               <Text style={styles.value}>{item.location || "N/A"}</Text>
             )}
           </View>
+          <View style={styles.fieldRow}>
+            <Text style={styles.label}>
+              {labels[language].notes || "Notes"}:
+            </Text>
+            {isEditing ? (
+              <TextInput
+                style={styles.input}
+                value={currentValues.notes || item.notes || ""}
+                onChangeText={(text) => handleEdit(item.id, "notes", text)}
+                placeholder={labels[language].notes || "Enter notes"}
+                multiline
+              />
+            ) : (
+              <Text style={styles.value}>{item.notes || "N/A"}</Text>
+            )}
+          </View>
         </View>
         <View style={styles.buttonContainer}>
           {isEditing ? (
@@ -284,16 +312,20 @@ const AdminCourse = () => {
     <View style={styles.container}>
       <View style={styles.listContainer}>
         <FlatList
+          style={styles.list}
           showsVerticalScrollIndicator={false}
           data={posts}
           keyExtractor={(item) => item.id.toString()}
           renderItem={renderItem}
           showsHorizontalScrollIndicator={false}
+          numColumns={numColumns}
+          columnWrapperStyle={styles.columnWrapper}
           ListEmptyComponent={
             <Text style={styles.title}>
               {labels[language].noCourses || "No courses available"}
             </Text>
           }
+          key={`${numColumns}-${refreshKey}`} // Force re-render
         />
       </View>
     </View>

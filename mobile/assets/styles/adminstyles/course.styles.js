@@ -1,6 +1,8 @@
 import { StyleSheet, Dimensions } from "react-native";
 import { COLORS } from "@/constants/colors";
 
+const { width } = Dimensions.get("window");
+
 export const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -10,54 +12,65 @@ export const styles = StyleSheet.create({
   listContainer: {
     flex: 1,
   },
+  list: {
+    flex: 1,
+  },
+  columnWrapper: {
+    justifyContent: "space-between",
+    marginBottom: 20,
+    flexWrap: "wrap",
+  },
   card: {
-    width: 366,
-    height: "auto",
+    width: (width - 28 * 2 - 20 * 2) / 3, // Default for 3 columns
+    minWidth: 200, // Minimum card width
+    flex: 1, // Allow card to grow/shrink
     paddingVertical: 20,
     paddingHorizontal: 15,
     backgroundColor: "#F3F3F3",
     borderRadius: 24,
-    marginBottom: 20,
-    flexShrink: 0,
+    margin: 10, // Margin for spacing
     shadowColor: COLORS.text,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
-    flexDirection: "column",
-    justifyContent: "space-between",
   },
   detailsContainer: {
+    flex: 1,
     padding: 10,
   },
   fieldRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     marginBottom: 10,
+    flexWrap: "wrap",
   },
   label: {
     fontSize: 15,
     fontStyle: "normal",
     fontWeight: "400",
-    lineHeight: 10,
+    lineHeight: 20,
     letterSpacing: 0.15,
     color: COLORS.black,
     marginBottom: 5,
     width: "45%",
+    minWidth: 100,
   },
   value: {
     fontFamily: "SF Pro",
     fontSize: 15,
     fontStyle: "normal",
     fontWeight: "400",
-    lineHeight: 20, // Increased from 10 to 20 for better wrapping spacing
+    lineHeight: 20,
     letterSpacing: 0.15,
-    color: COLORS.background,
+    color: COLORS.black,
     marginBottom: 15,
     width: "55%",
+    minWidth: 100,
   },
   input: {
     width: "55%",
+    minWidth: 100,
     height: 25,
     borderColor: COLORS.border,
     borderWidth: 1,
@@ -70,9 +83,9 @@ export const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
-
-    gap: 50,
+    gap: 20,
     marginHorizontal: "auto",
+    marginTop: 10,
   },
   button: {
     width: 77,
@@ -87,11 +100,10 @@ export const styles = StyleSheet.create({
     fontSize: 15,
     fontStyle: "normal",
     fontWeight: "400",
-    lineHeight: 10,
+    lineHeight: 20,
     letterSpacing: 0.15,
     color: COLORS.white,
     textAlign: "center",
-    margin: "auto",
   },
   modalOverlay: {
     flex: 1,
@@ -130,7 +142,6 @@ export const styles = StyleSheet.create({
     borderColor: COLORS.background,
     width: 74,
     height: 35,
-    flexshrink: 0,
   },
   modalButtonText: {
     fontSize: 10,

@@ -45,7 +45,7 @@ const categories = [
     route: "/course",
   },
   {
-    name: "details",
+    name: "documents",
     icon: require("@/assets/images/detailicon.png"),
     color: COLORS.white,
     route: "/document",

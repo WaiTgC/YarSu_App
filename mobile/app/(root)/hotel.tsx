@@ -15,6 +15,8 @@ import { useHotels } from "@/hooks/useHotels";
 import { styles } from "@/assets/styles/hotel.styles";
 import { useLanguage } from "@/context/LanguageContext";
 import { labels } from "@/libs/language";
+import { Ionicons } from "@expo/vector-icons";
+import { COLORS } from "@/constants/colors";
 
 type HotelType = {
   id: number;
@@ -47,6 +49,7 @@ const Hotel = () => {
   const scrollX = useRef(new Animated.Value(0)).current;
   const scrollRef = useRef<ScrollView | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isNoteExpanded, setIsNoteExpanded] = useState(false);
 
   useEffect(() => {
     loadHotels();
@@ -80,6 +83,7 @@ const Hotel = () => {
       onPress={() => {
         handleMoreInfo(item);
         setShowDetails(true);
+        setIsNoteExpanded(false); // Reset notes state when opening modal
       }}
     >
       <Image
@@ -330,10 +334,35 @@ const Hotel = () => {
                     <Text style={styles.modalText}>{place}</Text>
                   </View>
                 ))}
-                <Text style={styles.modalHighlightTitle}>
-                  {labels[language].notes || "Notes"}:{" "}
-                  {selectedHotel.notes || "N/A"}
-                </Text>
+                {selectedHotel.notes && (
+                  <View style={styles.noteDropdownContainer}>
+                    <Text style={styles.modalHighlightTitle}>
+                      {labels[language].notes || "Notes"} -
+                    </Text>
+                    <TouchableOpacity
+                      style={styles.noteTextBox}
+                      onPress={() => setIsNoteExpanded(!isNoteExpanded)}
+                    >
+                      <View
+                        style={[
+                          styles.noteTextContainer,
+                          !isNoteExpanded && styles.collapsedNoteText,
+                        ]}
+                      >
+                        <Text style={styles.modalText}>
+                          {selectedHotel.notes ||
+                            "No additional notes available"}
+                        </Text>
+                      </View>
+                      <Ionicons
+                        name={isNoteExpanded ? "chevron-up" : "chevron-down"}
+                        size={20}
+                        color={COLORS.black}
+                        style={styles.dropdownArrow}
+                      />
+                    </TouchableOpacity>
+                  </View>
+                )}
               </View>
               <TouchableOpacity
                 style={styles.closeButton}

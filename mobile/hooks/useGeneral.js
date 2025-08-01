@@ -54,19 +54,46 @@ export const useGeneral = () => {
           "At least one of text, images, or videos must be provided"
         );
       }
+
+      const formData = new FormData();
+      formData.append("text", postData.text || "");
+
+      if (postData.images && postData.images.length > 0) {
+        postData.images.forEach((uri, index) => {
+          const file = {
+            uri,
+            type: "image/jpeg",
+            name: `image_${Date.now()}_${index}.jpg`,
+          };
+          formData.append("images", file);
+        });
+      }
+
+      if (postData.videos && postData.videos.length > 0) {
+        postData.videos.forEach((uri, index) => {
+          const file = {
+            uri,
+            type: "video/mp4",
+            name: `video_${Date.now()}_${index}.mp4`,
+          };
+          formData.append("videos", file);
+        });
+      }
+
       const response = await fetch(`${API_URL}/general-posts`, {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
           ...(AUTH_TOKEN && { Authorization: `Bearer ${AUTH_TOKEN}` }),
         },
-        body: JSON.stringify(postData),
+        body: formData,
       });
+
       if (!response.ok) {
         const errorText = await response.text();
         console.error("Server response:", errorText);
         throw new Error(`HTTP error! Status: ${response.status}`);
       }
+
       const newPost = await response.json();
       setGeneralPosts((prevPosts) => [...prevPosts, newPost]);
       return newPost;
@@ -88,19 +115,53 @@ export const useGeneral = () => {
             "At least one of text, images, or videos must be provided"
           );
         }
+
+        const formData = new FormData();
+        formData.append("text", postData.text || "");
+
+        if (postData.images && postData.images.length > 0) {
+          postData.images.forEach((uri, index) => {
+            const file = {
+              uri,
+              type: "image/jpeg",
+              name: `image_${Date.now()}_${index}.jpg`,
+            };
+            formData.append("images", file);
+          });
+        }
+
+        if (postData.videos && postData.videos.length > 0) {
+          postData.videos.forEach((uri, index) => {
+            const file = {
+              uri,
+              type: "video/mp4",
+              name: `video_${Date.now()}_${index}.mp4`,
+            };
+            formData.append("videos", file);
+          });
+        }
+
+        if (postData.removedMedia && postData.removedMedia.length > 0) {
+          formData.append(
+            "removedMedia",
+            JSON.stringify(postData.removedMedia)
+          );
+        }
+
         const response = await fetch(`${API_URL}/general-posts/${id}`, {
           method: "PUT",
           headers: {
-            "Content-Type": "application/json",
             ...(AUTH_TOKEN && { Authorization: `Bearer ${AUTH_TOKEN}` }),
           },
-          body: JSON.stringify(postData),
+          body: formData,
         });
+
         if (!response.ok) {
           const errorText = await response.text();
           console.error("Server response:", errorText);
           throw new Error(`HTTP error! Status: ${response.status}`);
         }
+
         const updatedPost = await response.json();
         setGeneralPosts((prevPosts) =>
           prevPosts.map((post) => (post.id === id ? updatedPost : post))

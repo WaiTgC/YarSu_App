@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -9,7 +9,8 @@ import {
 } from "react-native";
 import { useCondos } from "@/hooks/useCondos";
 import { styles } from "@/assets/styles/condo.styles";
-import { formatDate } from "@/libs/utils";
+import { COLORS } from "@/constants/colors";
+import { Ionicons } from "@expo/vector-icons";
 
 type CondoType = {
   id: number;
@@ -23,17 +24,35 @@ type CondoType = {
   garden: boolean;
   co_working_space: boolean;
   created_at: string;
+  notes?: string;
 };
 
 const Condo = () => {
   const { condos, loadCondos } = useCondos();
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedNotes, setSelectedNotes] = useState<string | undefined>("");
+  const [expandedNotes, setExpandedNotes] = useState<{
+    [key: number]: boolean;
+  }>({});
 
   useEffect(() => {
     loadCondos();
-    console.log("Condo data:", condos); // Log the condos data
+    console.log("Condo data:", condos);
   }, [loadCondos]);
 
-  const renderItem = ({ item }) => (
+  const openNotesModal = (notes: string | undefined) => {
+    setSelectedNotes(notes || "No notes available");
+    setModalVisible(true);
+  };
+
+  const toggleNoteExpanded = (id: number) => {
+    setExpandedNotes((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
+  };
+
+  const renderItem = ({ item }: { item: CondoType }) => (
     <View style={styles.card}>
       <View style={styles.cardImageContainer}>
         {item.images && item.images[0] && (
@@ -82,51 +101,65 @@ const Condo = () => {
             )}
             {item.co_working_space && (
               <View style={styles.amenityRow}>
-                <Text style={styles.modalText}>📚 Co-working Space: </Text>
+                <Text style={styles.modalText}>📚 Co-working Space</Text>
               </View>
             )}
           </View>
+          {item.notes && (
+            <View style={styles.noteDropdownContainer}>
+              <TouchableOpacity
+                style={styles.noteTextBox}
+                onPress={() => toggleNoteExpanded(item.id)}
+              >
+                <View
+                  style={[
+                    styles.noteTextContainer,
+                    !expandedNotes[item.id] && styles.collapsedNoteText,
+                  ]}
+                >
+                  <Text style={styles.modalText}>
+                    {item.notes || "No additional notes available"}
+                  </Text>
+                </View>
+                <Ionicons
+                  name={expandedNotes[item.id] ? "chevron-up" : "chevron-down"}
+                  size={20}
+                  color={COLORS.black}
+                  style={styles.dropdownArrow}
+                />
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
-      </View>
-      <View style={styles.contactContainer}>
-        {item.created_at && (
-          <Text style={styles.modalText}>
-            Posted: {formatDate(item.created_at)}
-          </Text>
-        )}
-        <TouchableOpacity
-          style={styles.contactButton}
-          onPress={() => console.log("Contact button pressed for:", item.name)}
-        >
-          <Text style={styles.contactButtonText}>Contact</Text>
-        </TouchableOpacity>
       </View>
       <View style={styles.imageOverlay}></View>
     </View>
   );
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      <View>
-        <View style={styles.cardTitle}>
-          <Text style={styles.cardTitleText1}>City Life.</Text>
-          <Text style={styles.cardTitleText2}>Simplified.</Text>
+    <>
+      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+        <View>
+          <View style={styles.cardTitle}>
+            <Text style={styles.cardTitleText1}>City Life.</Text>
+            <Text style={styles.cardTitleText2}>Simplified.</Text>
+          </View>
+          {condos.length === 0 ? (
+            <Text style={styles.title}>Loading condos...</Text>
+          ) : (
+            <FlatList
+              data={condos}
+              keyExtractor={(item) => item.id.toString()}
+              renderItem={renderItem}
+              horizontal={false}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.gridContainer}
+              ListEmptyComponent={<Text>No condos available</Text>}
+            />
+          )}
         </View>
-        {condos.length === 0 ? (
-          <Text style={styles.title}>Loading condos...</Text>
-        ) : (
-          <FlatList
-            data={condos}
-            keyExtractor={(item) => item.id.toString()}
-            renderItem={renderItem}
-            horizontal={false} // Vertical column
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.gridContainer}
-            ListEmptyComponent={<Text>No condos available</Text>}
-          />
-        )}
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </>
   );
 };
 

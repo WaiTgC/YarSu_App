@@ -9,10 +9,8 @@ const minCardWidth = 300;
 
 const calculateCardWidth = () => {
   const availableWidth = width - 2 * containerPadding;
-  if (availableWidth >= 1024) {
+  if (availableWidth >= 768) {
     return Math.min(maxCardWidth, (availableWidth - 2 * cardMargin) / 3);
-  } else if (availableWidth >= 600) {
-    return Math.min(maxCardWidth, (availableWidth - cardMargin) / 2);
   } else {
     return Math.min(maxCardWidth, availableWidth);
   }
@@ -26,13 +24,6 @@ export const styles = StyleSheet.create({
   },
   listContainer: {
     flex: 1,
-  },
-  flatListContent: {
-    paddingBottom: 20,
-  },
-  columnWrapper: {
-    justifyContent: "space-between",
-    marginBottom: cardMargin,
   },
   card: {
     width: calculateCardWidth(),
@@ -51,7 +42,7 @@ export const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   imageBackground: {
-    width: calculateCardWidth() - 30 - 50,
+    width: calculateCardWidth() - 30 - 50, // Subtract padding and arrow widths
     height: 200,
     borderRadius: 10,
     overflow: "hidden",
@@ -75,7 +66,6 @@ export const styles = StyleSheet.create({
   indicatorContainer: {
     flexDirection: "row",
     justifyContent: "center",
-    alignItems: "center",
   },
   indicator: {
     width: 5,

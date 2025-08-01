@@ -13,6 +13,8 @@ import { useRouter } from "expo-router";
 import { styles } from "@/assets/styles/course.styles";
 import { useCourses } from "@/hooks/useCourses";
 import { formatDate } from "@/libs/utils";
+import { useLanguage } from "@/context/LanguageContext"; // Add language context
+import { labels } from "@/libs/language"; // Add language labels
 
 // Define the Course type
 type CourseType = {
@@ -20,7 +22,6 @@ type CourseType = {
   name: string;
   location: string;
   created_at: string;
-
   language_required?: boolean;
   duration?: string;
   online?: boolean;
@@ -46,6 +47,7 @@ const Course = () => {
     loadCourses: () => void;
     setShowDetails: (show: boolean) => void;
   };
+  const { language } = useLanguage(); // Add language hook
 
   const slideAnimDetails = useRef(
     new Animated.Value(Dimensions.get("window").height)
@@ -72,10 +74,16 @@ const Course = () => {
     }
   }, [showDetails, slideAnimDetails, headerHeight]);
 
+  useEffect(() => {
+    console.log(`Course - Current language: ${language}`); // Log language change
+  }, [language]);
+
   return (
     <View style={styles.container}>
       {courses.length === 0 ? (
-        <Text style={styles.title}>Loading courses...</Text>
+        <Text style={styles.title}>
+          {labels[language].loadingCourses || "Loading courses..."}
+        </Text>
       ) : (
         <FlatList
           data={courses}
@@ -103,9 +111,9 @@ const Course = () => {
                     style={styles.image}
                     resizeMode="cover"
                   />
-
                   <Text style={styles.title}>
-                    {""} {item.duration}
+                    {""}{" "}
+                    {item.duration || labels[language].notAvailable || "N/A"}
                   </Text>
                 </View>
                 <View style={styles.titleContainer}>
@@ -115,7 +123,7 @@ const Course = () => {
                     resizeMode="cover"
                   />
                   <Text style={styles.title}>
-                    {""} {item.price}
+                    {""} {item.price || labels[language].notAvailable || "N/A"}
                   </Text>
                 </View>
               </View>
@@ -123,7 +131,9 @@ const Course = () => {
           )}
           numColumns={2} // Two-column layout
           showsVerticalScrollIndicator={false} // Hide scrollbar
-          ListEmptyComponent={<Text>No courses available</Text>}
+          ListEmptyComponent={
+            <Text>{labels[language].noCourses || "No courses available"}</Text>
+          }
         />
       )}
 
@@ -146,7 +156,9 @@ const Course = () => {
                         resizeMode="cover"
                       />
                       <View style={styles.textboxContainer}>
-                        <Text>Course Name</Text>
+                        <Text>
+                          {labels[language].coursename || "Course Name"}
+                        </Text>
                         <Text style={styles.modalTitle}>
                           {selectedCourse.name}
                         </Text>
@@ -159,9 +171,11 @@ const Course = () => {
                         resizeMode="cover"
                       />
                       <View style={styles.textboxContainer}>
-                        <Text>Duration</Text>
+                        <Text>{labels[language].duration || "Duration"}</Text>
                         <Text style={styles.modalTitle}>
-                          {selectedCourse.duration || "N/A"}
+                          {selectedCourse.duration ||
+                            labels[language].notAvailable ||
+                            "N/A"}
                         </Text>
                       </View>
                     </View>
@@ -172,9 +186,11 @@ const Course = () => {
                         resizeMode="cover"
                       />
                       <View style={styles.textboxContainer}>
-                        <Text>Online</Text>
+                        <Text>{labels[language].online || "Online"}</Text>
                         <Text style={styles.modalTitle}>
-                          {selectedCourse.online ? "Yes" : "No"}
+                          {selectedCourse.online
+                            ? labels[language].yes || "Yes"
+                            : labels[language].no || "No"}
                         </Text>
                       </View>
                     </View>
@@ -185,9 +201,13 @@ const Course = () => {
                         resizeMode="cover"
                       />
                       <View style={styles.textboxContainer}>
-                        <Text>Course Fees </Text>
+                        <Text>
+                          {labels[language].courseprice || "Course Fees"}
+                        </Text>
                         <Text style={styles.modalTitle}>
-                          {selectedCourse.price}
+                          {selectedCourse.price ||
+                            labels[language].notAvailable ||
+                            "N/A"}
                         </Text>
                       </View>
                     </View>
@@ -198,13 +218,12 @@ const Course = () => {
                         resizeMode="cover"
                       />
                       <View style={styles.textboxContainer}>
-                        <Text>Location</Text>
+                        <Text>{labels[language].location || "Location"}</Text>
                         <Text style={styles.modalTitle}>
                           {selectedCourse.location}
                         </Text>
                       </View>
                     </View>
-
                     <View style={styles.textbox}>
                       <Image
                         source={require("@/assets/images/clock.png")}
@@ -212,13 +231,16 @@ const Course = () => {
                         resizeMode="cover"
                       />
                       <View style={styles.textboxContainer}>
-                        <Text>Language Required</Text>
+                        <Text>
+                          {labels[language].thaiLanguage || "Language Required"}
+                        </Text>
                         <Text style={styles.modalTitle}>
-                          {selectedCourse.language_required ? "Yes" : "No"}
+                          {selectedCourse.language_required
+                            ? labels[language].yes || "Yes"
+                            : labels[language].no || "No"}
                         </Text>
                       </View>
                     </View>
-
                     <View style={styles.textbox}>
                       <Image
                         source={require("@/assets/images/clock.png")}
@@ -226,7 +248,24 @@ const Course = () => {
                         resizeMode="cover"
                       />
                       <View style={styles.textboxContainer}>
-                        <Text>Posted Date</Text>
+                        <Text>{labels[language].notes || "Notes"}</Text>
+                        <Text style={styles.modalTitle}>
+                          {selectedCourse.notes ||
+                            labels[language].notAvailable ||
+                            "N/A"}
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={styles.textbox}>
+                      <Image
+                        source={require("@/assets/images/clock.png")}
+                        style={styles.image}
+                        resizeMode="cover"
+                      />
+                      <View style={styles.textboxContainer}>
+                        <Text>
+                          {labels[language].postedDate || "Posted Date"}
+                        </Text>
                         <Text style={styles.modalTitle}>
                           {formatDate(selectedCourse.created_at)}
                         </Text>
@@ -236,7 +275,9 @@ const Course = () => {
                       style={styles.closeButton}
                       onPress={() => setShowDetails(false)}
                     >
-                      <Text style={styles.buttonText}>Contact</Text>
+                      <Text style={styles.buttonText}>
+                        {labels[language].contact || "Contact"}
+                      </Text>
                     </TouchableOpacity>
                   </>
                 )}

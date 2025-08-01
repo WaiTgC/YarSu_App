@@ -129,6 +129,8 @@ export const styles = StyleSheet.create({
     marginLeft: 5,
     fontStyle: "normal",
     letterSpacing: 0.72,
+    width: "40%",
+    textAlign: "justify",
   },
   star: {
     fontSize: 20,
@@ -242,6 +244,7 @@ export const styles = StyleSheet.create({
     padding: 10,
     marginTop: 5,
     marginLeft: 10,
+    width: "60%",
   },
   dropdownArrow: {
     marginLeft: 10,

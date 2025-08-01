@@ -6,7 +6,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { COLORS } from "@/constants/colors";
 import { supabase } from "@/libs/supabase";
 import { getUserRole } from "@/services/authService";
-import { SignOutButton } from "@/components/SignOutButton";
+import { SignOutButtonUser } from "@/components/SignOutButtonUser";
 
 interface AppSidebarProps {
   isOpen: boolean;
@@ -172,7 +172,7 @@ export default function AppSidebar({ isOpen, toggleSidebar }: AppSidebarProps) {
               </TouchableOpacity>
               <TouchableOpacity style={[styles.logoutButton]}>
                 <View style={styles.menuItemContent}>
-                  <SignOutButton />
+                  <SignOutButtonUser />
                 </View>
               </TouchableOpacity>
             </View>

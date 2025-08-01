@@ -12,9 +12,9 @@ export const styles = StyleSheet.create({
   },
   card: {
     width: "100%",
-    height: "auto", // Increased height to fit all details
+    height: "auto",
     borderRadius: 24,
-    marginBottom: 15, // Space between cards in column
+    marginBottom: 15,
     shadowColor: COLORS.text,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -28,7 +28,7 @@ export const styles = StyleSheet.create({
   },
   cardImage: {
     width: 135,
-    height: 135, // Adjusted for better proportion with details
+    height: 135,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: "rgba(243, 243, 243, 0.60)",
@@ -56,7 +56,7 @@ export const styles = StyleSheet.create({
     zIndex: 100,
     marginTop: 0,
     width: "60%",
-    height: "70%",
+    height: "auto",
   },
   modalText: {
     fontSize: 14,
@@ -64,6 +64,13 @@ export const styles = StyleSheet.create({
     color: COLORS.black,
     marginVertical: 2,
     fontFamily: "Avenir",
+  },
+  modalHighlightTitle: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: COLORS.black,
+    fontFamily: "Avenir",
+    marginVertical: 5,
   },
   cardTitle: {
     flexDirection: "column",
@@ -102,25 +109,28 @@ export const styles = StyleSheet.create({
     height: 10,
     marginRight: 6,
   },
-  contactButton: {
-    backgroundColor: COLORS.white, // Adjust color as needed
-    paddingVertical: 10,
-    paddingHorizontal: 35,
-    borderRadius: 10,
-    alignItems: "center",
-    marginTop: 10,
+  noteDropdownContainer: {
+    marginVertical: 10,
   },
-  contactButtonText: {
-    color: COLORS.background,
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  contactContainer: {
+  noteTextBox: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 10,
-    zIndex: 100,
-    paddingHorizontal: 22,
+    backgroundColor: COLORS.white,
+    borderWidth: 1,
+    borderColor: COLORS.gray,
+    borderRadius: 5,
+    padding: 10,
+    marginTop: 5,
+    width: "100%",
+  },
+  noteTextContainer: {
+    overflow: "hidden",
+    flex: 1,
+  },
+  collapsedNoteText: {
+    maxHeight: 60,
+  },
+  dropdownArrow: {
+    marginLeft: 10,
   },
 });

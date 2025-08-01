@@ -19,7 +19,7 @@ import { getUserRole } from "@/services/authService";
 import { getItem } from "@/utils/storage";
 import { useLanguage } from "@/context/LanguageContext";
 import { labels } from "@/libs/language";
-import { useUser } from "@/context/UserContext"; // Import useUser
+import { useUser } from "@/context/UserContext";
 
 const getGreeting = (language: "en" | "my") => {
   const hour = new Date().getHours();
@@ -44,14 +44,26 @@ export default function Home({ toggleSidebar }: HomeProps) {
   const [currentImage, setCurrentImage] = useState(0);
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const { language, setLanguage } = useLanguage();
-  const { profile } = useUser(); // Access profile data
+  const { profile } = useUser();
+
+  const defaultBanners = [
+    require("@/assets/images/banner.png"),
+    require("@/assets/images/banner1.png"),
+    require("@/assets/images/banner2.png"),
+    require("@/assets/images/banner3.png"),
+  ];
 
   const images = [
-    profile.bannerImage1 || require("@/assets/images/banner.png"),
-    profile.bannerImage2 || require("@/assets/images/banner1.png"),
-    profile.bannerImage3 || require("@/assets/images/banner2.png"),
-    profile.bannerImage4 || require("@/assets/images/banner3.png"),
-  ].map((image) => (typeof image === "string" ? { uri: image } : image));
+    profile.bannerImage1 || defaultBanners[0],
+    profile.bannerImage2 || defaultBanners[1],
+    profile.bannerImage3 || defaultBanners[2],
+    profile.bannerImage4 || defaultBanners[3],
+  ].map((image) => {
+    if (typeof image === "string") {
+      return { uri: image };
+    }
+    return image; // Local asset from defaultBanners
+  });
 
   const checkSessionWithRetry = async (retries = 3, delay = 500) => {
     for (let attempt = 1; attempt <= retries; attempt++) {
@@ -329,9 +341,13 @@ export default function Home({ toggleSidebar }: HomeProps) {
                     source={images[currentImage]}
                     style={[styles.banner, { opacity: fadeAnim }]}
                     resizeMode="cover"
-                    onError={(error) =>
-                      console.log("Home - Image load error:", error.nativeEvent)
-                    }
+                    onError={(error) => {
+                      console.log(
+                        `Home - Image load error for banner ${currentImage}:`,
+                        error.nativeEvent,
+                        `URL: ${JSON.stringify(images[currentImage])}`
+                      );
+                    }}
                   />
                 </View>
                 <Text style={styles.telegramText}>

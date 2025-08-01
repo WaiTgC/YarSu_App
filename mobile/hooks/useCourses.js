@@ -24,14 +24,10 @@ export const useCourses = () => {
         throw new Error(`HTTP error! Status: ${response.status}`);
       }
       const data = await response.json();
-      console.log("Courses data:", data);
+      console.log("Fetched courses:", data);
       setCourses(data);
     } catch (error) {
-      if (error instanceof Error) {
-        console.error("Error fetching courses:", error.message);
-      } else {
-        console.error("Error fetching courses:", error);
-      }
+      console.error("Error fetching courses:", error);
     }
   }, []);
 
@@ -57,29 +53,33 @@ export const useCourses = () => {
     }
   }, []);
 
-  const updateCourse = useCallback(async (id, courseData) => {
-    console.log("Updating course:", id, courseData);
-    try {
-      const response = await fetch(`${API_URL}/courses/${id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(courseData),
-      });
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
+  const updateCourse = useCallback(
+    async (id, courseData) => {
+      console.log("Updating course:", id, courseData);
+      try {
+        const response = await fetch(`${API_URL}/courses/${id}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(courseData),
+        });
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        const updatedCourse = await response.json();
+        console.log("Updated course response:", updatedCourse);
+        // Force refresh by fetching all courses
+        await fetchCourses();
+        console.log("Courses after update:", courses);
+        return updatedCourse;
+      } catch (error) {
+        console.error("Error updating course:", error);
+        throw error;
       }
-      const updatedCourse = await response.json();
-      setCourses((prev) =>
-        prev.map((course) => (course.id === id ? updatedCourse : course))
-      );
-      return updatedCourse;
-    } catch (error) {
-      console.error("Error updating course:", error);
-      throw error;
-    }
-  }, []);
+    },
+    [fetchCourses]
+  );
 
   const deleteCourse = useCallback(async (id) => {
     console.log("Deleting course:", id);
@@ -98,13 +98,13 @@ export const useCourses = () => {
   }, []);
 
   const handleMoreInfo = useCallback((course) => {
-    console.log("Showing details for course:", course.title);
+    console.log("Showing details for course:", course.name);
     setSelectedCourse(course);
     setShowDetails(true);
   }, []);
 
   const handleApply = useCallback(() => {
-    console.log("Opening apply form for course:", selectedCourse?.title);
+    console.log("Opening apply form for course:", selectedCourse?.name);
     setShowDetails(false);
     setShowApplyForm(true);
   }, [selectedCourse]);
@@ -118,7 +118,7 @@ export const useCourses = () => {
 
     console.log(
       "Submitting application for course:",
-      selectedCourse.title,
+      selectedCourse.name,
       formData
     );
     try {

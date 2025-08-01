@@ -228,7 +228,8 @@ export const styles = StyleSheet.create({
     maxHeight: 60, // Limits to ~2-3 lines of text
   },
   noteTextBox: {
-    width: "55%",
+    width: 176,
+    height: "auto",
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: COLORS.white,

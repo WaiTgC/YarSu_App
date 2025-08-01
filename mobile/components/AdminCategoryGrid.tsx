@@ -30,7 +30,7 @@ const adminCategories = [
   {
     name: "adminDocument",
     icon: require("@/assets/images/detailicon.png"),
-    route: "/(admin)/adminDetail",
+    route: "/(admin)/adminDoc",
   },
   {
     name: "adminRestaurants",

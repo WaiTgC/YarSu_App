@@ -1,25 +1,32 @@
 import { StyleSheet, Dimensions } from "react-native";
 import { COLORS } from "@/constants/colors";
 
+const windowWidth = Dimensions.get("window").width;
+const numColumns = 4;
+const cardMargin = 10;
+const containerPadding = 15;
+const cardWidth =
+  (windowWidth - containerPadding * 2 - cardMargin * (numColumns + 1)) /
+  numColumns;
+
 export const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
-    padding: 15,
+    padding: containerPadding,
   },
   gridContainer: {
     justifyContent: "space-between",
     marginTop: 10,
-    rowGap: 20, // Gap between rows
+    rowGap: 20,
   },
   card: {
-    width: "45%", // Adjusted for two columns with gap
+    width: cardWidth,
     height: "auto",
     padding: 10,
-    backgroundColor: " rgba(248, 249, 250, 0.80)",
+    backgroundColor: "rgba(248, 249, 250, 0.80)",
     borderRadius: 12,
-    marginBottom: 10,
-    marginHorizontal: 10, // Gap between columns
+    margin: cardMargin,
     shadowColor: COLORS.text,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -28,10 +35,9 @@ export const styles = StyleSheet.create({
   },
   cardImage: {
     width: "100%",
-    height: 135,
+    height: cardWidth * 0.75, // Maintain aspect ratio (e.g., 4:3)
     borderTopLeftRadius: 12,
     borderTopRightRadius: 12,
-    margin: "auto",
   },
   textContainer: {
     flexDirection: "column",
@@ -71,6 +77,21 @@ export const styles = StyleSheet.create({
     lineHeight: 15,
     fontStyle: "normal",
   },
+  notes: {
+    fontSize: 12,
+    color: COLORS.black,
+    fontFamily: "SF Pro",
+    fontWeight: "400",
+    letterSpacing: 0.12,
+
+    fontStyle: "normal",
+    backgroundColor: COLORS.white,
+    borderWidth: 1,
+    borderColor: COLORS.black,
+    width: "auto",
+    padding: 5,
+    height: 60,
+  },
   detailText: {
     fontSize: 12,
     color: COLORS.black,
@@ -96,5 +117,100 @@ export const styles = StyleSheet.create({
     fontSize: 30,
     color: COLORS.text,
     fontFamily: "Avenir Next",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 82,
+  },
+  modalContent: {
+    width: "auto ",
+    maxHeight: Dimensions.get("window").height * 0.8,
+    backgroundColor: COLORS.white,
+    borderRadius: 12,
+    padding: 20,
+    alignItems: "center",
+  },
+  closeButton: {
+    position: "absolute",
+    top: 10,
+    right: 10,
+    width: 30,
+    height: 30,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  closeButtonText: {
+    fontSize: 24,
+    color: COLORS.black,
+  },
+  modalImageContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    width: "100%",
+  },
+  modalImage: {
+    width: "80%",
+    height: 200,
+    borderRadius: 8,
+  },
+  arrowButton: {
+    padding: 10,
+  },
+  arrowText: {
+    fontSize: 24,
+    color: COLORS.black,
+  },
+  indicatorContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    marginVertical: 10,
+  },
+  indicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: COLORS.gray,
+    marginHorizontal: 4,
+  },
+  activeIndicator: {
+    backgroundColor: COLORS.black,
+  },
+  modalDetails: {
+    width: "100%",
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "600",
+    color: COLORS.black,
+    fontFamily: "Avenir Next",
+    marginBottom: 10,
+    textAlign: "center",
+  },
+  modalRatingContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    marginBottom: 10,
+  },
+  modalDetailRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    marginBottom: 10,
+  },
+  modalIcon: {
+    width: 20,
+    height: 20,
+    marginRight: 10,
+    marginTop: 2,
+  },
+  modalDetailText: {
+    fontSize: 14,
+    color: COLORS.black,
+    fontFamily: "SF Pro",
+    fontWeight: "400",
+    lineHeight: 20,
   },
 });
