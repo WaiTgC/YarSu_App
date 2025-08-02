@@ -5,7 +5,6 @@ import { useEffect, useState } from "react";
 import { View, Text, ActivityIndicator, StatusBar } from "react-native";
 import { styles } from "@/assets/styles/auth.styles";
 import AppLayout from "@/components/AppLayout";
-import { LanguageProvider } from "@/context/LanguageContext";
 import { UserProvider } from "@/context/UserContext";
 
 export default function RootLayout() {
@@ -62,8 +61,8 @@ export default function RootLayout() {
       <SafeScreen>
         <AppLayout>
           <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="index" options={{ title: "Home" }} />
-            <Stack.Screen name="ChatScreen" options={{ title: "Chat" }} />
+            <Stack.Screen name="home" />
+            <Stack.Screen name="ChatScreen" />
           </Stack>
         </AppLayout>
         <StatusBar style="auto" />

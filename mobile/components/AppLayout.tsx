@@ -225,7 +225,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
               </View>
               <View style={styles.headerRight}>
                 {pathname === "/home" ? (
-                  <ChatButton chatId={user.id} />
+                  <ChatButton />
                 ) : (
                   <View style={{ flexDirection: "row", alignItems: "center" }}>
                     <TouchableOpacity

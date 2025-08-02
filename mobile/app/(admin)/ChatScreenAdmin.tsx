@@ -9,15 +9,10 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  TouchableOpacity,
 } from "react-native";
 import { api } from "@/libs/api";
-
-interface Chat {
-  id: string;
-  title?: string;
-  lastMessage?: string;
-}
+import * as SecureStore from "expo-secure-store";
+import { useRouter, useLocalSearchParams } from "expo-router";
 
 interface Message {
   id: string;
@@ -27,77 +22,93 @@ interface Message {
 }
 
 export default function ChatScreen() {
-  const [chats, setChats] = useState<Chat[]>([]);
+  const router = useRouter();
+  const params = useLocalSearchParams();
+  const chatIdFromRoute = params.chatId as string | undefined;
+  const [chatId, setChatId] = useState<string | null>(chatIdFromRoute || null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
-  const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const flatListRef = useRef<FlatList<any>>(null);
 
   useEffect(() => {
-    // Fetch userId from SecureStore
-    import("expo-secure-store")
-      .then((module) => {
-        const SecureStore = module.default;
-        SecureStore.getItemAsync("userId")
-          .then((id) => setUserId(id))
-          .catch((err) =>
-            console.error("SecureStore getItemAsync error:", err)
-          );
-      })
-      .catch((err) => console.error("SecureStore import error:", err));
+    const initializeChat = async () => {
+      try {
+        // Fetch userId from SecureStore
+        const id = await SecureStore.getItemAsync("userId");
+        setUserId(id);
 
-    const fetchData = async () => {
+        if (!id) {
+          console.error("ChatScreen - No userId found");
+          setLoading(false);
+          router.replace("/(auth)");
+          return;
+        }
+
+        // If no chatId was passed, check for or create a chat
+        if (!chatIdFromRoute) {
+          const response = await api.get(`/chats?user_id=${id}`);
+          if (response.data && response.data.length > 0) {
+            setChatId(response.data[0].id);
+          } else {
+            const createResponse = await api.post("/chats", { user_id: id });
+            setChatId(createResponse.data.id);
+          }
+        }
+      } catch (error) {
+        console.error("ChatScreen - Error initializing chat:", error);
+        setLoading(false);
+        router.replace("/(auth)");
+      }
+    };
+
+    initializeChat();
+  }, [chatIdFromRoute, router]);
+
+  useEffect(() => {
+    if (!chatId) return;
+
+    const fetchMessages = async () => {
       setLoading(true);
       try {
-        const chatsRes = await api.get("/chats"); // Fetch list of chats
-        setChats(chatsRes.data || []);
-        if (selectedChatId) {
-          const messagesRes = await api.get(`/messages/${selectedChatId}`);
-          setMessages(messagesRes.data || []);
-        }
+        const res = await api.get(`/messages/${chatId}`);
+        setMessages(res.data || []);
       } catch (err) {
-        console.error("ChatScreen - Error fetching data:", err);
-        setChats([]);
+        console.error("ChatScreen - Error fetching messages:", err);
         setMessages([]);
       }
       setLoading(false);
     };
-    fetchData();
 
-    if (selectedChatId) {
-      const interval = setInterval(async () => {
-        try {
-          const res = await api.get(`/messages/${selectedChatId}`);
-          setMessages(res.data || []);
-          flatListRef.current?.scrollToEnd({ animated: true });
-        } catch (err) {
-          console.error("ChatScreen - Error polling messages:", err);
-        }
-      }, 3000); // Poll every 3 seconds
-      return () => clearInterval(interval);
-    }
-  }, [selectedChatId]);
+    fetchMessages();
 
-  useEffect(() => {
-    if (messages.length > 0) {
-      flatListRef.current?.scrollToEnd({ animated: true });
-    }
-  }, [messages]);
+    // Poll for new messages
+    const interval = setInterval(async () => {
+      try {
+        const res = await api.get(`/messages/${chatId}`);
+        setMessages(res.data || []);
+        flatListRef.current?.scrollToEnd({ animated: true });
+      } catch (err) {
+        console.error("ChatScreen - Error polling messages:", err);
+      }
+    }, 5000); // Poll every 5 seconds
+
+    return () => clearInterval(interval);
+  }, [chatId]);
 
   const sendMessage = async () => {
-    if (!input.trim() || !selectedChatId) return;
+    if (!input.trim() || !chatId) return;
     setSending(true);
     try {
       await api.post("/messages", {
-        chat_id: selectedChatId,
+        chat_id: chatId,
         message: input,
         type: "text",
       });
       setInput("");
-      const res = await api.get(`/messages/${selectedChatId}`);
+      const res = await api.get(`/messages/${chatId}`);
       setMessages(res.data || []);
       flatListRef.current?.scrollToEnd({ animated: true });
     } catch (err) {
@@ -106,19 +117,7 @@ export default function ChatScreen() {
     setSending(false);
   };
 
-  const renderChatItem = ({ item }: { item: Chat }) => (
-    <TouchableOpacity
-      style={styles.chatItem}
-      onPress={() => setSelectedChatId(item.id)}
-    >
-      <Text style={styles.chatTitle}>{item.title || `Chat ${item.id}`}</Text>
-      <Text style={styles.chatPreview}>
-        {item.lastMessage || "No messages yet"}
-      </Text>
-    </TouchableOpacity>
-  );
-
-  const renderMessageItem = ({ item }: { item: Message }) => (
+  const renderItem = ({ item }: { item: Message }) => (
     <View
       style={[
         styles.messageBubble,
@@ -132,6 +131,15 @@ export default function ChatScreen() {
     </View>
   );
 
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <ActivityIndicator size="large" color="#0000ff" />
+        <Text>Loading Chat...</Text>
+      </View>
+    );
+  }
+
   return (
     <KeyboardAvoidingView
       style={{ flex: 1 }}
@@ -139,57 +147,38 @@ export default function ChatScreen() {
       keyboardVerticalOffset={Platform.OS === "ios" ? 100 : 0}
     >
       <View style={styles.container}>
-        <View style={styles.chatListContainer}>
-          {loading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#0000ff" />
-            </View>
-          ) : (
+        {chatId ? (
+          <>
             <FlatList
-              data={chats}
-              renderItem={renderChatItem}
+              ref={flatListRef}
+              data={messages}
+              renderItem={renderItem}
               keyExtractor={(item) => item.id}
-              contentContainerStyle={styles.chatList}
+              onContentSizeChange={() =>
+                flatListRef.current?.scrollToEnd({ animated: true })
+              }
+              onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
+              contentContainerStyle={{ paddingBottom: 70 }}
             />
-          )}
-        </View>
-        <View style={styles.messageContainer}>
-          {selectedChatId ? (
-            <>
-              <FlatList
-                showsVerticalScrollIndicator={false}
-                ref={flatListRef}
-                data={messages}
-                renderItem={renderMessageItem}
-                keyExtractor={(item) => item.id}
-                inverted
-                contentContainerStyle={{ paddingBottom: 70, paddingTop: 10 }}
-                initialNumToRender={10}
-                maxToRenderPerBatch={10}
-                windowSize={5}
+            <View style={styles.inputRowFixed}>
+              <TextInput
+                value={input}
+                onChangeText={setInput}
+                style={styles.input}
+                placeholder="Type a message..."
               />
-              <View style={styles.inputRowFixed}>
-                <TextInput
-                  value={input}
-                  onChangeText={setInput}
-                  style={styles.input}
-                  placeholder="Type a message..."
-                />
-                <Button
-                  title={sending ? "Sending..." : "Send"}
-                  onPress={sendMessage}
-                  disabled={sending}
-                />
-              </View>
-            </>
-          ) : (
-            <View style={styles.noChatSelected}>
-              <Text style={styles.noChatText}>
-                Select a chat to view messages
-              </Text>
+              <Button
+                title={sending ? "Sending..." : "Send"}
+                onPress={sendMessage}
+                disabled={sending || !chatId}
+              />
             </View>
-          )}
-        </View>
+          </>
+        ) : (
+          <View style={styles.noChatContainer}>
+            <Text style={styles.noChatText}>Unable to load chat</Text>
+          </View>
+        )}
       </View>
     </KeyboardAvoidingView>
   );
@@ -198,24 +187,9 @@ export default function ChatScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    flexDirection: "row",
     backgroundColor: "#fff",
     padding: 10,
     paddingTop: 40,
-  },
-  chatListContainer: {
-    flex: 1,
-    marginRight: 10,
-    borderRightWidth: 1,
-    borderRightColor: "#eee",
-  },
-  messageContainer: {
-    flex: 2,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
   },
   inputRowFixed: {
     flexDirection: "row",
@@ -258,24 +232,7 @@ const styles = StyleSheet.create({
     color: "#888",
     marginBottom: 2,
   },
-  chatList: {
-    paddingBottom: 20,
-  },
-  chatItem: {
-    padding: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: "#eee",
-  },
-  chatTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#000",
-  },
-  chatPreview: {
-    fontSize: 14,
-    color: "#666",
-  },
-  noChatSelected: {
+  noChatContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
