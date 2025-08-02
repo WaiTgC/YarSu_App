@@ -10,6 +10,8 @@ import {
 } from "react-native";
 import { useRestaurants } from "@/hooks/useRestaurants";
 import { styles } from "@/assets/styles/restaurant.styles";
+import { labels } from "@/libs/language";
+import { useLanguage } from "@/context/LanguageContext";
 
 type RestaurantType = {
   id: number;
@@ -23,6 +25,7 @@ type RestaurantType = {
 };
 
 const Restaurant = () => {
+  const { language } = useLanguage();
   const { restaurants, loadRestaurants } = useRestaurants();
   const [selectedRestaurant, setSelectedRestaurant] =
     useState<RestaurantType | null>(null);
@@ -99,8 +102,8 @@ const Restaurant = () => {
   return (
     <View style={styles.container}>
       <View style={styles.cardTitle}>
-        <Text style={styles.cardTitleText1}>Your</Text>
-        <Text style={styles.cardTitleText2}>Food Guide</Text>
+        <Text style={styles.cardTitleText1}>{labels[language].your}</Text>
+        <Text style={styles.cardTitleText2}>{labels[language].foodguide}</Text>
       </View>
       {restaurants.length === 0 ? (
         <Text style={styles.title}>Loading restaurants...</Text>
@@ -194,7 +197,9 @@ const Restaurant = () => {
                   </View>
                 </View>
                 <View style={styles.modalDetailRow}>
-                  <Text style={styles.detailText}>Notes: </Text>
+                  <Text style={styles.detailText}>
+                    {labels[language].notes}:{" "}
+                  </Text>
                   <View style={styles.notes}>
                     <Text>{selectedRestaurant.notes || "N/A"}</Text>
                   </View>

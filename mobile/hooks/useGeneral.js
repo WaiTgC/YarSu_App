@@ -4,13 +4,13 @@ const API_URL = "https://yarsu-backend.onrender.com/api";
 const AUTH_TOKEN = process.env.REACT_APP_API_TOKEN || "";
 
 export const useGeneral = () => {
-  const [generalPosts, setGeneralPosts] = useState([]);
+  const [posts, setPosts] = useState([]);
   const [selectedPost, setSelectedPost] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
 
-  const fetchGeneralPosts = useCallback(async () => {
+  const fetchPosts = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/general-posts`, {
+      const response = await fetch(`${API_URL}/general`, {
         headers: {
           ...(AUTH_TOKEN && { Authorization: `Bearer ${AUTH_TOKEN}` }),
         },
@@ -19,15 +19,15 @@ export const useGeneral = () => {
         throw new Error(`HTTP error! Status: ${response.status}`);
       }
       const data = await response.json();
-      setGeneralPosts(data);
+      setPosts(data);
     } catch (error) {
       console.error("Error fetching general posts:", error);
     }
   }, []);
 
-  const fetchGeneralPostDetails = useCallback(async (id) => {
+  const fetchPostDetails = useCallback(async (id) => {
     try {
-      const response = await fetch(`${API_URL}/general-posts/${id}`, {
+      const response = await fetch(`${API_URL}/general/${id}`, {
         headers: {
           ...(AUTH_TOKEN && { Authorization: `Bearer ${AUTH_TOKEN}` }),
         },
@@ -43,59 +43,23 @@ export const useGeneral = () => {
     }
   }, []);
 
-  const addGeneralPost = useCallback(async (postData) => {
+  const addPost = useCallback(async (postData) => {
     try {
-      if (
-        !postData.text &&
-        (!postData.images || postData.images.length === 0) &&
-        (!postData.videos || postData.videos.length === 0)
-      ) {
-        throw new Error(
-          "At least one of text, images, or videos must be provided"
-        );
-      }
-
-      const formData = new FormData();
-      formData.append("text", postData.text || "");
-
-      if (postData.images && postData.images.length > 0) {
-        postData.images.forEach((uri, index) => {
-          const file = {
-            uri,
-            type: "image/jpeg",
-            name: `image_${Date.now()}_${index}.jpg`,
-          };
-          formData.append("images", file);
-        });
-      }
-
-      if (postData.videos && postData.videos.length > 0) {
-        postData.videos.forEach((uri, index) => {
-          const file = {
-            uri,
-            type: "video/mp4",
-            name: `video_${Date.now()}_${index}.mp4`,
-          };
-          formData.append("videos", file);
-        });
-      }
-
-      const response = await fetch(`${API_URL}/general-posts`, {
+      const response = await fetch(`${API_URL}/general`, {
         method: "POST",
         headers: {
+          "Content-Type": "application/json",
           ...(AUTH_TOKEN && { Authorization: `Bearer ${AUTH_TOKEN}` }),
         },
-        body: formData,
+        body: JSON.stringify(postData),
       });
-
       if (!response.ok) {
         const errorText = await response.text();
         console.error("Server response:", errorText);
         throw new Error(`HTTP error! Status: ${response.status}`);
       }
-
       const newPost = await response.json();
-      setGeneralPosts((prevPosts) => [...prevPosts, newPost]);
+      setPosts((prevPosts) => [...prevPosts, newPost]);
       return newPost;
     } catch (error) {
       console.error("Error creating general post:", error);
@@ -103,67 +67,22 @@ export const useGeneral = () => {
     }
   }, []);
 
-  const updateGeneralPost = useCallback(
+  const updatePost = useCallback(
     async (id, postData) => {
       try {
-        if (
-          !postData.text &&
-          (!postData.images || postData.images.length === 0) &&
-          (!postData.videos || postData.videos.length === 0)
-        ) {
-          throw new Error(
-            "At least one of text, images, or videos must be provided"
-          );
-        }
-
-        const formData = new FormData();
-        formData.append("text", postData.text || "");
-
-        if (postData.images && postData.images.length > 0) {
-          postData.images.forEach((uri, index) => {
-            const file = {
-              uri,
-              type: "image/jpeg",
-              name: `image_${Date.now()}_${index}.jpg`,
-            };
-            formData.append("images", file);
-          });
-        }
-
-        if (postData.videos && postData.videos.length > 0) {
-          postData.videos.forEach((uri, index) => {
-            const file = {
-              uri,
-              type: "video/mp4",
-              name: `video_${Date.now()}_${index}.mp4`,
-            };
-            formData.append("videos", file);
-          });
-        }
-
-        if (postData.removedMedia && postData.removedMedia.length > 0) {
-          formData.append(
-            "removedMedia",
-            JSON.stringify(postData.removedMedia)
-          );
-        }
-
-        const response = await fetch(`${API_URL}/general-posts/${id}`, {
+        const response = await fetch(`${API_URL}/general/${id}`, {
           method: "PUT",
           headers: {
+            "Content-Type": "application/json",
             ...(AUTH_TOKEN && { Authorization: `Bearer ${AUTH_TOKEN}` }),
           },
-          body: formData,
+          body: JSON.stringify(postData),
         });
-
         if (!response.ok) {
-          const errorText = await response.text();
-          console.error("Server response:", errorText);
           throw new Error(`HTTP error! Status: ${response.status}`);
         }
-
         const updatedPost = await response.json();
-        setGeneralPosts((prevPosts) =>
+        setPosts((prevPosts) =>
           prevPosts.map((post) => (post.id === id ? updatedPost : post))
         );
         if (selectedPost?.id === id) {
@@ -178,10 +97,10 @@ export const useGeneral = () => {
     [selectedPost]
   );
 
-  const deleteGeneralPost = useCallback(
+  const deletePost = useCallback(
     async (id) => {
       try {
-        const response = await fetch(`${API_URL}/general-posts/${id}`, {
+        const response = await fetch(`${API_URL}/general/${id}`, {
           method: "DELETE",
           headers: {
             ...(AUTH_TOKEN && { Authorization: `Bearer ${AUTH_TOKEN}` }),
@@ -190,9 +109,7 @@ export const useGeneral = () => {
         if (!response.ok) {
           throw new Error(`HTTP error! Status: ${response.status}`);
         }
-        setGeneralPosts((prevPosts) =>
-          prevPosts.filter((post) => post.id !== id)
-        );
+        setPosts((prevPosts) => prevPosts.filter((post) => post.id !== id));
         if (selectedPost?.id === id) {
           setSelectedPost(null);
           setShowDetails(false);
@@ -207,26 +124,26 @@ export const useGeneral = () => {
 
   const handleMoreInfo = useCallback(
     (post) => {
-      fetchGeneralPostDetails(post.id);
+      fetchPostDetails(post.id);
     },
-    [fetchGeneralPostDetails]
+    [fetchPostDetails]
   );
 
-  const loadGeneralPosts = useCallback(async () => {
-    await fetchGeneralPosts();
-  }, [fetchGeneralPosts]);
+  const loadPosts = useCallback(async () => {
+    await fetchPosts();
+  }, [fetchPosts]);
 
   return {
-    generalPosts,
+    posts,
     selectedPost,
     showDetails,
-    fetchGeneralPosts,
-    fetchGeneralPostDetails,
-    addGeneralPost,
-    updateGeneralPost,
-    deleteGeneralPost,
+    fetchPosts,
+    fetchPostDetails,
+    addPost,
+    updatePost,
+    deletePost,
     handleMoreInfo,
-    loadGeneralPosts,
+    loadPosts,
     setShowDetails,
   };
 };

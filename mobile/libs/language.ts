@@ -87,6 +87,14 @@ export const labels = {
     note: "Note",
     stayIncludes: "Stay Includes",
     selectCategory: "Select Category",
+    makeEveryTrip: "Make Every Trip a",
+    memory:"Memory",
+    citylife:"City Life",
+    Simplified:"Simplified.",
+    discoverYour:"Discover Your",
+    perfectStay:"Perfect Stay",
+    your:"Your",
+    foodguide:"Food Guide",
 
   },
   
@@ -174,6 +182,14 @@ export const labels = {
     note:"မှတ်ချက်",
     stayInclude:"ဝန်ဆောင်မှုများ",
     selectCategory:"အမျိုးအစားကိုရွေးချယ်ပါ။",
+    makeEveryTrip:"ပျော်ရွှင်စရာ ကောင်းသော ခရီးများ",
+    memory: "ဖန်တီးလိုက်ပါ",
+    citylife:"ကွန်ဒိုအခန်းများ",
+    Simplified:"ရှာဖွေရန်",
+    discoverYour:"ဟိုတယ် အခန်းများ",
+    perfectStay:"ရှာဖွေရန်",
+    your:"အကောင်းဆုံး စားသောက်ဆိုင်များ",
+    foodguide:"ရှာဖွေလိုက်ပါ",
   }
 };
   

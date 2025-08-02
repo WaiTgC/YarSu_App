@@ -49,7 +49,7 @@ export const styles = StyleSheet.create({
     fontSize: 15,
     fontStyle: "normal",
     fontWeight: "400",
-    lineHeight: 20,
+    
     letterSpacing: 0.15,
     color: COLORS.black,
     marginBottom: 5,
@@ -61,7 +61,7 @@ export const styles = StyleSheet.create({
     fontSize: 15,
     fontStyle: "normal",
     fontWeight: "400",
-    lineHeight: 20,
+    
     letterSpacing: 0.15,
     color: COLORS.black,
     marginBottom: 15,
@@ -100,7 +100,7 @@ export const styles = StyleSheet.create({
     fontSize: 15,
     fontStyle: "normal",
     fontWeight: "400",
-    lineHeight: 20,
+    
     letterSpacing: 0.15,
     color: COLORS.white,
     textAlign: "center",

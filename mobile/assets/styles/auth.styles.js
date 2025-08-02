@@ -32,7 +32,7 @@ export const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: "center",
     marginBottom: 20,
-    lineHeight: 20,
+
     fontWeight: "600",
     textDecorationLine: "underline",
     textDecorationColor: COLORS.text,

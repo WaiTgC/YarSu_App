@@ -136,7 +136,7 @@ export const styles = StyleSheet.create({
     fontStyle: "normal",
     fontWeight: "400",
     letterSpacing: 0.15,
-    lineHeight: 20,
+
 
     fontWeight: "bold",
   },

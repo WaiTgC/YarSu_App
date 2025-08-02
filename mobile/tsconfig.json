@@ -20,6 +20,6 @@
     ".expo/types/**/*.ts",
     "expo-env.d.ts",
     "app/(admin)/adminJob.tsx"
-  ],
+, "app/(admin)/adminDoc.js"  ],
   "exclude": ["node_modules"]
 }

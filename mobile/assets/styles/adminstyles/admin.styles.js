@@ -163,7 +163,7 @@ export const styles = StyleSheet.create({
     fontSize: 14,
     fontStyle: "normal",
     fontWeight: "400",
-    lineHeight: 20,
+    
     letterSpacing: 0.14,
     color: COLORS.background,
     textAlign: "center",
@@ -172,7 +172,7 @@ export const styles = StyleSheet.create({
     fontSize: 14,
     fontStyle: "normal",
     fontWeight: "400",
-    lineHeight: 20,
+    
     letterSpacing: 0.14,
     color: COLORS.text,
     textAlign: "center",

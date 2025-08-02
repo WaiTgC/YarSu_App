@@ -11,6 +11,8 @@ import { useCondos } from "@/hooks/useCondos";
 import { styles } from "@/assets/styles/condo.styles";
 import { COLORS } from "@/constants/colors";
 import { Ionicons } from "@expo/vector-icons";
+import { useLanguage } from "@/context/LanguageContext";
+import { labels } from "@/libs/language";
 
 type CondoType = {
   id: number;
@@ -28,6 +30,7 @@ type CondoType = {
 };
 
 const Condo = () => {
+  const { language } = useLanguage();
   const { condos, loadCondos } = useCondos();
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedNotes, setSelectedNotes] = useState<string | undefined>("");
@@ -141,8 +144,10 @@ const Condo = () => {
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
         <View>
           <View style={styles.cardTitle}>
-            <Text style={styles.cardTitleText1}>City Life.</Text>
-            <Text style={styles.cardTitleText2}>Simplified.</Text>
+            <Text style={styles.cardTitleText1}>
+              {labels[language].citylife || "City Life"}
+            </Text>
+            <Text style={styles.cardTitleText2}>{labels[language].Simplified || "Simplified."}</Text>
           </View>
           {condos.length === 0 ? (
             <Text style={styles.title}>Loading condos...</Text>

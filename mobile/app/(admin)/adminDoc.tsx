@@ -4,76 +4,86 @@ import {
   Text,
   FlatList,
   TouchableOpacity,
+  TextInput,
   Alert,
   Modal,
   Image,
   Dimensions,
-  TextInput,
-  ScrollView,
-  Platform,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import * as DocumentPicker from "expo-document-picker";
-import * as MediaLibrary from "expo-media-library";
-import * as FileSystem from "expo-file-system";
-import { useDoc } from "@/hooks/useDoc";
+import { Video } from "expo-av";
+import { useRouter } from "expo-router";
 import { styles } from "@/assets/styles/adminstyles/doc.styles";
+import { useDocs } from "@/hooks/useDoc";
 import { useLanguage } from "@/context/LanguageContext";
 import { labels } from "@/libs/language";
 import Carousel, { ICarouselInstance } from "react-native-reanimated-carousel";
-import { COLORS } from "@/constants/colors";
+import * as ImagePicker from "expo-image-picker";
+import { supabase, setSupabaseAuthToken } from "@/libs/supabase";
 
-type DocType = {
+type PostType = {
   id: number;
   text: string;
-  media: string[];
-  images: string[];
-  videos: string[];
+  media: string[] | null;
   created_at: string;
 };
 
-type EditedDocType = {
-  text?: string;
-  media?: { uri: string; type: string; name: string; base64?: string }[];
-  existingMedia?: string[];
-};
+type EditedPostType = Partial<{
+  text: string;
+  media: string[];
+}>;
 
-const AdminDoc = () => {
-  const { docPosts, loadDocPosts, updateDocPost, deleteDocPost } = useDoc();
+const AdminDocs = () => {
+  const router = useRouter();
   const { language } = useLanguage();
-  const [posts, setPosts] = useState<DocType[]>([]);
-  const [editMode, setEditMode] = useState<{ [key: number]: boolean }>({});
-  const [expandedNotes, setExpandedNotes] = useState<{
-    [key: number]: boolean;
-  }>({});
-  const [editedValues, setEditedValues] = useState<{
-    [key: number]: EditedDocType;
-  }>({});
+  const { posts, loadPosts, addPost, deletePost } = useDocs();
+  const [docsPosts, setDocsPosts] = useState<PostType[]>([]);
   const [deleteModalVisible, setDeleteModalVisible] = useState<number | null>(
     null
   );
+  const [videoModalVisible, setVideoModalVisible] = useState<string | null>(
+    null
+  );
+  const [createModalVisible, setCreateModalVisible] = useState(false);
   const [currentIndices, setCurrentIndices] = useState<{
     [key: number]: number;
   }>({});
-  const [numColumns, setNumColumns] = useState(3);
+  const [numColumns, setNumColumns] = useState(1);
+  const [newPost, setNewPost] = useState<EditedPostType>({
+    text: "",
+    media: [],
+  });
   const isInitialMount = useRef(true);
   const carouselRefs = useRef<{ [key: number]: ICarouselInstance | null }>({});
+  const videoRef = useRef<Video>(null);
 
-  // Request media library permissions
+  // Set Supabase auth token
+  useEffect(() => {
+    const token = process.env.REACT_APP_API_TOKEN || "";
+    if (token) {
+      setSupabaseAuthToken(token).catch((error) => {
+        console.error("Error setting Supabase auth token:", error.message);
+        Alert.alert("Error", "Failed to authenticate with Supabase.");
+      });
+    } else {
+      Alert.alert("Error", "Authentication token is missing.");
+    }
+  }, []);
+
+  // Request permissions for image and video picker
   useEffect(() => {
     (async () => {
-      const { status } = await MediaLibrary.requestPermissionsAsync();
+      const { status } =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== "granted") {
         Alert.alert(
           "Permission Denied",
-          labels[language].permissionDenied ||
-            "Please grant permission to access the media library to add files."
+          "Please grant permission to access the photo library to add images or videos."
         );
       }
     })();
-  }, [language]);
+  }, []);
 
-  // Adjust number of columns based on screen width
+  // Update numColumns based on screen width
   useEffect(() => {
     const updateColumns = () => {
       const width = Dimensions.get("window").width;
@@ -84,38 +94,49 @@ const AdminDoc = () => {
     return () => subscription?.remove();
   }, []);
 
-  // Load posts on initial mount
+  // Initial fetch on mount
   useEffect(() => {
     if (isInitialMount.current) {
-      loadDocPosts();
+      console.log("AdminDocs: Initial fetch of posts");
+      loadPosts();
       isInitialMount.current = false;
     }
-  }, [loadDocPosts]);
+  }, [loadPosts]);
 
-  // Sync posts and initialize states
+  // Update posts when docs posts change
   useEffect(() => {
-    setPosts(docPosts);
-    const initialIndices = docPosts.reduce((acc, post) => {
+    console.log("AdminDocs: Updating posts", posts);
+    posts.forEach((post, index) => {
+      if (!post || !post.id || post.media === undefined) {
+        console.warn(`Invalid post at index ${index}:`, post);
+      }
+    });
+    const validPosts = posts
+      .filter(
+        (post): post is PostType =>
+          !!post && !!post.id && post.media !== undefined
+      )
+      .map((post) => ({
+        ...post,
+        media: post.media || [], // Normalize null media to empty array
+      }));
+    setDocsPosts(validPosts);
+    const initialIndices = validPosts.reduce((acc, post) => {
       acc[post.id] = 0;
       return acc;
     }, {} as { [key: number]: number });
     setCurrentIndices(initialIndices);
-    const initialExpanded = docPosts.reduce((acc, post) => {
-      acc[post.id] = false;
-      return acc;
-    }, {} as { [key: number]: boolean });
-    setExpandedNotes(initialExpanded);
-  }, [docPosts]);
+  }, [posts]);
 
-  // Auto-scroll carousel for non-editing posts
+  // Auto-slide images every 5 seconds
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentIndices((prev) => {
         const newIndices = { ...prev };
-        posts.forEach((post) => {
-          if (carouselRefs.current[post.id] && !editMode[post.id]) {
-            const totalMedia = post.media?.length || 1;
-            const newIndex = (prev[post.id] + 1) % totalMedia;
+        docsPosts.forEach((post) => {
+          if (carouselRefs.current[post.id]) {
+            const totalImages = post.media?.length || 1;
+            const newIndex = (prev[post.id] + 1) % totalImages;
             newIndices[post.id] = newIndex;
             carouselRefs.current[post.id]?.scrollTo({
               index: newIndex,
@@ -127,399 +148,236 @@ const AdminDoc = () => {
       });
     }, 5000);
     return () => clearInterval(interval);
-  }, [posts, editMode]);
+  }, [docsPosts]);
 
-  // Handle text input changes
-  const handleEditText = (id: number, value: string) => {
-    setEditedValues((prev) => ({
-      ...prev,
-      [id]: { ...prev[id], text: value },
-    }));
-  };
+  const pickMedia = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.All,
+      allowsMultipleSelection: true,
+      quality: 1,
+    });
 
-  // Handle media selection
-  const handlePickMedia = async (id: number) => {
-    try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: ["image/*", "video/*"],
-        multiple: true,
-      });
-      if (result.assets) {
-        const files = await Promise.all(
-          result.assets.map(async (asset) => {
-            let base64;
-            if (Platform.OS !== "web") {
-              base64 = await FileSystem.readAsStringAsync(asset.uri, {
-                encoding: FileSystem.EncodingType.Base64,
-              });
-              base64 = `data:${
-                asset.mimeType || "application/octet-stream"
-              };base64,${base64}`;
-            }
-            return {
-              uri: asset.uri,
-              type: asset.mimeType || "application/octet-stream",
-              name:
-                asset.name ||
-                `file_${Date.now()}.${asset.uri.split(".").pop() || "jpg"}`,
-              base64,
-            };
-          })
-        );
-        setEditedValues((prev) => ({
-          ...prev,
-          [id]: {
-            ...prev[id],
-            media: [...(prev[id]?.media || []), ...files],
-            existingMedia:
-              prev[id]?.existingMedia ||
-              posts.find((p) => p.id === id)?.media ||
-              [],
-          },
-        }));
-      }
-    } catch (err) {
-      Alert.alert(
-        "Error",
-        labels[language].mediaError || "Failed to pick media files."
-      );
+    if (!result.canceled && result.assets) {
+      const newMedia = result.assets
+        .filter((asset) => {
+          if (asset.fileSize && asset.fileSize > 50 * 1024 * 1024) {
+            Alert.alert(
+              "Error",
+              `Media ${asset.fileName || "selected"} exceeds 50MB limit.`
+            );
+            return false;
+          }
+          return true;
+        })
+        .map((asset) => asset.uri);
+      setNewPost((prev) => ({
+        ...prev,
+        media: [...(prev.media || []), ...newMedia],
+      }));
     }
   };
 
-  // Handle media removal
-  const handleRemoveMedia = (id: number, index: number) => {
-    setEditedValues((prev) => {
-      const currentMedia = prev[id]?.media || [];
-      const currentExistingMedia =
-        prev[id]?.existingMedia || posts.find((p) => p.id === id)?.media || [];
-      if (index < currentExistingMedia.length) {
-        // Removing an existing media URL
-        const newExistingMedia = currentExistingMedia.filter(
-          (_, i) => i !== index
-        );
-        return {
-          ...prev,
-          [id]: { ...prev[id], existingMedia: newExistingMedia },
-        };
-      } else {
-        // Removing a newly added file
-        const newMedia = currentMedia.filter(
-          (_, i) => i !== index - currentExistingMedia.length
-        );
-        return {
-          ...prev,
-          [id]: { ...prev[id], media: newMedia },
-        };
-      }
-    });
+  const handleNewPostChange = (field: string, value: string) => {
+    setNewPost((prev) => ({ ...prev, [field]: value }));
   };
 
-  // Save changes
-  const handleSave = async (id: number) => {
-    const updatedDoc = editedValues[id] || {};
-    const originalPost = posts.find((p) => p.id === id);
-    if (!originalPost) return;
-
-    // Check if any changes were made
-    const hasTextChanged =
-      updatedDoc.text !== undefined && updatedDoc.text !== originalPost.text;
-    const hasMediaChanged =
-      (updatedDoc.existingMedia &&
-        updatedDoc.existingMedia.length !== originalPost.media.length) ||
-      (updatedDoc.media && updatedDoc.media.length > 0);
-
-    if (!hasTextChanged && !hasMediaChanged) {
-      Alert.alert(
-        "No Changes",
-        labels[language].noChanges || "No changes were made to the document."
-      );
-      setEditMode((prev) => ({ ...prev, [id]: false }));
+  const handleCreatePost = async () => {
+    if (!newPost.text) {
+      Alert.alert("Error", "Text is required for a new post.");
       return;
     }
-
-    // Prepare postData for useDoc hook
-    const postData: { text?: string; images?: string[]; videos?: string[] } =
-      {};
-
-    if (updatedDoc.text !== undefined) {
-      postData.text = updatedDoc.text;
+    const postData: Partial<PostType> = { text: newPost.text };
+    if (newPost.media && newPost.media.length > 0) {
+      const uploadedUrls: string[] = [];
+      for (let i = 0; i < newPost.media.length; i++) {
+        const uri = newPost.media[i];
+        const isVideo = uri.endsWith(".mp4") || uri.endsWith(".mov");
+        const fileExtension = isVideo ? "mp4" : "jpg";
+        const fileName = `docs-post-${Date.now()}-${i}.${fileExtension}`;
+        try {
+          const response = await fetch(uri);
+          const blob = await response.blob();
+          const { error } = await supabase.storage
+            .from("docs-images")
+            .upload(fileName, blob, {
+              contentType: isVideo ? "video/mp4" : "image/jpeg",
+            });
+          if (error) {
+            console.error("Media upload error:", error.message, error);
+            Alert.alert("Error", `Failed to upload media: ${error.message}`);
+            return;
+          }
+          const { data } = supabase.storage
+            .from("docs-images")
+            .getPublicUrl(fileName);
+          if (!data.publicUrl) {
+            console.error("Failed to get public URL for", fileName);
+            Alert.alert("Error", "Failed to retrieve media URL.");
+            return;
+          }
+          uploadedUrls.push(data.publicUrl);
+        } catch (error) {
+          console.error("Unexpected error during media upload:", error);
+          Alert.alert("Error", "Unexpected error during media upload.");
+          return;
+        }
+      }
+      postData.media = uploadedUrls;
     }
-
-    // Combine existing and new media as base64 strings or URLs
-    const existingMedia = updatedDoc.existingMedia || originalPost.media || [];
-    const newMedia = updatedDoc.media || [];
-    const allImages = [
-      ...existingMedia,
-      ...newMedia
-        .filter((file) => file.type.includes("image") && file.base64)
-        .map((file) => file.base64!),
-    ];
-
-    if (allImages.length > 0) {
-      postData.images = allImages;
-    }
-    postData.videos = []; // Align with useDoc hook's mapping
-
     try {
-      await updateDocPost(id, postData);
-      setEditMode((prev) => ({ ...prev, [id]: false }));
-      setExpandedNotes((prev) => ({ ...prev, [id]: false }));
-      setEditedValues((prev) => {
-        const newValues = { ...prev };
-        delete newValues[id];
-        return newValues;
-      });
+      const newPostData = await addPost(postData);
+      setDocsPosts((prev) => [newPostData, ...prev]);
+      setNewPost({ text: "", media: [] });
+      setCreateModalVisible(false);
       Alert.alert(
-        "Saved",
-        labels[language].saved || "Changes have been saved!"
+        "Created",
+        labels[language].created || "Post has been created!"
       );
     } catch (error) {
-      Alert.alert(
-        "Error",
-        labels[language].updateError || "Failed to update post."
-      );
+      console.error("Error creating post:", error.message);
+      Alert.alert("Error", `Failed to create post: ${error.message}`);
     }
   };
 
-  // Confirm and delete post
-  const handleConfirmDelete = async (id: number) => {
-    try {
-      await deleteDocPost(id);
-      setDeleteModalVisible(null);
-      setPosts(posts.filter((post) => post.id !== id));
-      Alert.alert(
-        "Deleted",
-        labels[language].deleted || "Document has been deleted!"
-      );
-    } catch (error) {
-      Alert.alert(
-        "Error",
-        labels[language].deleteError || "Failed to delete document."
-      );
-    }
+  const handleConfirmDelete = (id: number) => {
+    deletePost(id).catch((error) => {
+      console.error("Error deleting post:", error.message);
+      Alert.alert("Error", `Failed to delete post: ${error.message}`);
+    });
+    setDeleteModalVisible(null);
+    setDocsPosts(docsPosts.filter((post) => post.id !== id));
+    Alert.alert(
+      "Deleted",
+      labels[language].deleted || "Post has been deleted!"
+    );
   };
 
-  // Navigate to previous media item
   const handlePrev = (id: number) => {
-    const currentRef = carouselRefs.current[id];
-    if (currentRef) {
+    if (carouselRefs.current[id]) {
       const currentIndex = currentIndices[id] || 0;
-      const totalMedia = posts.find((p) => p.id === id)?.media?.length || 1;
-      const newIndex = (currentIndex - 1 + totalMedia) % totalMedia;
+      const totalImages =
+        docsPosts.find((p) => p.id === id)?.media?.length || 1;
+      const newIndex = (currentIndex - 1 + totalImages) % totalImages;
       setCurrentIndices((prev) => ({ ...prev, [id]: newIndex }));
-      currentRef.scrollTo({ index: newIndex, animated: true });
+      carouselRefs.current[id]?.scrollTo({ index: newIndex, animated: true });
     }
   };
 
-  // Navigate to next media item
   const handleNext = (id: number) => {
-    const currentRef = carouselRefs.current[id];
-    if (currentRef) {
+    if (carouselRefs.current[id]) {
       const currentIndex = currentIndices[id] || 0;
-      const totalMedia = posts.find((p) => p.id === id)?.media?.length || 1;
-      const newIndex = (currentIndex + 1) % totalMedia;
+      const totalImages =
+        docsPosts.find((p) => p.id === id)?.media?.length || 1;
+      const newIndex = (currentIndex + 1) % totalImages;
       setCurrentIndices((prev) => ({ ...prev, [id]: newIndex }));
-      currentRef.scrollTo({ index: newIndex, animated: true });
+      carouselRefs.current[id]?.scrollTo({ index: newIndex, animated: true });
     }
   };
 
-  const renderItem = ({ item }: { item: DocType }) => {
-    if (!item) return null;
-    const media = item.media || [];
-    const isEditing = editMode[item.id] || false;
-    const isExpanded = expandedNotes[item.id] || false;
-    const currentValues = editedValues[item.id] || {};
-    const displayMedia = currentValues.existingMedia || media;
-    const newMedia = currentValues.media || [];
-
-    return (
-      <View style={styles.card}>
+  const renderItem = ({ item }: { item: PostType }) => (
+    <View style={styles.card}>
+      <View style={styles.detailsContainer}>
+        <View style={styles.fieldRow}>
+          <Text style={styles.label}>{labels[language].text || "Text"}:</Text>
+          <Text style={styles.value}>{item.text || "N/A"}</Text>
+        </View>
+      </View>
+      <View style={styles.bottomContainer}>
         <View style={styles.imageContainer}>
-          {!isEditing ? (
-            <>
+          <View style={styles.imageBackground}>
+            <Carousel
+              ref={(ref) => {
+                if (ref) carouselRefs.current[item.id] = ref;
+              }}
+              width={styles.imageBackground.width}
+              height={150}
+              data={
+                item.media?.length
+                  ? item.media
+                  : ["https://picsum.photos/340/200"]
+              }
+              scrollAnimationDuration={300}
+              defaultIndex={currentIndices[item.id] || 0}
+              onSnapToItem={(index) =>
+                setCurrentIndices((prev) => ({
+                  ...prev,
+                  [item.id]: index,
+                }))
+              }
+              renderItem={({ item: media }) => (
+                <View style={styles.mediaPreviewWrapper}>
+                  {media.endsWith(".mp4") || media.endsWith(".mov") ? (
+                    <TouchableOpacity
+                      onPress={() => setVideoModalVisible(media)}
+                      style={styles.innerImage}
+                    >
+                      <Image
+                        source={{ uri: "https://picsum.photos/340/200" }}
+                        style={styles.innerImage}
+                        onError={(error) =>
+                          console.error(
+                            "AdminDocs: Video thumbnail load error for item",
+                            item.id,
+                            error.nativeEvent
+                          )
+                        }
+                      />
+                      <View style={styles.playButton}>
+                        <Text style={styles.playButtonText}>▶</Text>
+                      </View>
+                    </TouchableOpacity>
+                  ) : (
+                    <Image
+                      source={{ uri: media }}
+                      style={styles.innerImage}
+                      onError={(error) =>
+                        console.error(
+                          "AdminDocs: Image load error for item",
+                          item.id,
+                          error.nativeEvent
+                        )
+                      }
+                    />
+                  )}
+                </View>
+              )}
+            />
+          </View>
+          {item.media?.length === 1 && <View style={styles.noImages}></View>}
+          {(item.media?.length > 1 ||
+            (!item.media?.length &&
+              ["https://picsum.photos/340/200"].length > 1)) && (
+            <View style={styles.sliderControls}>
               <TouchableOpacity onPress={() => handlePrev(item.id)}>
                 <Text style={styles.arrow}>{"<"}</Text>
               </TouchableOpacity>
-              <View style={styles.imageBackground}>
-                <Carousel
-                  ref={(ref) => {
-                    if (ref) carouselRefs.current[item.id] = ref;
-                  }}
-                  width={styles.imageBackground.width}
-                  height={200}
-                  data={
-                    media.length > 0 ? media : ["https://picsum.photos/340/200"]
-                  }
-                  scrollAnimationDuration={300}
-                  defaultIndex={currentIndices[item.id] || 0}
-                  onSnapToItem={(index) =>
-                    setCurrentIndices((prev) => ({ ...prev, [item.id]: index }))
-                  }
-                  renderItem={({ item: url }) =>
-                    url.includes(".mp4") ? (
-                      <View style={styles.previewVideo}>
-                        <Text style={styles.previewVideoText}>
-                          Video: {url.split("/").pop()}
-                        </Text>
-                      </View>
-                    ) : (
-                      <Image source={{ uri: url }} style={styles.innerImage} />
-                    )
-                  }
-                />
-              </View>
+              <FlatList
+                horizontal
+                contentContainerStyle={styles.indicatorContainer}
+                data={
+                  item.media?.length
+                    ? item.media
+                    : ["https://picsum.photos/340/200"]
+                }
+                keyExtractor={(item, index) => index.toString()}
+                renderItem={({ index }) => (
+                  <View
+                    style={[
+                      styles.indicator,
+                      currentIndices[item.id] === index &&
+                        styles.activeIndicator,
+                    ]}
+                  />
+                )}
+                showsHorizontalScrollIndicator={false}
+              />
               <TouchableOpacity onPress={() => handleNext(item.id)}>
                 <Text style={styles.arrow}>{">"}</Text>
               </TouchableOpacity>
-              {media.length > 1 && (
-                <View style={styles.sliderControls}>
-                  <FlatList
-                    horizontal
-                    contentContainerStyle={styles.indicatorContainer}
-                    data={media}
-                    keyExtractor={(item, index) => index.toString()}
-                    renderItem={({ index }) => (
-                      <View
-                        style={[
-                          styles.indicator,
-                          currentIndices[item.id] === index &&
-                            styles.activeIndicator,
-                        ]}
-                      />
-                    )}
-                    showsHorizontalScrollIndicator={false}
-                  />
-                </View>
-              )}
-            </>
-          ) : (
-            <ScrollView
-              horizontal
-              style={{ flexDirection: "row", maxHeight: 100 }}
-            >
-              {displayMedia.map((uri, index) => (
-                <View
-                  key={`existing-${index}`}
-                  style={styles.mediaPreviewWrapper}
-                >
-                  <Image
-                    source={{ uri }}
-                    style={[styles.imagePreview, { marginLeft: 10 }]}
-                    resizeMode="cover"
-                  />
-                  <TouchableOpacity
-                    style={styles.closeButton}
-                    onPress={() => handleRemoveMedia(item.id, index)}
-                  >
-                    <Text style={styles.closeButtonText}>×</Text>
-                  </TouchableOpacity>
-                </View>
-              ))}
-              {newMedia.map((file, index) => (
-                <View key={`new-${index}`} style={styles.mediaPreviewWrapper}>
-                  <Image
-                    source={{ uri: file.uri }}
-                    style={[styles.imagePreview, { marginLeft: 10 }]}
-                    resizeMode="cover"
-                  />
-                  <TouchableOpacity
-                    style={styles.closeButton}
-                    onPress={() =>
-                      handleRemoveMedia(item.id, displayMedia.length + index)
-                    }
-                  >
-                    <Text style={styles.closeButtonText}>×</Text>
-                  </TouchableOpacity>
-                </View>
-              ))}
-              <TouchableOpacity
-                style={[
-                  styles.imageInput,
-                  {
-                    marginLeft:
-                      displayMedia.length + newMedia.length > 0 ? 10 : 0,
-                  },
-                ]}
-                onPress={() => handlePickMedia(item.id)}
-              >
-                <Ionicons name="add" size={24} color={COLORS.black} />
-              </TouchableOpacity>
-            </ScrollView>
+            </View>
           )}
-        </View>
-        <View style={styles.detailsContainer}>
-          <View style={styles.noteDropdownContainer}>
-            <TouchableOpacity
-              style={styles.noteTextBox}
-              onPress={() => {
-                if (!isEditing) {
-                  setExpandedNotes((prev) => ({
-                    ...prev,
-                    [item.id]: !prev[item.id],
-                  }));
-                }
-              }}
-            >
-              <View
-                style={[
-                  styles.noteTextContainer,
-                  !isExpanded && !isEditing && styles.collapsedNoteText,
-                ]}
-              >
-                {isEditing ? (
-                  <TextInput
-                    style={styles.value}
-                    value={
-                      currentValues.text !== undefined
-                        ? currentValues.text
-                        : item.text || ""
-                    }
-                    onChangeText={(text) => handleEditText(item.id, text)}
-                    placeholder={labels[language].enterText || "Enter text"}
-                    multiline
-                  />
-                ) : (
-                  <Text style={styles.value}>
-                    {currentValues.text !== undefined
-                      ? currentValues.text
-                      : item.text || "No text"}
-                  </Text>
-                )}
-              </View>
-              {!isEditing && (
-                <Ionicons
-                  name={isExpanded ? "chevron-up" : "chevron-down"}
-                  size={20}
-                  color={COLORS.black}
-                  style={styles.dropdownArrow}
-                />
-              )}
-            </TouchableOpacity>
-          </View>
         </View>
         <View style={styles.buttonContainer}>
-          {!isEditing ? (
-            <TouchableOpacity
-              style={styles.button}
-              onPress={() => {
-                setEditMode((prev) => ({ ...prev, [item.id]: true }));
-                setExpandedNotes((prev) => ({ ...prev, [item.id]: true }));
-              }}
-            >
-              <Text style={styles.buttonText}>
-                {labels[language].edit || "Edit"}
-              </Text>
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity
-              style={styles.button}
-              onPress={() => handleSave(item.id)}
-            >
-              <Text style={styles.buttonText}>
-                {labels[language].save || "Save"}
-              </Text>
-            </TouchableOpacity>
-          )}
           <TouchableOpacity
             style={styles.button}
             onPress={() => setDeleteModalVisible(item.id)}
@@ -529,58 +387,175 @@ const AdminDoc = () => {
             </Text>
           </TouchableOpacity>
         </View>
-        <Modal
-          transparent
-          visible={deleteModalVisible === item.id}
-          onRequestClose={() => setDeleteModalVisible(null)}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalText}>
-                {labels[language].deleteConfirm ||
-                  "Are you sure you want to delete this document?"}
-              </Text>
-              <View style={styles.modalButtonContainer}>
-                <TouchableOpacity
-                  style={[styles.modalButton, styles.cancelButton]}
-                  onPress={() => setDeleteModalVisible(null)}
-                >
-                  <Text style={styles.modalButtonText}>
-                    {labels[language].cancel || "Cancel"}
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.modalButton, styles.deleteButton]}
-                  onPress={() => handleConfirmDelete(item.id)}
-                >
-                  <Text style={styles.modalButtonText}>
-                    {labels[language].delete || "Delete"}
-                  </Text>
-                </TouchableOpacity>
-              </View>
+      </View>
+      <Modal
+        transparent={true}
+        visible={deleteModalVisible === item.id}
+        onRequestClose={() => setDeleteModalVisible(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalText}>
+              {labels[language].deleteConfirm ||
+                "Are you sure you want to delete this post?"}
+            </Text>
+            <View style={styles.modalButtonContainer}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => setDeleteModalVisible(null)}
+              >
+                <Text style={styles.modalButtonText}>
+                  {labels[language].cancel || "Cancel"}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.deleteButton]}
+                onPress={() => handleConfirmDelete(item.id)}
+              >
+                <Text style={styles.modalButtonText}>
+                  {labels[language].delete || "Delete"}
+                </Text>
+              </TouchableOpacity>
             </View>
           </View>
-        </Modal>
-      </View>
-    );
-  };
+        </View>
+      </Modal>
+    </View>
+  );
 
   return (
     <View style={styles.container}>
+      <TouchableOpacity
+        style={[styles.button, { alignSelf: "center", marginVertical: 10 }]}
+        onPress={() => setCreateModalVisible(true)}
+      >
+        <Text style={styles.buttonText}>
+          {labels[language].createPost || "Create New Post"}
+        </Text>
+      </TouchableOpacity>
+      <Modal
+        transparent={true}
+        visible={createModalVisible}
+        onRequestClose={() => setCreateModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, styles.formContainer]}>
+            <Text style={styles.title}>
+              {labels[language].createPost || "Create New Post"}
+            </Text>
+            <View style={styles.fieldRow}>
+              <Text style={styles.label}>
+                {labels[language].text || "Text"}:
+              </Text>
+              <TextInput
+                style={[styles.input, { height: 100 }]}
+                value={newPost.text || ""}
+                onChangeText={(text) => handleNewPostChange("text", text)}
+                placeholder={labels[language].text || "Enter text"}
+                multiline
+              />
+            </View>
+            <View style={styles.fieldRow}>
+              <Text style={styles.label}>
+                {labels[language].media || "Media"}:
+              </Text>
+              <TouchableOpacity
+                style={styles.imagePickerButton}
+                onPress={pickMedia}
+              >
+                <Text style={styles.imagePickerButtonText}>
+                  {labels[language].addMedia || "Add Images or Videos"}
+                </Text>
+              </TouchableOpacity>
+              {newPost.media?.length > 0 && (
+                <View style={styles.previewContainer}>
+                  {newPost.media.map((uri, index) => (
+                    <View key={index} style={styles.mediaPreviewWrapper}>
+                      {uri.endsWith(".mp4") || uri.endsWith(".mov") ? (
+                        <>
+                          <Image
+                            source={{ uri: "https://picsum.photos/90/90" }}
+                            style={styles.imagePreview}
+                          />
+                          <Text style={styles.previewVideoText}>Video</Text>
+                        </>
+                      ) : (
+                        <Image source={{ uri }} style={styles.imagePreview} />
+                      )}
+                    </View>
+                  ))}
+                </View>
+              )}
+            </View>
+            <View style={styles.modalButtonContainer}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => setCreateModalVisible(false)}
+              >
+                <Text style={styles.modalButtonText}>
+                  {labels[language].cancel || "Cancel"}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.deleteButton]}
+                onPress={handleCreatePost}
+              >
+                <Text style={styles.modalButtonText}>
+                  {labels[language].create || "Create"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+      <Modal
+        transparent={true}
+        visible={!!videoModalVisible}
+        onRequestClose={() => setVideoModalVisible(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View
+            style={[
+              styles.modalContent,
+              { padding: 0, width: "90%", height: "50%" },
+            ]}
+          >
+            {videoModalVisible && (
+              <Video
+                ref={videoRef}
+                source={{ uri: videoModalVisible }}
+                style={{ width: "100%", height: "100%", borderRadius: 8 }}
+                useNativeControls
+                resizeMode="contain"
+                onError={(error) =>
+                  console.error("Video playback error:", error)
+                }
+              />
+            )}
+            <TouchableOpacity
+              style={[styles.closeButton, { top: 10, right: 10 }]}
+              onPress={() => setVideoModalVisible(null)}
+            >
+              <Text style={styles.closeButtonText}>×</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
       <View style={styles.listContainer}>
         <FlatList
           showsVerticalScrollIndicator={false}
           key={`flatlist-${numColumns}`}
-          data={posts}
-          keyExtractor={(item) => item.id.toString()}
-          renderItem={renderItem}
-          numColumns={numColumns}
-          columnWrapperStyle={
-            numColumns > 1 ? { justifyContent: "space-around" } : undefined
+          data={docsPosts.filter((item) => item && item.id)}
+          keyExtractor={(item, index) =>
+            item.id ? item.id.toString() : `fallback-${index}`
           }
+          renderItem={renderItem}
+          showsHorizontalScrollIndicator={false}
+          numColumns={numColumns}
+          columnWrapperStyle={numColumns > 1 ? styles.row : undefined}
           ListEmptyComponent={
-            <Text style={styles.value}>
-              {labels[language].noPosts || "No document posts available"}
+            <Text style={styles.title}>
+              {labels[language].noPosts || "No posts available"}
             </Text>
           }
         />
@@ -589,4 +564,4 @@ const AdminDoc = () => {
   );
 };
 
-export default AdminDoc;
+export default AdminDocs;

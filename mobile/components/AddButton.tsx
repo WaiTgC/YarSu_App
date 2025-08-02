@@ -19,6 +19,7 @@ import { useHotels } from "@/hooks/useHotels";
 import { useCourses } from "@/hooks/useCourses";
 import { useRestaurants } from "@/hooks/useRestaurants";
 import { useDoc } from "@/hooks/useDoc";
+import { useGeneral } from "@/hooks/useGeneral";
 import { useLanguage } from "@/context/LanguageContext";
 import { labels } from "@/libs/language";
 import { COLORS } from "@/constants/colors";
@@ -100,16 +101,8 @@ type RestaurantType = {
   created_at: string;
 };
 
-type DocPostType = {
-  id: number;
-  text: string;
-  images: string[];
-  videos: string[];
-  created_at: string;
-};
-
 interface AddButtonProps {
-  type: "job" | "travel" | "condo" | "hotel" | "course" | "restaurant" | "doc";
+  type: "job" | "travel" | "condo" | "hotel" | "course" | "restaurant";
 }
 
 const AddButton: React.FC<AddButtonProps> = ({ type }) => {
@@ -137,10 +130,6 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
   const { createRestaurant, loadRestaurants } = useRestaurants() as {
     createRestaurant: (restaurant: Partial<RestaurantType>) => Promise<void>;
     loadRestaurants: () => Promise<void>;
-  };
-  const { addDocPost, loadDocPosts } = useDoc() as {
-    addDocPost: (post: Partial<DocPostType>) => Promise<void>;
-    loadDocPosts: () => Promise<void>;
   };
 
   const [modalVisible, setModalVisible] = useState<boolean>(false);
@@ -200,15 +189,8 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
     admin_rating: "",
     notes: "",
   });
-  const [newDocPost, setNewDocPost] = useState<Partial<DocPostType>>({
-    text: "",
-    images: [],
-    videos: [],
-  });
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
-  const [selectedVideos, setSelectedVideos] = useState<string[]>([]);
   const MAX_IMAGES = 3;
-  const MAX_VIDEOS = 3;
 
   // Request permission for image picker
   const requestPermission = async () => {
@@ -293,57 +275,9 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
           ...prev,
           images: [...(prev.images || []), base64String],
         }));
-      } else if (type === "doc") {
-        setNewDocPost((prev) => ({
-          ...prev,
-          images: [...(prev.images || []), base64String],
-        }));
       }
     } else {
       console.log("Image selection canceled or failed:", result);
-    }
-  };
-
-  // Pick video, convert to base64
-  const pickVideo = async () => {
-    if (selectedVideos.length >= MAX_VIDEOS) {
-      Alert.alert(
-        labels[language].error || "Error",
-        `Cannot add more than ${MAX_VIDEOS} videos`
-      );
-      return;
-    }
-
-    const hasPermission = await requestPermission();
-    if (!hasPermission) return;
-
-    let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Videos,
-      quality: 0.5,
-      base64: true,
-    });
-
-    if (!result.canceled && result.assets && result.assets.length > 0) {
-      const uri = result.assets[0].uri;
-      const base64 = result.assets[0].base64;
-      if (!base64) {
-        Alert.alert(
-          labels[language].error || "Error",
-          "Failed to get video data"
-        );
-        return;
-      }
-
-      const base64String = `data:video/mp4;base64,${base64}`;
-      setSelectedVideos((prev) => [...prev, uri]);
-      if (type === "doc") {
-        setNewDocPost((prev) => ({
-          ...prev,
-          videos: [...(prev.videos || []), base64String],
-        }));
-      }
-    } else {
-      console.log("Video selection canceled or failed:", result);
     }
   };
 
@@ -469,17 +403,6 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
         [field]: value,
       }));
     }
-  };
-
-  // Handle doc post input changes
-  const handleDocInputChange = <K extends keyof DocPostType>(
-    field: K,
-    value: DocPostType[K]
-  ) => {
-    setNewDocPost((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
   };
 
   // Render radio button
@@ -1059,77 +982,6 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
     }
   }, [createRestaurant, loadRestaurants, newRestaurant, language]);
 
-  // Perform doc post addition
-  const performAddDocPost = useCallback(async () => {
-    if (!addDocPost) {
-      console.error("addDocPost is not defined in useDoc hook");
-      Alert.alert(
-        labels[language].error || "Error",
-        labels[language].errorMessage ||
-          "Failed to add document post: Function not available"
-      );
-      return;
-    }
-
-    try {
-      const convertedDocPost: Partial<DocPostType> = {
-        text: newDocPost.text?.trim(),
-        images: newDocPost.images || [],
-        videos: newDocPost.videos || [],
-      };
-
-      if (
-        !convertedDocPost.text &&
-        (!convertedDocPost.images || convertedDocPost.images.length === 0) &&
-        (!convertedDocPost.videos || convertedDocPost.videos.length === 0)
-      ) {
-        throw new Error(
-          labels[language].requiredFields ||
-            "At least one of text, images, or videos is required"
-        );
-      }
-
-      console.log(
-        "Doc Post Payload:",
-        JSON.stringify(convertedDocPost, null, 2)
-      );
-      await addDocPost(convertedDocPost);
-      await loadDocPosts();
-      setModalVisible(false);
-      setNewDocPost({
-        text: "",
-        images: [],
-        videos: [],
-      });
-      setSelectedImages([]);
-      setSelectedVideos([]);
-
-      if (Platform.OS !== "web") {
-        Alert.alert(
-          labels[language].added || "Added",
-          labels[language].docPostAdded || "Document post has been added!"
-        );
-      } else {
-        window.alert(
-          labels[language].docPostAdded || "Document post has been added!"
-        );
-      }
-    } catch (error: any) {
-      console.error("Error adding doc post:", error);
-      const errorMessage = error.message || JSON.stringify(error);
-      if (Platform.OS === "web") {
-        window.alert(
-          labels[language].error || `Failed to add doc post: ${errorMessage}`
-        );
-      } else {
-        Alert.alert(
-          labels[language].error || "Error",
-          `Failed to add doc post: ${errorMessage}`
-        );
-      }
-    }
-  }, [addDocPost, loadDocPosts, newDocPost, language]);
-
   // Handle addition with platform-specific confirmation
   const handleAdd = () => {
     const isJob = type === "job";
@@ -1138,7 +990,6 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
     const isHotel = type === "hotel";
     const isCourse = type === "course";
     const isRestaurant = type === "restaurant";
-    const isDoc = type === "doc";
     const confirmMessage = isJob
       ? labels[language].addConfirm || "Are you sure you want to add this job?"
       : isTravel
@@ -1156,9 +1007,6 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
       : isRestaurant
       ? labels[language].addConfirm ||
         "Are you sure you want to add this restaurant?"
-      : isDoc
-      ? labels[language].addConfirm ||
-        "Are you sure you want to add this document post?"
       : "";
     const title = isJob
       ? labels[language].addJob || "Add Job"
@@ -1172,8 +1020,6 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
       ? labels[language].addCourse || "Add Course"
       : isRestaurant
       ? labels[language].addRestaurant || "Add Restaurant"
-      : isDoc
-      ? labels[language].addDocPost || "Add Document Post"
       : "";
     const performAction = isJob
       ? performAddJob
@@ -1187,8 +1033,6 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
       ? performAddCourse
       : isRestaurant
       ? performAddRestaurant
-      : isDoc
-      ? performAddDocPost
       : () => {};
 
     if (Platform.OS === "web") {
@@ -1741,72 +1585,9 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
     </>
   );
 
-  // Render doc post form
-  const renderDocForm = () => (
-    <View style={styles.formContainer}>
-      <View style={styles.fieldRow}>
-        <Text style={styles.label}>{labels[language].text || "Text"}:</Text>
-        <TextInput
-          style={[styles.input, { height: 100 }]}
-          value={newDocPost.text || ""}
-          onChangeText={(text) => handleDocInputChange("text", text)}
-          placeholder={labels[language].text || "Enter text"}
-          multiline
-        />
-      </View>
-      <View style={styles.fieldRow}>
-        <Text style={styles.label}>{labels[language].images || "Images"}:</Text>
-        <ScrollView horizontal style={{ flexDirection: "row", maxHeight: 100 }}>
-          {selectedImages.map((uri, index) => (
-            <Image
-              key={index}
-              source={{ uri }}
-              style={[styles.imagePreview, { marginLeft: 10 }]}
-            />
-          ))}
-          <TouchableOpacity
-            style={[
-              styles.imageInput,
-              { marginLeft: selectedImages.length > 0 ? 10 : 0 },
-            ]}
-            onPress={pickImage}
-          >
-            <Ionicons name="add" size={24} color={COLORS.black} />
-          </TouchableOpacity>
-        </ScrollView>
-      </View>
-      <View style={styles.fieldRow}>
-        <Text style={styles.label}>{labels[language].videos || "Videos"}:</Text>
-        <ScrollView horizontal style={{ flexDirection: "row", maxHeight: 100 }}>
-          {selectedVideos.map((uri, index) => (
-            <Image
-              key={index}
-              source={{ uri }}
-              style={[styles.imagePreview, { marginLeft: 10 }]}
-            />
-          ))}
-          <TouchableOpacity
-            style={[
-              styles.imageInput,
-              { marginLeft: selectedVideos.length > 0 ? 10 : 0 },
-            ]}
-            onPress={pickVideo}
-          >
-            <Ionicons name="add" size={24} color={COLORS.black} />
-          </TouchableOpacity>
-        </ScrollView>
-      </View>
-    </View>
-  );
-
   return (
     <>
-      <TouchableOpacity
-        onPress={() => {
-          console.log("Opening modal for type:", type);
-          setModalVisible(true);
-        }}
-      >
+      <TouchableOpacity onPress={() => setModalVisible(true)}>
         <Image
           source={require("@/assets/images/add.png")}
           style={styles.icon}
@@ -1815,10 +1596,7 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
       <Modal
         transparent={true}
         visible={modalVisible}
-        onRequestClose={() => {
-          console.log("Closing modal");
-          setModalVisible(false);
-        }}
+        onRequestClose={() => setModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
@@ -1836,8 +1614,6 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
                   ? labels[language].addCourse || "Add New Course"
                   : type === "restaurant"
                   ? labels[language].addRestaurant || "Add New Restaurant"
-                  : type === "doc"
-                  ? labels[language].addDoc || "Add New Document Post"
                   : ""}
               </Text>
               <TouchableOpacity
@@ -1860,8 +1636,6 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
                 ? renderCourseForm()
                 : type === "restaurant"
                 ? renderRestaurantForm()
-                : type === "doc"
-                ? renderDocForm()
                 : null}
               <View style={styles.modalButtonContainer}>
                 <TouchableOpacity

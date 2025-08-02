@@ -99,7 +99,7 @@ export const styles = StyleSheet.create({
     fontSize: 15,
     fontStyle: "normal",
     fontWeight: "400",
-    lineHeight: 20,
+
     letterSpacing: 0.15,
     color: COLORS.background,
     marginBottom: 15,

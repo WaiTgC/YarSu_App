@@ -211,6 +211,6 @@ export const styles = StyleSheet.create({
     color: COLORS.black,
     fontFamily: "SF Pro",
     fontWeight: "400",
-    lineHeight: 20,
+
   },
 });
