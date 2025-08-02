@@ -62,7 +62,8 @@ export default function RootLayout() {
       <SafeScreen>
         <AppLayout>
           <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="home" />
+            <Stack.Screen name="index" options={{ title: "Home" }} />
+            <Stack.Screen name="ChatScreen" options={{ title: "Chat" }} />
           </Stack>
         </AppLayout>
         <StatusBar style="auto" />
