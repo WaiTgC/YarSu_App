@@ -276,21 +276,19 @@ const AdminDocs = () => {
 
   const renderItem = ({ item }: { item: PostType }) => (
     <View style={styles.card}>
-      <View style={styles.detailsContainer}>
-        <View style={styles.fieldRow}>
-          <Text style={styles.label}>{labels[language].text || "Text"}:</Text>
-          <Text style={styles.value}>{item.text || "N/A"}</Text>
-        </View>
-      </View>
+      <View style={styles.detailsContainer}></View>
       <View style={styles.bottomContainer}>
         <View style={styles.imageContainer}>
+          <TouchableOpacity onPress={() => handlePrev(item.id)}>
+            <Text style={styles.arrow}>{"<"}</Text>
+          </TouchableOpacity>
           <View style={styles.imageBackground}>
             <Carousel
               ref={(ref) => {
                 if (ref) carouselRefs.current[item.id] = ref;
               }}
               width={styles.imageBackground.width}
-              height={150}
+              height={200}
               data={
                 item.media?.length
                   ? item.media
@@ -343,39 +341,40 @@ const AdminDocs = () => {
               )}
             />
           </View>
-          {item.media?.length === 1 && <View style={styles.noImages}></View>}
-          {(item.media?.length > 1 ||
-            (!item.media?.length &&
-              ["https://picsum.photos/340/200"].length > 1)) && (
-            <View style={styles.sliderControls}>
-              <TouchableOpacity onPress={() => handlePrev(item.id)}>
-                <Text style={styles.arrow}>{"<"}</Text>
-              </TouchableOpacity>
-              <FlatList
-                horizontal
-                contentContainerStyle={styles.indicatorContainer}
-                data={
-                  item.media?.length
-                    ? item.media
-                    : ["https://picsum.photos/340/200"]
-                }
-                keyExtractor={(item, index) => index.toString()}
-                renderItem={({ index }) => (
-                  <View
-                    style={[
-                      styles.indicator,
-                      currentIndices[item.id] === index &&
-                        styles.activeIndicator,
-                    ]}
-                  />
-                )}
-                showsHorizontalScrollIndicator={false}
-              />
-              <TouchableOpacity onPress={() => handleNext(item.id)}>
-                <Text style={styles.arrow}>{">"}</Text>
-              </TouchableOpacity>
-            </View>
-          )}
+
+          <TouchableOpacity onPress={() => handleNext(item.id)}>
+            <Text style={styles.arrow}>{">"}</Text>
+          </TouchableOpacity>
+        </View>
+        {item.media?.length === 1 && <View style={styles.noImages}></View>}
+        {(item.media?.length > 1 ||
+          (!item.media?.length &&
+            ["https://picsum.photos/340/200"].length > 1)) && (
+          <View style={styles.sliderControls}>
+            <FlatList
+              horizontal
+              contentContainerStyle={styles.indicatorContainer}
+              data={
+                item.media?.length
+                  ? item.media
+                  : ["https://picsum.photos/340/200"]
+              }
+              keyExtractor={(item, index) => index.toString()}
+              renderItem={({ index }) => (
+                <View
+                  style={[
+                    styles.indicator,
+                    currentIndices[item.id] === index && styles.activeIndicator,
+                  ]}
+                />
+              )}
+              showsHorizontalScrollIndicator={false}
+            />
+          </View>
+        )}{" "}
+        <View style={styles.noteTextBox}>
+          {/* <Text style={styles.label}>{labels[language].text || "Text"}:</Text> */}
+          <Text style={styles.value}>{item.text || "N/A"}</Text>
         </View>
         <View style={styles.buttonContainer}>
           <TouchableOpacity

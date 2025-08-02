@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import { Video } from "expo-av";
 import { useRouter } from "expo-router";
-import { styles } from "@/assets/styles/adminstyles/doc.styles";
+import { styles } from "@/assets/styles/adminstyles/general.styles";
 import { useGeneral } from "@/hooks/useGeneral";
 import { useLanguage } from "@/context/LanguageContext";
 import { labels } from "@/libs/language";
@@ -268,21 +268,19 @@ const AdminGeneral = () => {
 
   const renderItem = ({ item }: { item: PostType }) => (
     <View style={styles.card}>
-      <View style={styles.detailsContainer}>
-        <View style={styles.fieldRow}>
-          <Text style={styles.label}>{labels[language].text || "Text"}:</Text>
-          <Text style={styles.value}>{item.text || "N/A"}</Text>
-        </View>
-      </View>
       <View style={styles.bottomContainer}>
         <View style={styles.imageContainer}>
+          {" "}
+          <TouchableOpacity onPress={() => handlePrev(item.id)}>
+            <Text style={styles.arrow}>{"<"}</Text>
+          </TouchableOpacity>
           <View style={styles.imageBackground}>
             <Carousel
               ref={(ref) => {
                 if (ref) carouselRefs.current[item.id] = ref;
               }}
               width={styles.imageBackground.width}
-              height={150}
+              height={200}
               data={
                 item.media.length > 0
                   ? item.media
@@ -335,39 +333,41 @@ const AdminGeneral = () => {
               )}
             />
           </View>
-          {item.media.length === 1 && <View style={styles.noImages}></View>}
-          {(item.media.length > 1 ||
-            (item.media.length === 0 &&
-              ["https://picsum.photos/340/200"].length > 1)) && (
-            <View style={styles.sliderControls}>
-              <TouchableOpacity onPress={() => handlePrev(item.id)}>
-                <Text style={styles.arrow}>{"<"}</Text>
-              </TouchableOpacity>
-              <FlatList
-                horizontal
-                contentContainerStyle={styles.indicatorContainer}
-                data={
-                  item.media.length > 0
-                    ? item.media
-                    : ["https://picsum.photos/340/200"]
-                }
-                keyExtractor={(item, index) => index.toString()}
-                renderItem={({ index }) => (
-                  <View
-                    style={[
-                      styles.indicator,
-                      currentIndices[item.id] === index &&
-                        styles.activeIndicator,
-                    ]}
-                  />
-                )}
-                showsHorizontalScrollIndicator={false}
-              />
-              <TouchableOpacity onPress={() => handleNext(item.id)}>
-                <Text style={styles.arrow}>{">"}</Text>
-              </TouchableOpacity>
-            </View>
-          )}
+          <TouchableOpacity onPress={() => handleNext(item.id)}>
+            <Text style={styles.arrow}>{">"}</Text>
+          </TouchableOpacity>
+        </View>
+        {item.media.length === 1 && <View style={styles.noImages}></View>}
+        {(item.media.length > 1 ||
+          (item.media.length === 0 &&
+            ["https://picsum.photos/340/200"].length > 1)) && (
+          <View style={styles.sliderControls}>
+            <FlatList
+              horizontal
+              contentContainerStyle={styles.indicatorContainer}
+              data={
+                item.media.length > 0
+                  ? item.media
+                  : ["https://picsum.photos/340/200"]
+              }
+              keyExtractor={(item, index) => index.toString()}
+              renderItem={({ index }) => (
+                <View
+                  style={[
+                    styles.indicator,
+                    currentIndices[item.id] === index && styles.activeIndicator,
+                  ]}
+                />
+              )}
+              showsHorizontalScrollIndicator={false}
+            />
+          </View>
+        )}
+        <View style={styles.detailsContainer}>
+          <View style={styles.noteTextBox}>
+            {/* <Text style={styles.label}>{labels[language].text || "Text"}:</Text> */}
+            <Text style={styles.value}>{item.text || "N/A"}</Text>
+          </View>
         </View>
         <View style={styles.buttonContainer}>
           <TouchableOpacity
