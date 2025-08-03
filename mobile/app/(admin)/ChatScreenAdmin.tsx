@@ -9,123 +9,204 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  TouchableOpacity,
 } from "react-native";
-import { api } from "@/libs/api";
-import * as SecureStore from "expo-secure-store";
 import { useRouter, useLocalSearchParams } from "expo-router";
+import { supabase } from "@/libs/supabase";
+import * as SecureStore from "expo-secure-store";
 
 interface Message {
   id: string;
   sender_id: string;
   message: string;
   created_at?: string;
+  chat_id: string;
 }
 
-export default function ChatScreen() {
+interface Chat {
+  id: string;
+  user_id: string;
+  created_at: string;
+  last_message?: Message;
+}
+
+export default function ChatScreenAdmin() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const chatIdFromRoute = params.chatId as string | undefined;
-  const [chatId, setChatId] = useState<string | null>(chatIdFromRoute || null);
+  const [selectedChatId, setSelectedChatId] = useState<string | null>(
+    chatIdFromRoute || null
+  );
+  const [chats, setChats] = useState<Chat[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
-  const [userId, setUserId] = useState<string | null>(null);
+  const [adminId, setAdminId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const flatListRef = useRef<FlatList<any>>(null);
 
-  useEffect(() => {
-    const initializeChat = async () => {
-      try {
-        // Fetch userId from SecureStore
-        const id = await SecureStore.getItemAsync("userId");
-        setUserId(id);
+  const fetchMessages = async () => {
+    if (!selectedChatId) {
+      setMessages([]);
+      return;
+    }
+    setLoading(false);
+    try {
+      const { data, error } = await supabase
+        .from("messages")
+        .select("id, sender_id, message, created_at, chat_id")
+        .eq("chat_id", selectedChatId)
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      setMessages(data || []);
+    } catch (err) {
+      console.error("ChatScreenAdmin - Error fetching messages:", err);
+      setMessages([]);
+    }
+    setLoading(false);
+  };
 
-        if (!id) {
-          console.error("ChatScreen - No userId found");
+  useEffect(() => {
+    const initializeAdmin = async () => {
+      try {
+        const id = await SecureStore.getItemAsync("userId");
+        setAdminId(id);
+
+        if (!id || !(await checkAdminRole(id))) {
+          console.error("ChatScreenAdmin - No valid admin ID or role");
           setLoading(false);
           router.replace("/(auth)");
           return;
         }
 
-        // If no chatId was passed, check for or create a chat
-        if (!chatIdFromRoute) {
-          const response = await api.get(`/chats?user_id=${id}`);
-          if (response.data && response.data.length > 0) {
-            setChatId(response.data[0].id);
-          } else {
-            const createResponse = await api.post("/chats", { user_id: id });
-            setChatId(createResponse.data.id);
-          }
-        }
+        await fetchChats();
       } catch (error) {
-        console.error("ChatScreen - Error initializing chat:", error);
+        console.error("ChatScreenAdmin - Error initializing admin:", error);
         setLoading(false);
         router.replace("/(auth)");
       }
     };
 
-    initializeChat();
-  }, [chatIdFromRoute, router]);
+    initializeAdmin();
+  }, [router]);
+
+  const checkAdminRole = async (userId: string) => {
+    const { data, error } = await supabase
+      .from("users")
+      .select("role")
+      .eq("id", userId)
+      .single();
+    if (error) throw error;
+    return data.role === "admin" || data.role === "superadmin";
+  };
+
+  const fetchChats = async () => {
+    setLoading(true);
+    try {
+      const { data: chatData, error: chatError } = await supabase
+        .from("chats")
+        .select(
+          `
+          id,
+          user_id,
+          created_at,
+          messages (
+            id,
+            sender_id,
+            message,
+            created_at,
+            chat_id
+          )
+        `
+        )
+        .order("created_at", { ascending: false });
+
+      if (chatError) throw chatError;
+
+      const chatsWithLastMessage = chatData
+        .map((chat) => ({
+          ...chat,
+          last_message:
+            chat.messages.length > 0
+              ? chat.messages.reduce((latest, current) =>
+                  new Date(latest.created_at) > new Date(current.created_at)
+                    ? latest
+                    : current
+                )
+              : undefined,
+        }))
+        .sort(
+          (a, b) =>
+            (b.last_message?.created_at
+              ? new Date(b.last_message.created_at)
+              : new Date(b.created_at)) -
+            (a.last_message?.created_at
+              ? new Date(a.last_message.created_at)
+              : new Date(a.created_at))
+        );
+
+      setChats(chatsWithLastMessage);
+      if (!selectedChatId && chatsWithLastMessage.length > 0) {
+        setSelectedChatId(chatsWithLastMessage[0].id);
+      }
+    } catch (err) {
+      console.error("ChatScreenAdmin - Error fetching chats:", err);
+      setChats([]);
+    }
+    setLoading(false);
+  };
 
   useEffect(() => {
-    if (!chatId) return;
-
-    const fetchMessages = async () => {
-      setLoading(true);
-      try {
-        const res = await api.get(`/messages/${chatId}`);
-        setMessages(res.data || []);
-      } catch (err) {
-        console.error("ChatScreen - Error fetching messages:", err);
-        setMessages([]);
-      }
-      setLoading(false);
-    };
-
     fetchMessages();
-
-    // Poll for new messages
-    const interval = setInterval(async () => {
-      try {
-        const res = await api.get(`/messages/${chatId}`);
-        setMessages(res.data || []);
-        flatListRef.current?.scrollToEnd({ animated: true });
-      } catch (err) {
-        console.error("ChatScreen - Error polling messages:", err);
-      }
-    }, 5000); // Poll every 5 seconds
-
+    const interval = setInterval(fetchMessages, 5000); // Poll every 5 seconds
     return () => clearInterval(interval);
-  }, [chatId]);
+  }, [selectedChatId]);
 
   const sendMessage = async () => {
-    if (!input.trim() || !chatId) return;
+    if (!input.trim() || !selectedChatId || !adminId) return;
     setSending(true);
     try {
-      await api.post("/messages", {
-        chat_id: chatId,
+      const { error } = await supabase.from("messages").insert({
+        chat_id: selectedChatId,
+        sender_id: adminId,
         message: input,
         type: "text",
       });
+      if (error) throw error;
       setInput("");
-      const res = await api.get(`/messages/${chatId}`);
-      setMessages(res.data || []);
+      await fetchMessages(); // Now accessible
       flatListRef.current?.scrollToEnd({ animated: true });
     } catch (err) {
-      console.error("ChatScreen - Error sending message:", err);
+      console.error("ChatScreenAdmin - Error sending message:", err);
     }
     setSending(false);
   };
 
-  const renderItem = ({ item }: { item: Message }) => (
+  const renderChatItem = ({ item }: { item: Chat }) => (
+    <TouchableOpacity
+      style={styles.chatItem}
+      onPress={() => setSelectedChatId(item.id)}
+    >
+      <Text>Chat with {item.user_id.slice(0, 8)}...</Text>
+      <Text>
+        {item.last_message && item.last_message.created_at
+          ? `Last: ${item.last_message.message} (${new Date(
+              item.last_message.created_at
+            ).toLocaleTimeString()})`
+          : "No messages yet"}
+      </Text>
+    </TouchableOpacity>
+  );
+
+  const renderMessage = ({ item }: { item: Message }) => (
     <View
       style={[
         styles.messageBubble,
-        item.sender_id === userId ? styles.myMessage : styles.otherMessage,
+        item.sender_id === adminId ? styles.myMessage : styles.otherMessage,
       ]}
     >
       <Text style={styles.senderLabel}>
-        {item.sender_id === userId ? "You" : "Admin"}
+        {item.sender_id === adminId ? "You (Admin)" : "User"}
       </Text>
       <Text>{item.message}</Text>
     </View>
@@ -135,7 +216,7 @@ export default function ChatScreen() {
     return (
       <View style={styles.container}>
         <ActivityIndicator size="large" color="#0000ff" />
-        <Text>Loading Chat...</Text>
+        <Text>Loading Chats...</Text>
       </View>
     );
   }
@@ -147,17 +228,27 @@ export default function ChatScreen() {
       keyboardVerticalOffset={Platform.OS === "ios" ? 100 : 0}
     >
       <View style={styles.container}>
-        {chatId ? (
+        <FlatList
+          data={chats}
+          renderItem={renderChatItem}
+          keyExtractor={(item) => item.id}
+          horizontal={false}
+          style={styles.chatList}
+          ListEmptyComponent={<Text>No chats available</Text>}
+        />
+        {selectedChatId ? (
           <>
             <FlatList
               ref={flatListRef}
               data={messages}
-              renderItem={renderItem}
+              renderItem={renderMessage}
               keyExtractor={(item) => item.id}
               onContentSizeChange={() =>
                 flatListRef.current?.scrollToEnd({ animated: true })
               }
-              onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
+              onLayout={() =>
+                flatListRef.current?.scrollToEnd({ animated: true })
+              }
               contentContainerStyle={{ paddingBottom: 70 }}
             />
             <View style={styles.inputRowFixed}>
@@ -170,13 +261,13 @@ export default function ChatScreen() {
               <Button
                 title={sending ? "Sending..." : "Send"}
                 onPress={sendMessage}
-                disabled={sending || !chatId}
+                disabled={sending || !selectedChatId}
               />
             </View>
           </>
         ) : (
           <View style={styles.noChatContainer}>
-            <Text style={styles.noChatText}>Unable to load chat</Text>
+            <Text style={styles.noChatText}>Select a chat to start</Text>
           </View>
         )}
       </View>
@@ -190,6 +281,17 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     padding: 10,
     paddingTop: 40,
+  },
+  chatList: {
+    maxHeight: 150,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+    marginBottom: 10,
+  },
+  chatItem: {
+    padding: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#ddd",
   },
   inputRowFixed: {
     flexDirection: "row",

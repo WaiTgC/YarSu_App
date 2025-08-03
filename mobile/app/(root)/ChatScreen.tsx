@@ -10,7 +10,8 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
-import { api } from "@/libs/apic";
+import { useLocalSearchParams } from "expo-router";
+import { supabase } from "@/libs/supabase";
 import * as SecureStore from "expo-secure-store";
 
 interface Message {
@@ -20,71 +21,68 @@ interface Message {
   created_at?: string;
 }
 
-export default function ChatScreen({ route }: any) {
-  const { chatId } = route.params || {};
+export default function ChatScreen() {
+  const { chatId } = useLocalSearchParams<{ chatId?: string }>();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
-  const flatListRef = useRef<FlatList>(null);
+  const flatListRef = useRef<FlatList<any>>(null);
 
   useEffect(() => {
     // Fetch userId from SecureStore
-    SecureStore.getItemAsync("userId")
-      .then((id) => {
-        setUserId(id);
-      })
-      .catch((error) => {
-        console.error("ChatScreen - Error fetching userId:", error);
-      });
-
+    SecureStore.getItemAsync("userId").then((id) => setUserId(id));
     fetchMessages();
-
     // Poll for new messages
     const interval = setInterval(async () => {
-      try {
-        if (!chatId) return;
-        const res = await api.get(`/messages/${chatId}`);
-        setMessages(res.data || []);
-      } catch (err) {
-        console.error("ChatScreen - Error polling messages:", err);
-      }
-    }, 3000);
-
+      if (!chatId) return;
+      await fetchMessages();
+    }, 3000); // Poll every 3 seconds
     return () => clearInterval(interval);
   }, [chatId]);
 
   const fetchMessages = async () => {
-    setLoading(true);
+    setLoading(false);
     try {
       if (!chatId) {
         setMessages([]);
         setLoading(false);
         return;
       }
-      const res = await api.get(`/messages/${chatId}`);
-      setMessages(res.data || []);
+      const { data, error } = await supabase
+        .from("messages")
+        .select("id, sender_id, message, created_at")
+        .eq("chat_id", chatId)
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      setMessages(data || []);
     } catch (err) {
-      console.error("ChatScreen - Error fetching messages:", err);
+      console.error("Fetch messages error:", err);
       setMessages([]);
     }
     setLoading(false);
   };
 
   const sendMessage = async () => {
-    if (!input.trim() || !userId || !chatId) return;
+    if (!input.trim() || !userId) return;
     setSending(true);
     try {
-      await api.post("/messages", {
+      if (!chatId) {
+        setSending(false);
+        return;
+      }
+      const { error } = await supabase.from("messages").insert({
         chat_id: chatId,
+        sender_id: userId,
         message: input,
         type: "text",
       });
+      if (error) throw error;
       setInput("");
-      fetchMessages();
+      await fetchMessages();
     } catch (err) {
-      console.error("ChatScreen - Error sending message:", err);
+      console.error("Send message error:", err);
     }
     setSending(false);
   };
@@ -97,20 +95,11 @@ export default function ChatScreen({ route }: any) {
       ]}
     >
       <Text style={styles.senderLabel}>
-        {item.sender_id === userId ? "You" : "Admin"}
+        {item.sender_id === userId ? "You" : "Other"}
       </Text>
       <Text>{item.message}</Text>
     </View>
   );
-
-  if (loading) {
-    return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" color="#0000ff" />
-        <Text style={styles.loadingText}>Loading chat...</Text>
-      </View>
-    );
-  }
 
   return (
     <KeyboardAvoidingView
@@ -119,17 +108,24 @@ export default function ChatScreen({ route }: any) {
       keyboardVerticalOffset={Platform.OS === "ios" ? 100 : 0}
     >
       <View style={styles.container}>
-        <FlatList
-          ref={flatListRef}
-          data={messages}
-          renderItem={renderItem}
-          keyExtractor={(item) => item.id}
-          onContentSizeChange={() =>
-            flatListRef.current?.scrollToEnd({ animated: true })
-          }
-          onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
-          contentContainerStyle={{ paddingBottom: 70 }}
-        />
+        {loading ? (
+          <ActivityIndicator size="large" color="#0000ff" />
+        ) : (
+          <FlatList
+            ref={flatListRef}
+            data={messages}
+            renderItem={renderItem}
+            keyExtractor={(item) => item.id}
+            onContentSizeChange={() =>
+              flatListRef.current?.scrollToEnd({ animated: true })
+            }
+            onLayout={() =>
+              flatListRef.current?.scrollToEnd({ animated: true })
+            }
+            contentContainerStyle={{ paddingBottom: 70 }}
+            ListEmptyComponent={<Text>No messages yet</Text>}
+          />
+        )}
         <View style={styles.inputRowFixed}>
           <TextInput
             value={input}
@@ -140,7 +136,7 @@ export default function ChatScreen({ route }: any) {
           <Button
             title={sending ? "Sending..." : "Send"}
             onPress={sendMessage}
-            disabled={sending || !input.trim()}
+            disabled={sending}
           />
         </View>
       </View>
@@ -195,10 +191,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#888",
     marginBottom: 2,
-  },
-  loadingText: {
-    marginTop: 10,
-    textAlign: "center",
-    fontSize: 16,
   },
 });

@@ -1,91 +1,111 @@
-import React, { useEffect, useState } from "react";
-import { TouchableOpacity, Image, StyleSheet, Platform } from "react-native";
+import { View, TouchableOpacity, Text, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
-import { COLORS } from "@/constants/colors";
-import { api } from "@/libs/api";
+import { useState, useEffect } from "react";
+import { supabase } from "@/libs/supabase";
 import { getItem } from "@/utils/storage";
 
 export default function ChatButton() {
   const router = useRouter();
-  const [userId, setUserId] = useState<string | null>(null);
+  const [chatId, setChatId] = useState<number | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Fetch userId from storage
-    getItem("userId")
-      .then((id) => {
-        console.log("ChatButton - Retrieved userId:", id);
-        setUserId(id);
-      })
-      .catch((error) => console.error("ChatButton - Error fetching userId:", error));
-  }, []);
-
-  const handlePress = async () => {
-    let currentUserId = userId;
-
-    // If userId is not set, try fetching it again
-    if (!currentUserId) {
-      try {
-        currentUserId = await getItem("userId");
-        console.log("ChatButton - Fetched userId in handlePress:", currentUserId);
-        setUserId(currentUserId);
-      } catch (error) {
-        console.error("ChatButton - Error fetching userId in handlePress:", error);
-      }
-    }
-
-    if (!currentUserId) {
-      console.error("ChatButton - No userId found");
-      return;
-    }
-
-    try {
-      // Log the auth token for debugging
-      const token = await getItem("authToken");
-      console.log("ChatButton - Auth token:", token);
-
-      // Fetch the user's chat
-      console.log("ChatButton - Fetching chat for userId:", currentUserId);
-      const response = await api.get(`/chats?user_id=${currentUserId}`);
-      if (!response.data || response.data.length === 0) {
-        console.error("ChatButton - No chat found for userId:", currentUserId);
+    const fetchOrCreateChat = async () => {
+      const userId = await getItem("userId");
+      if (!userId) {
+        console.log("ChatButton - No userId found");
+        setIsLoading(false);
         return;
       }
 
-      const chatId = response.data[0].id;
-      console.log("ChatButton - Found chatId:", chatId);
+      console.log("ChatButton - Fetching chat for userId:", userId);
+      const { data, error } = await supabase
+        .from("chats")
+        .select("id")
+        .eq("user_id", userId)
+        .single();
 
-      // Navigate to ChatScreen with chatId
-      const path = "/(root)/ChatScreen";
-      console.log("ChatButton - Navigating to:", path, "with chatId:", chatId);
-      router.push({ pathname: path, params: { chatId } });
-    } catch (error: any) {
-      console.error("ChatButton - Error handling chat navigation:", error.message, error.response?.data);
+      if (error) {
+        if (error.code === "PGRST116") {
+          // No rows
+          console.log("ChatButton - No chat found for userId:", userId);
+          const { data: newChat, error: createError } = await supabase
+            .from("chats")
+            .insert({ user_id: userId })
+            .select("id")
+            .single();
+          if (createError) {
+            console.error(
+              "ChatButton - Error creating chat:",
+              createError.message
+            );
+          } else {
+            console.log("ChatButton - Chat created, chatId:", newChat.id);
+            setChatId(newChat.id);
+          }
+        } else {
+          console.error("ChatButton - Error fetching chat:", error.message);
+        }
+      } else {
+        console.log("ChatButton - Chat found, chatId:", data.id);
+        setChatId(data.id);
+      }
+      setIsLoading(false);
+    };
+
+    fetchOrCreateChat();
+  }, []);
+
+  const handlePress = async () => {
+    if (isLoading) {
+      console.log("ChatButton - Still loading, please wait");
+      return;
+    }
+    if (chatId) {
+      console.log("ChatButton - Navigating to ChatScreen with chatId:", chatId);
+      router.push(`/ChatScreen?chatId=${chatId}`);
+    } else {
+      setIsLoading(true);
+      console.log("ChatButton - No chatId, re-fetching...");
+      const userId = await getItem("userId");
+      const { data, error } = await supabase
+        .from("chats")
+        .select("id")
+        .eq("user_id", userId)
+        .single();
+      if (error && error.code !== "PGRST116") {
+        console.error("ChatButton - Error re-fetching chat:", error.message);
+      } else if (data) {
+        setChatId(data.id);
+        router.push(`/ChatScreen?chatId=${data.id}`);
+      } else {
+        console.log("ChatButton - Still no chat found, creating one...");
+        const { data: newChat, error: createError } = await supabase
+          .from("chats")
+          .insert({ user_id: userId })
+          .select("id")
+          .single();
+        if (createError) {
+          console.error(
+            "ChatButton - Error creating chat:",
+            createError.message
+          );
+        } else {
+          setChatId(newChat.id);
+          router.push(`/ChatScreen?chatId=${newChat.id}`);
+        }
+      }
+      setIsLoading(false);
     }
   };
 
   return (
-    <TouchableOpacity
-      style={styles.tab}
-      onPress={handlePress}
-      {...(Platform.OS !== "web" ? { onStartShouldSetResponder: () => true } : {})}
-    >
-      <Image
-        source={require("@/assets/images/chatuser.png")}
-        style={styles.chatImage}
-        resizeMode="contain"
-      />
+    <TouchableOpacity onPress={handlePress} style={{ padding: 10 }}>
+      {isLoading ? (
+        <ActivityIndicator size="small" color="#0000ff" />
+      ) : (
+        <Text>Chat</Text>
+      )}
     </TouchableOpacity>
   );
 }
-
-const styles = StyleSheet.create({
-  tab: {
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 10,
-  },
-  chatImage: {
-    width: 40,
-    height: 40,
-  },
-});

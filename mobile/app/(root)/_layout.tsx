@@ -67,7 +67,7 @@ export default function RootLayout() {
         <AppLayout>
           <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="home" />
-            <Stack.Screen name="ChatScreen" />
+            <Stack.Screen name="ChatScreen" option={{ title: "Chat" }} />
           </Stack>
         </AppLayout>
         <StatusBar style="auto" />
