@@ -78,17 +78,25 @@ const Travel = () => {
         toValue: headerHeight,
         duration: 300,
         useNativeDriver: true,
-      }).start();
+      }).start(() => console.log("Travel: Modal slide-in animation completed"));
     } else {
       Animated.timing(slideAnimDetails, {
         toValue: Dimensions.get("window").height,
         duration: 300,
         useNativeDriver: true,
-      }).start();
+      }).start(() =>
+        console.log("Travel: Modal slide-out animation completed")
+      );
     }
   }, [showDetails, slideAnimDetails, headerHeight]);
 
-  const renderItem = ({ item, index }) => {
+  const renderItem = ({
+    item,
+    index,
+  }: {
+    item: TravelPostType;
+    index: number;
+  }) => {
     console.log(`Travel: Rendering item ${item.id} at index ${index}`);
     const baseHeight = 150;
     const doubleHeight = baseHeight * 2 + 8;
@@ -115,7 +123,7 @@ const Travel = () => {
           console.log(`Travel: handleMoreInfo called for item ${item.id}`);
           handleMoreInfo(item);
           setShowDetails(true);
-          setIsNoteExpanded(false); // Reset dropdown state when opening modal
+          setIsNoteExpanded(false);
         }}
       >
         <Image
@@ -218,110 +226,118 @@ const Travel = () => {
           ]}
         >
           <View style={styles.modalContainer}>
-            <ScrollView
-              style={styles.customModalContent}
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.modalBody}
-            >
-              <View style={styles.imageContainer}>
-                <TouchableOpacity
-                  style={styles.arrowContainer}
-                  onPress={handlePrev}
-                >
-                  <Text style={styles.arrow}>{"<"}</Text>
-                </TouchableOpacity>
-                <Carousel
-                  ref={carouselRef}
-                  width={Dimensions.get("window").width - 90}
-                  height={300}
-                  data={
-                    selectedPost.images.length > 0
-                      ? selectedPost.images
-                      : ["https://picsum.photos/340/200"]
-                  }
-                  scrollAnimationDuration={300}
-                  defaultIndex={currentImageIndex}
-                  onSnapToItem={(index) => {
-                    console.log("Travel: Snapped to index", index);
-                    setCurrentImageIndex(index);
-                  }}
-                  renderItem={({ item: image }) => (
-                    <Image
-                      source={{ uri: image }}
-                      style={styles.modalImage}
-                      onError={(error) =>
-                        console.error(
-                          "Travel: Modal image load error for",
-                          selectedPost.id,
-                          error.nativeEvent
-                        )
-                      }
-                    />
-                  )}
-                />
-                <TouchableOpacity
-                  style={styles.arrowContainer}
-                  onPress={handleNext}
-                >
-                  <Text style={styles.arrow}>{">"}</Text>
-                </TouchableOpacity>
-              </View>
-              {selectedPost.images.length > 1 && (
-                <View style={styles.sliderControls}>
-                  <FlatList
-                    horizontal
-                    contentContainerStyle={styles.indicatorContainer}
-                    data={selectedPost.images}
-                    keyExtractor={(item, index) => index.toString()}
-                    renderItem={({ index }) => (
-                      <View
-                        style={[
-                          styles.indicator,
-                          currentImageIndex === index && styles.activeIndicator,
-                        ]}
+            <View style={styles.customModalContent}>
+              <TouchableOpacity
+                style={styles.closeIconButton}
+                onPress={() => {
+                  console.log(
+                    "Travel: Close icon pressed for",
+                    selectedPost?.id
+                  );
+                  setShowDetails(false);
+                  setIsNoteExpanded(false);
+                }}
+              >
+                <Ionicons name="close" size={24} color={COLORS.black} />
+              </TouchableOpacity>
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.modalBody}
+              >
+                <View style={styles.imageContainer}>
+                  <TouchableOpacity
+                    style={styles.arrowContainer}
+                    onPress={handlePrev}
+                  >
+                    <Text style={styles.arrow}>{"<"}</Text>
+                  </TouchableOpacity>
+                  <Carousel
+                    ref={carouselRef}
+                    width={Dimensions.get("window").width - 90}
+                    height={300}
+                    data={
+                      selectedPost.images.length > 0
+                        ? selectedPost.images
+                        : ["https://picsum.photos/340/200"]
+                    }
+                    scrollAnimationDuration={300}
+                    defaultIndex={currentImageIndex}
+                    onSnapToItem={(index) => {
+                      console.log("Travel: Snapped to index", index);
+                      setCurrentImageIndex(index);
+                    }}
+                    renderItem={({ item: image }) => (
+                      <Image
+                        source={{ uri: image }}
+                        style={styles.modalImage}
+                        onError={(error) =>
+                          console.error(
+                            "Travel: Modal image load error for",
+                            selectedPost.id,
+                            error.nativeEvent
+                          )
+                        }
                       />
                     )}
-                    showsHorizontalScrollIndicator={false}
                   />
+                  <TouchableOpacity
+                    style={styles.arrowContainer}
+                    onPress={handleNext}
+                  >
+                    <Text style={styles.arrow}>{">"}</Text>
+                  </TouchableOpacity>
                 </View>
-              )}
-              <View style={styles.detailsContainer}>
-                <Text style={styles.modalTitle}>{selectedPost.name}</Text>
-                <View style={{ flexDirection: "row" }}>
-                  <Image
-                    source={require("@/assets/images/ping.png")}
-                    style={{ height: 24, width: 24 }}
-                  />
-                  <Text style={styles.modalText}>
-                    {labels[language].place || "Place"}: {selectedPost.place}
-                  </Text>
-                </View>
-                <Text style={styles.modalHighlightTitle}>
-                  {labels[language].highlights || "Highlights"}
-                </Text>
-                {selectedPost.highlights.map((highlight, index) => (
-                  <View style={styles.highlightItem} key={index}>
-                    <LinearGradient
-                      colors={["#FFF236", "#FFBA30"]}
-                      style={styles.highlightDot}
-                      start={{ x: 0.25, y: 0.15 }}
-                      end={{ x: 0.75, y: 0.85 }}
-                    />
-                    <Text style={styles.modalText}>{highlight}</Text>
+                {selectedPost.images.length > 1 && (
+                  <View style={styles.sliderControls}>
+                    <View style={styles.indicatorContainer}>
+                      {selectedPost.images.map((_, index) => (
+                        <View
+                          key={index}
+                          style={[
+                            styles.indicator,
+                            currentImageIndex === index &&
+                              styles.activeIndicator,
+                          ]}
+                        />
+                      ))}
+                    </View>
                   </View>
-                ))}
-                <Text style={styles.modalHighlightTitle}>
-                  {labels[language].rating || "Rating"} - {renderStar()}
-                </Text>
-                <Text style={styles.modalHighlightTitle}>
-                  {labels[language].posted || "Posted"} -
-                  <Text style={styles.modalText}>
-                    {formatDate(selectedPost.created_at)}
-                  </Text>
-                </Text>
-                <View style={styles.noteDropdownContainer}>
+                )}
+                <View style={styles.detailsContainer}>
+                  <Text style={styles.modalTitle}>{selectedPost.name}</Text>
+                  <View style={{ flexDirection: "row", alignItems: "center" }}>
+                    <Image
+                      source={require("@/assets/images/ping.png")}
+                      style={{ height: 24, width: 24, marginRight: 8 }}
+                    />
+                    <Text style={styles.modalText}>
+                      {labels[language].place || "Place"}: {selectedPost.place}
+                    </Text>
+                  </View>
                   <Text style={styles.modalHighlightTitle}>
-                    {labels[language].note || "Note"} -
+                    {labels[language].highlights || "Highlights"}
+                  </Text>
+                  {selectedPost.highlights.map((highlight, index) => (
+                    <View style={styles.highlightItem} key={index}>
+                      <LinearGradient
+                        colors={["#FFF236", "#FFBA30"]}
+                        style={styles.highlightDot}
+                        start={{ x: 0.25, y: 0.15 }}
+                        end={{ x: 0.75, y: 0.85 }}
+                      />
+                      <Text style={styles.modalText}>{highlight}</Text>
+                    </View>
+                  ))}
+                  <Text style={styles.modalHighlightTitle}>
+                    {labels[language].rating || "Rating"} - {renderStar()}
+                  </Text>
+                  <Text style={styles.modalHighlightTitle}>
+                    {labels[language].posted || "Posted"} -
+                    <Text style={styles.modalText}>
+                      {formatDate(selectedPost.created_at)}
+                    </Text>
+                  </Text>
+                  <View style={styles.noteDropdownContainer}>
                     <TouchableOpacity
                       style={styles.noteTextBox}
                       onPress={() => setIsNoteExpanded(!isNoteExpanded)}
@@ -333,8 +349,7 @@ const Travel = () => {
                         ]}
                       >
                         <Text style={styles.modalText}>
-                          {selectedPost.notes ||
-                            "No additional notes available"}
+                          {selectedPost.note || "No additional notes available"}
                         </Text>
                       </View>
                       <Ionicons
@@ -344,23 +359,10 @@ const Travel = () => {
                         style={styles.dropdownArrow}
                       />
                     </TouchableOpacity>
-                  </Text>
+                  </View>
                 </View>
-              </View>
-            </ScrollView>
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={() => {
-                console.log(
-                  "Travel: Close button pressed for",
-                  selectedPost?.id
-                );
-                setShowDetails(false);
-                setIsNoteExpanded(false);
-              }}
-            >
-              <Text style={styles.buttonText}>Close</Text>
-            </TouchableOpacity>
+              </ScrollView>
+            </View>
           </View>
         </Animated.View>
       )}

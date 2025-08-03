@@ -20,10 +20,10 @@ export default function Page() {
         <Link style={styles.optionButton} href="/(auth)/sign-up">
           <Text>Sign up</Text>
         </Link>
-        <Picker mode="dropdown" style={styles.language}>
+        {/* <Picker mode="dropdown" style={styles.language}>
           <Picker.Item label="English" value="en" />
           <Picker.Item label="Myanmar" value="mm" />
-        </Picker>
+        </Picker> */}
       </View>
     </View>
   );

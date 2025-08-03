@@ -12,19 +12,43 @@ export default function ChatButton() {
   useEffect(() => {
     // Fetch userId from SecureStore
     SecureStore.getItemAsync("userId")
-      .then((id) => setUserId(id))
-      .catch((error) => console.error("ChatButton - Error fetching userId:", error));
+      .then((id) => {
+        console.log("ChatButton - Retrieved userId:", id); // Debug log
+        setUserId(id);
+      })
+      .catch((error) =>
+        console.error("ChatButton - Error fetching userId:", error)
+      );
   }, []);
 
   const handlePress = async () => {
-    if (!userId) {
+    let currentUserId = userId;
+
+    // If userId is not set, try fetching it again
+    if (!currentUserId) {
+      try {
+        currentUserId = await SecureStore.getItemAsync("userId");
+        console.log(
+          "ChatButton - Fetched userId in handlePress:",
+          currentUserId
+        ); // Debug log
+        setUserId(currentUserId);
+      } catch (error) {
+        console.error(
+          "ChatButton - Error fetching userId in handlePress:",
+          error
+        );
+      }
+    }
+
+    if (!currentUserId) {
       console.error("ChatButton - No userId found");
       return;
     }
 
     try {
       // Check for existing chat
-      const response = await api.get(`/chats?user_id=${userId}`);
+      const response = await api.get(`/chats?user_id=${currentUserId}`);
       let chatId;
 
       if (response.data && response.data.length > 0) {
@@ -32,7 +56,9 @@ export default function ChatButton() {
         chatId = response.data[0].id;
       } else {
         // Create a new chat
-        const createResponse = await api.post("/chats", { user_id: userId });
+        const createResponse = await api.post("/chats", {
+          user_id: currentUserId,
+        });
         chatId = createResponse.data.id;
       }
 
@@ -49,7 +75,9 @@ export default function ChatButton() {
     <TouchableOpacity
       style={styles.tab}
       onPress={handlePress}
-      {...(Platform.OS !== "web" ? { onStartShouldSetResponder: () => true } : {})}
+      {...(Platform.OS !== "web"
+        ? { onStartShouldSetResponder: () => true }
+        : {})}
     >
       <Image
         source={require("@/assets/images/chatuser.png")}

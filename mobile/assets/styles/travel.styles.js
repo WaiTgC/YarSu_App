@@ -60,16 +60,25 @@ export const styles = StyleSheet.create({
     bottom: 0,
     backgroundColor: "rgba(0, 0, 0, 0.5)",
     justifyContent: "flex-end",
+    height: "auto",
   },
   modalContainer: {
     backgroundColor: COLORS.background,
-    height: "100%",
+    height: "auto",
+    paddingTop: "20",
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   customModalContent: {
-    margin: 14,
+    margin: "auto",
+    marginTop: 20,
+    marginBottom: 10,
     backgroundColor: "rgba(248, 249, 250, 0.80)",
-
     borderRadius: 24,
+    height: "auto",
   },
   modalBody: {
     flexGrow: 1,
@@ -129,7 +138,7 @@ export const styles = StyleSheet.create({
     marginLeft: 5,
     fontStyle: "normal",
     letterSpacing: 0.72,
-    width: "40%",
+    width: "auto",
     textAlign: "justify",
   },
   star: {
@@ -158,8 +167,7 @@ export const styles = StyleSheet.create({
     backgroundColor: COLORS.white,
     borderRadius: 5,
     alignItems: "center",
-    margin: 20,
-    marginHorizontal: 20,
+    marginHorizontal: 40,
   },
   buttonText: {
     color: COLORS.background,
@@ -244,9 +252,16 @@ export const styles = StyleSheet.create({
     padding: 10,
     marginTop: 5,
     marginLeft: 10,
-    width: "60%",
+    width: "auto",
   },
   dropdownArrow: {
     marginLeft: 10,
+  },
+  closeIconButton: {
+    position: "absolute",
+    top: 10,
+    right: 10,
+    padding: 8,
+    zIndex: 10,
   },
 });

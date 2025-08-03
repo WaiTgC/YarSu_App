@@ -12,14 +12,6 @@ import {
 } from "react-native";
 import { api } from "@/libs/api";
 import * as SecureStore from "expo-secure-store";
-import { NativeStackScreenProps } from "@react-navigation/native-stack";
-
-type RootStackParamList = {
-  Home: undefined;
-  ChatScreen: { chatId?: string };
-};
-
-type Props = NativeStackScreenProps<RootStackParamList, "ChatScreen">;
 
 interface Message {
   id: string;
@@ -28,71 +20,33 @@ interface Message {
   created_at?: string;
 }
 
-export default function ChatScreen({ route }: Props) {
-  const chatIdFromRoute = route?.params?.chatId;
-  const [chatId, setChatId] = useState<string | null>(chatIdFromRoute || null);
+export default function ChatScreen({ route }: any) {
+  const { chatId } = route.params || {};
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
-  const flatListRef = useRef<FlatList<any>>(null);
+  const flatListRef = useRef<FlatList>(null);
 
   useEffect(() => {
-    const initializeChat = async () => {
-      try {
-        // Fetch userId
-        const id = await SecureStore.getItemAsync("userId");
+    // Fetch userId from SecureStore
+    SecureStore.getItemAsync("userId")
+      .then((id) => {
         setUserId(id);
-
-        if (!id) {
-          console.error("ChatScreen - No userId found");
-          setLoading(false);
-          return;
-        }
-
-        // If no chatId was passed, check for or create a chat
-        if (!chatIdFromRoute) {
-          const response = await api.get(`/chats?user_id=${id}`);
-          if (response.data && response.data.length > 0) {
-            setChatId(response.data[0].id);
-          } else {
-            const createResponse = await api.post("/chats", { user_id: id });
-            setChatId(createResponse.data.id);
-          }
-        }
-      } catch (error) {
-        console.error("ChatScreen - Error initializing chat:", error);
-        setLoading(false);
-      }
-    };
-
-    initializeChat();
-  }, [chatIdFromRoute]);
-
-  useEffect(() => {
-    if (!chatId) return;
-
-    const fetchMessages = async () => {
-      setLoading(true);
-      try {
-        const res = await api.get(`/messages/${chatId}`);
-        setMessages(res.data || []);
-      } catch (err) {
-        console.error("ChatScreen - Error fetching messages:", err);
-        setMessages([]);
-      }
-      setLoading(false);
-    };
+      })
+      .catch((error) => {
+        console.error("ChatScreen - Error fetching userId:", error);
+      });
 
     fetchMessages();
 
     // Poll for new messages
     const interval = setInterval(async () => {
       try {
+        if (!chatId) return;
         const res = await api.get(`/messages/${chatId}`);
         setMessages(res.data || []);
-        flatListRef.current?.scrollToEnd({ animated: true });
       } catch (err) {
         console.error("ChatScreen - Error polling messages:", err);
       }
@@ -101,8 +55,25 @@ export default function ChatScreen({ route }: Props) {
     return () => clearInterval(interval);
   }, [chatId]);
 
+  const fetchMessages = async () => {
+    setLoading(true);
+    try {
+      if (!chatId) {
+        setMessages([]);
+        setLoading(false);
+        return;
+      }
+      const res = await api.get(`/messages/${chatId}`);
+      setMessages(res.data || []);
+    } catch (err) {
+      console.error("ChatScreen - Error fetching messages:", err);
+      setMessages([]);
+    }
+    setLoading(false);
+  };
+
   const sendMessage = async () => {
-    if (!input.trim() || !chatId) return;
+    if (!input.trim() || !userId || !chatId) return;
     setSending(true);
     try {
       await api.post("/messages", {
@@ -111,9 +82,7 @@ export default function ChatScreen({ route }: Props) {
         type: "text",
       });
       setInput("");
-      const res = await api.get(`/messages/${chatId}`);
-      setMessages(res.data || []);
-      flatListRef.current?.scrollToEnd({ animated: true });
+      fetchMessages();
     } catch (err) {
       console.error("ChatScreen - Error sending message:", err);
     }
@@ -138,6 +107,7 @@ export default function ChatScreen({ route }: Props) {
     return (
       <View style={styles.container}>
         <ActivityIndicator size="large" color="#0000ff" />
+        <Text style={styles.loadingText}>Loading chat...</Text>
       </View>
     );
   }
@@ -170,7 +140,7 @@ export default function ChatScreen({ route }: Props) {
           <Button
             title={sending ? "Sending..." : "Send"}
             onPress={sendMessage}
-            disabled={sending || !chatId}
+            disabled={sending || !input.trim()}
           />
         </View>
       </View>
@@ -225,5 +195,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#888",
     marginBottom: 2,
+  },
+  loadingText: {
+    marginTop: 10,
+    textAlign: "center",
+    fontSize: 16,
   },
 });

@@ -9,7 +9,7 @@ export const styles = StyleSheet.create({
   },
   card: {
     width: Dimensions.get("window").width >= 600 ? 445 : "100%",
-    height: 481,
+    height: "auto",
     paddingVertical: 40,
     padding: 29,
     backgroundColor: "#F3F3F3",
@@ -51,7 +51,7 @@ export const styles = StyleSheet.create({
     fontSize: 15,
     fontStyle: "normal",
     fontWeight: "400",
-    
+
     letterSpacing: 0.15,
     color: COLORS.background,
     marginBottom: 15,

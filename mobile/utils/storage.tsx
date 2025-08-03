@@ -1,19 +1,33 @@
+import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
 
 export const storeItem = async (key: string, value: string) => {
-  if (Platform.OS === "web") {
-    localStorage.setItem(key, value);
-  } else {
-    const SecureStore = await import("expo-secure-store");
-    await SecureStore.setItemAsync(key, value);
+  try {
+    if (Platform.OS === "web") {
+      localStorage.setItem(key, value);
+      console.log(`storage - Stored ${key} in localStorage:`, value); // Debug log
+    } else {
+      await SecureStore.setItemAsync(key, value);
+      console.log(`storage - Stored ${key} in SecureStore:`, value); // Debug log
+    }
+  } catch (error) {
+    console.error(`storage - Error storing ${key}:`, error);
   }
 };
 
 export const getItem = async (key: string) => {
-  if (Platform.OS === "web") {
-    return localStorage.getItem(key);
-  } else {
-    const SecureStore = await import("expo-secure-store");
-    return await SecureStore.getItemAsync(key);
+  try {
+    if (Platform.OS === "web") {
+      const value = localStorage.getItem(key);
+      console.log(`storage - Retrieved ${key} from localStorage:`, value); // Debug log
+      return value;
+    } else {
+      const value = await SecureStore.getItemAsync(key);
+      console.log(`storage - Retrieved ${key} from SecureStore:`, value); // Debug log
+      return value;
+    }
+  } catch (error) {
+    console.error(`storage - Error retrieving ${key}:`, error);
+    return null;
   }
 };

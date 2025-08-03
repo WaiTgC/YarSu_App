@@ -68,6 +68,7 @@ export default function SignIn() {
         console.log("Sign-in successful");
         await storeItem("authToken", data.session.access_token || "");
         await storeItem("userId", data.session.user.id || "");
+        console.log("Sign-in - Stored userId:", data.session.user.id); // Debug log
         const user = await getUserRole();
         console.log("Sign-in - User data:", user);
         console.log("Sign-in - User role:", user.role);

@@ -54,7 +54,7 @@ export const labels = {
     travel: "Travel",
     condo: "Condo",
     hotels: "Hotels",
-    documents: "Details",
+    documents: "Documents",
     restaurants: "Restaurants",
     courses: "Courses",
     general: "General",

@@ -32,7 +32,7 @@ export const styles = StyleSheet.create({
     marginBottom: 10,
   },
   imageBackground: {
-    width: "100%",
+    width: "auto",
     height: 200,
     borderRadius: 24,
     backgroundColor: "lightgray",
@@ -222,13 +222,13 @@ export const styles = StyleSheet.create({
   },
   noteTextContainer: {
     overflow: "hidden",
-    width: "70%",
+    width: "52%",
   },
   collapsedNoteText: {
     maxHeight: 60, // Limits to ~2-3 lines of text
   },
   noteTextBox: {
-    width: 176,
+    width: "auto",
     height: "auto",
     flexDirection: "row",
     alignItems: "center",

@@ -68,6 +68,9 @@ const AdminJob = () => {
   useEffect(() => {
     const updateColumns = () => {
       const width = Dimensions.get("window").width;
+      console.log(
+        `AdminJob - Window width: ${width}, Num columns: ${numColumns}`
+      );
       setNumColumns(width >= 768 ? 2 : 1); // 2 columns for wide screens, 1 for narrow
     };
     updateColumns();
@@ -128,10 +131,18 @@ const AdminJob = () => {
         typeof updatedJob.payment_type === "string"
           ? updatedJob.payment_type.toLowerCase()
           : updatedJob.payment_type;
-      if (lowerValue === "yes") {
+      console.log(`AdminJob - payment_type input: ${lowerValue}`);
+      if (lowerValue === "monthly") {
         convertedJob.payment_type = true;
-      } else if (lowerValue === "no") {
+      } else if (lowerValue === "daily") {
         convertedJob.payment_type = false;
+      } else {
+        Alert.alert(
+          "Invalid Input",
+          labels[language].invalidPaymentType ||
+            "Payment type must be 'Monthly' or 'Daily'."
+        );
+        return; // Prevent saving if payment_type is invalid
       }
     }
     if (updatedJob.stay !== undefined) {
@@ -244,8 +255,8 @@ const AdminJob = () => {
                 editedValues[item.id]?.payment_type !== undefined
                   ? String(editedValues[item.id].payment_type)
                   : item.payment_type
-                  ? "Yes"
-                  : "No"
+                  ? "Monthly"
+                  : "Daily"
               }
               onChangeText={(text) => handleEdit(item.id, "payment_type", text)}
               placeholder="Monthly or Daily"
@@ -359,9 +370,9 @@ const AdminJob = () => {
           keyExtractor={(item) => item.id.toString()}
           renderItem={renderItem}
           showsVerticalScrollIndicator={false}
-          numColumns={numColumns} // Use dynamic numColumns
-          key={`flatlist-${numColumns}`} // Force re-render when numColumns changes
-          columnWrapperStyle={numColumns > 1 ? styles.row : undefined} // Apply row styling for multi-column
+          numColumns={numColumns}
+          key={`flatlist-${numColumns}`}
+          columnWrapperStyle={numColumns > 1 ? styles.row : undefined}
           ListEmptyComponent={
             <Text style={styles.title}>{labels[language].noJobs}</Text>
           }

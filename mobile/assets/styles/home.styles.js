@@ -401,7 +401,7 @@ export const styles = StyleSheet.create({
     backgroundColor: COLORS.white,
     borderRadius: 21,
     minHeight: 58,
-    width: Dimensions.get("window").width >= 768 ? "100%" : "48%",
+    width: Dimensions.get("window").width >= 768 ? "48%" : "48%",
     height: "auto",
     alignItems: "center",
     shadowColor: COLORS.text,
@@ -413,6 +413,7 @@ export const styles = StyleSheet.create({
     // Animation inspired by hover:scale-105 and animate-float-up
     animationDuration: "0.3s",
     animationTimingFunction: "ease-in-out",
+    marginBottom: 20,
   },
   iconContainer: {
     width: "100%",

@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Modal,
   ScrollView,
+  Dimensions,
 } from "react-native";
 import { useRestaurants } from "@/hooks/useRestaurants";
 import { styles } from "@/assets/styles/restaurant.styles";
@@ -31,7 +32,27 @@ const Restaurant = () => {
     useState<RestaurantType | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [numColumns, setNumColumns] = useState(4);
 
+  // Update numColumns based on screen width
+  useEffect(() => {
+    const updateColumns = () => {
+      const windowWidth = Dimensions.get("window").width;
+      const containerPadding = 15;
+      const cardMargin = 10;
+      const minCardWidth = 150; // Minimum card width to prevent cards from being too small
+      const availableWidth = windowWidth - containerPadding * 2;
+      const maxColumns = Math.floor(
+        availableWidth / (minCardWidth + cardMargin * 2)
+      );
+      setNumColumns(Math.min(4, maxColumns || 1)); // Max 4 columns, min 1
+    };
+    updateColumns();
+    const subscription = Dimensions.addEventListener("change", updateColumns);
+    return () => subscription?.remove();
+  }, []);
+
+  // Fetch restaurants on mount
   useEffect(() => {
     loadRestaurants();
   }, [loadRestaurants]);
@@ -70,34 +91,47 @@ const Restaurant = () => {
     }
   };
 
-  const renderItem = ({ item }: { item: RestaurantType }) => (
-    <TouchableOpacity style={styles.card} onPress={() => handleCardPress(item)}>
-      <Image
-        source={{ uri: item.images[0] || "https://picsum.photos/200" }}
-        style={styles.cardImage}
-        onError={(error) =>
-          console.error("Image load error:", error.nativeEvent)
-        }
-      />
-      <View style={styles.textContainer}>
-        <View style={styles.logoContainer}>
-          <Image
-            source={require("@/assets/images/food.png")}
-            style={styles.logo}
-          />
-          <Text style={styles.title}>{item.name}</Text>
+  const renderItem = ({ item }: { item: RestaurantType }) => {
+    const windowWidth = Dimensions.get("window").width;
+    const containerPadding = 15;
+    const cardMargin = 10;
+    const cardWidth =
+      (windowWidth - containerPadding * 2 - cardMargin * (numColumns + 1)) /
+      numColumns;
+    return (
+      <TouchableOpacity
+        style={[styles.card, { width: cardWidth }]}
+        onPress={() => handleCardPress(item)}
+      >
+        <Image
+          source={{ uri: item.images[0] || "https://picsum.photos/200" }}
+          style={[styles.cardImage, { height: cardWidth * 0.75 }]}
+          resizeMode="cover"
+          onError={(error) =>
+            console.error("Image load error:", error.nativeEvent)
+          }
+        />
+        <View style={styles.textContainer}>
+          <View style={styles.logoContainer}>
+            <Image
+              source={require("@/assets/images/food.png")}
+              style={styles.logo}
+            />
+            <Text style={styles.title}>{item.name}</Text>
+          </View>
+          <View style={styles.logoContainer}>
+            <Image
+              source={require("@/assets/images/thumb.png")}
+              style={styles.logo}
+            />
+            <Text style={styles.detailText}>
+              {item.popular_picks.join(", ")}
+            </Text>
+          </View>
         </View>
-
-        <View style={styles.logoContainer}>
-          <Image
-            source={require("@/assets/images/thumb.png")}
-            style={styles.logo}
-          />
-          <Text style={styles.detailText}>{item.popular_picks.join(", ")}</Text>
-        </View>
-      </View>
-    </TouchableOpacity>
-  );
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -113,8 +147,18 @@ const Restaurant = () => {
           contentContainerStyle={styles.gridContainer}
           keyExtractor={(item) => item.id.toString()}
           renderItem={renderItem}
-          numColumns={4}
+          numColumns={numColumns}
+          key={`flatlist-${numColumns}`}
           showsVerticalScrollIndicator={false}
+          columnWrapperStyle={
+            numColumns > 1
+              ? {
+                  flexWrap: "wrap",
+                  justifyContent: "space-between",
+                  paddingHorizontal: 8,
+                }
+              : { flexDirection: "column", paddingHorizontal: 8 }
+          }
           ListEmptyComponent={<Text>No restaurants available</Text>}
         />
       )}
@@ -147,6 +191,7 @@ const Restaurant = () => {
                       "https://picsum.photos/400",
                   }}
                   style={styles.modalImage}
+                  resizeMode="contain"
                   onError={(error) =>
                     console.error("Modal image load error:", error.nativeEvent)
                   }

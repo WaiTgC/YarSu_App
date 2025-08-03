@@ -19,6 +19,7 @@ export const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginTop: 10,
     rowGap: 20,
+    margin: "70",
   },
   card: {
     width: cardWidth,
@@ -98,7 +99,6 @@ export const styles = StyleSheet.create({
     fontFamily: "SF Pro",
     fontWeight: "400",
     letterSpacing: 0.12,
-    lineHeight: 15,
     fontStyle: "normal",
     marginTop: 5,
   },
@@ -123,12 +123,12 @@ export const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
     justifyContent: "center",
     alignItems: "center",
-    marginTop: 82,
+    marginTop: 120,
   },
   modalContent: {
-    width: "auto ",
+    width: "80%",
     maxHeight: Dimensions.get("window").height * 0.8,
-    backgroundColor: COLORS.white,
+    backgroundColor: "rgba(248, 249, 250, 0.80)",
     borderRadius: 12,
     padding: 20,
     alignItems: "center",
@@ -153,7 +153,7 @@ export const styles = StyleSheet.create({
     width: "100%",
   },
   modalImage: {
-    width: "80%",
+    width: "75%",
     height: 200,
     borderRadius: 8,
   },
@@ -211,6 +211,5 @@ export const styles = StyleSheet.create({
     color: COLORS.black,
     fontFamily: "SF Pro",
     fontWeight: "400",
-
   },
 });

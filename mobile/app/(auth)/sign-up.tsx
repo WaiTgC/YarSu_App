@@ -1,10 +1,10 @@
-// app/(auth)/sign-up.tsx
 import {
   Text,
   TextInput,
   TouchableOpacity,
   View,
   Animated,
+  Platform,
 } from "react-native";
 import { useState, useRef, useEffect } from "react";
 import { router } from "expo-router";
@@ -19,8 +19,7 @@ export default function SignUpScreen() {
   const [emailAddress, setEmailAddress] = useState("");
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
-  const [pendingVerification, setPendingVerification] = useState(false);
-  const [code, setCode] = useState("");
+  const [magicLinkSent, setMagicLinkSent] = useState(false);
   const [error, setError] = useState("");
   const slideAnim = useRef(new Animated.Value(1000)).current;
   const shakeAnim = useRef(new Animated.Value(0)).current;
@@ -85,57 +84,29 @@ export default function SignUpScreen() {
 
     try {
       console.log("Attempting sign-up:", emailAddress);
+      // Use a fallback URL for mobile environments
+      const redirectTo =
+        Platform.OS === "web"
+          ? `${window.location.origin}/auth/callback`
+          : "http://localhost:3000/auth/callback"; // Replace with your app's redirect URL
       const { data, error } = await supabase.auth.signUp({
         email: emailAddress,
         password,
-        options: { data: { username } },
+        options: {
+          data: { username },
+          emailRedirectTo: redirectTo,
+        },
       });
       if (error) throw new Error(error.message);
-      if (data.session) {
-        console.log("Sign-up successful, pending verification");
-        setPendingVerification(true);
-      } else {
-        setError("Sign-up failed. Please try again.");
-      }
+      console.log("Sign-up successful, magic link sent");
+      setMagicLinkSent(true);
     } catch (err: any) {
       console.error("Sign-up error:", err);
       setError(err.message || "An error occurred during sign-up.");
     }
   };
 
-  const onVerifyPress = async () => {
-    if (!code) {
-      setError("Verification code is required");
-      return;
-    }
-
-    try {
-      console.log("Verifying OTP for:", emailAddress);
-      const { data, error } = await supabase.auth.verifyOtp({
-        email: emailAddress,
-        token: code,
-        type: "signup",
-      });
-      if (error) throw new Error(error.message);
-      if (data.session) {
-        const user = await getUserRole();
-        console.log(
-          "Verification successful, redirecting to:",
-          user.role === "admin" ? "/(admin)/dashboard" : "/(root)/home"
-        );
-        router.replace(
-          user.role === "admin" ? "/(admin)/dashboard" : "/(root)/home"
-        );
-      } else {
-        setError("Verification failed. Please check the code.");
-      }
-    } catch (err: any) {
-      console.error("Verification error:", err);
-      setError(err.message || "An error occurred during verification.");
-    }
-  };
-
-  if (pendingVerification) {
+  if (magicLinkSent) {
     return (
       <View
         style={styles.verificationContainer}
@@ -147,7 +118,7 @@ export default function SignUpScreen() {
             { transform: [{ translateX: shakeAnim }] },
           ]}
         >
-          Verify your email
+          Check your email
         </Animated.Text>
         {error ? (
           <Animated.View
@@ -166,18 +137,16 @@ export default function SignUpScreen() {
             </TouchableOpacity>
           </Animated.View>
         ) : null}
-        <TextInput
-          style={[styles.verificationInput, error && styles.errorInput]}
-          value={code}
-          placeholder="Enter your verification code"
-          onChangeText={(code) => setCode(code)}
-        />
+        <Text style={styles.verificationText}>
+          A link has been sent to {emailAddress}. Click the link to complete
+          your sign-up.
+        </Text>
         <TouchableOpacity
-          onPress={onVerifyPress}
+          onPress={() => setMagicLinkSent(false)}
           style={styles.button}
           onStartShouldSetResponder={() => true}
         >
-          <Text style={styles.buttonText}>Verify</Text>
+          <Text style={styles.buttonText}>Try Again</Text>
         </TouchableOpacity>
       </View>
     );

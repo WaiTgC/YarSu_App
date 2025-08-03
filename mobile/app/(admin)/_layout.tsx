@@ -7,6 +7,7 @@ import { supabase } from "@/libs/supabase";
 import { router } from "expo-router";
 import { getUserRole } from "@/services/authService";
 import { UserProvider } from "@/context/UserContext";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 
 export default function ALayout() {
   const [isCheckingSession, setIsCheckingSession] = useState(true);
@@ -38,12 +39,19 @@ export default function ALayout() {
   }
 
   return (
-    <UserProvider>
-      <SafeScreen>
-        <AdminLayout>
-          <Stack screenOptions={{ headerShown: false }} />
-        </AdminLayout>
-      </SafeScreen>
-    </UserProvider>
+    <KeyboardAwareScrollView
+      style={{ flex: 1 }}
+      contentContainerStyle={{ flexGrow: 1 }}
+      enableOnAndroid={true}
+      enableAutomaticScroll={true}
+    >
+      <UserProvider>
+        <SafeScreen>
+          <AdminLayout>
+            <Stack screenOptions={{ headerShown: false }} />
+          </AdminLayout>
+        </SafeScreen>
+      </UserProvider>
+    </KeyboardAwareScrollView>
   );
 }

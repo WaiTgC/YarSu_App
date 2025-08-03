@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { View, Text, ActivityIndicator, StatusBar } from "react-native";
 import { styles } from "@/assets/styles/auth.styles";
 import AppLayout from "@/components/AppLayout";
-import { UserProvider } from "@/context/UserContext";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 
 export default function RootLayout() {
   const [isCheckingSession, setIsCheckingSession] = useState<boolean>(true);
@@ -57,14 +57,21 @@ export default function RootLayout() {
   }
 
   return (
-    <SafeScreen>
-      <AppLayout>
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="home" />
-          <Stack.Screen name="ChatScreen" />
-        </Stack>
-      </AppLayout>
-      <StatusBar style="auto" />
-    </SafeScreen>
+    <KeyboardAwareScrollView
+      style={{ flex: 1 }}
+      contentContainerStyle={{ flexGrow: 1 }}
+      enableOnAndroid={true}
+      enableAutomaticScroll={true}
+    >
+      <SafeScreen>
+        <AppLayout>
+          <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="home" />
+            <Stack.Screen name="ChatScreen" />
+          </Stack>
+        </AppLayout>
+        <StatusBar style="auto" />
+      </SafeScreen>
+    </KeyboardAwareScrollView>
   );
 }
