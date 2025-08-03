@@ -47,7 +47,7 @@ const AdminGeneral = () => {
   const [currentIndices, setCurrentIndices] = useState<{
     [key: number]: number;
   }>({});
-  const [numColumns, setNumColumns] = useState(1);
+  const [numColumns, setNumColumns] = useState(3);
   const [newPost, setNewPost] = useState<EditedPostType>({
     text: "",
     media: [],
@@ -87,7 +87,13 @@ const AdminGeneral = () => {
   useEffect(() => {
     const updateColumns = () => {
       const width = Dimensions.get("window").width;
-      setNumColumns(width >= 768 ? 3 : 1);
+      if (width >= 1024) {
+        setNumColumns(3);
+      } else if (width >= 600) {
+        setNumColumns(2);
+      } else {
+        setNumColumns(1);
+      }
     };
     updateColumns();
     const subscription = Dimensions.addEventListener("change", updateColumns);
@@ -266,154 +272,158 @@ const AdminGeneral = () => {
     }
   };
 
-  const renderItem = ({ item }: { item: PostType }) => (
-    <View style={styles.card}>
-      <View style={styles.bottomContainer}>
-        <View style={styles.imageContainer}>
-          {" "}
-          <TouchableOpacity onPress={() => handlePrev(item.id)}>
-            <Text style={styles.arrow}>{"<"}</Text>
-          </TouchableOpacity>
-          <View style={styles.imageBackground}>
-            <Carousel
-              ref={(ref) => {
-                if (ref) carouselRefs.current[item.id] = ref;
-              }}
-              width={styles.imageBackground.width}
-              height={200}
-              data={
-                item.media.length > 0
-                  ? item.media
-                  : ["https://picsum.photos/340/200"]
-              }
-              scrollAnimationDuration={300}
-              defaultIndex={currentIndices[item.id] || 0}
-              onSnapToItem={(index) =>
-                setCurrentIndices((prev) => ({
-                  ...prev,
-                  [item.id]: index,
-                }))
-              }
-              renderItem={({ item: media }) => (
-                <View style={styles.mediaPreviewWrapper}>
-                  {media.endsWith(".mp4") || media.endsWith(".mov") ? (
-                    <TouchableOpacity
-                      onPress={() => setVideoModalVisible(media)}
-                      style={styles.innerImage}
-                    >
-                      <Image
-                        source={{ uri: "https://picsum.photos/340/200" }}
+  const renderItem = ({ item }: { item: PostType }) => {
+    const cardWidth = (Dimensions.get("window").width - 40) / numColumns - 16;
+    return (
+      <View style={[styles.card, { width: cardWidth }]}>
+        <View style={styles.bottomContainer}>
+          <View style={styles.imageContainer}>
+            <TouchableOpacity onPress={() => handlePrev(item.id)}>
+              <Text style={styles.arrow}>{"<"}</Text>
+            </TouchableOpacity>
+            <View style={[styles.imageBackground, { width: cardWidth - 80 }]}>
+              <Carousel
+                ref={(ref) => {
+                  if (ref) carouselRefs.current[item.id] = ref;
+                }}
+                width={cardWidth - 80}
+                height={200}
+                data={
+                  item.media.length > 0
+                    ? item.media
+                    : ["https://picsum.photos/340/200"]
+                }
+                scrollAnimationDuration={300}
+                defaultIndex={currentIndices[item.id] || 0}
+                onSnapToItem={(index) =>
+                  setCurrentIndices((prev) => ({
+                    ...prev,
+                    [item.id]: index,
+                  }))
+                }
+                renderItem={({ item: media }) => (
+                  <View style={styles.mediaPreviewWrapper}>
+                    {media.endsWith(".mp4") || media.endsWith(".mov") ? (
+                      <TouchableOpacity
+                        onPress={() => setVideoModalVisible(media)}
                         style={styles.innerImage}
+                      >
+                        <Image
+                          source={{ uri: "https://picsum.photos/340/200" }}
+                          style={styles.innerImage}
+                          resizeMode="cover"
+                          onError={(error) =>
+                            console.error(
+                              "AdminGeneral: Video thumbnail load error for item",
+                              item.id,
+                              error.nativeEvent
+                            )
+                          }
+                        />
+                        <View style={styles.playButton}>
+                          <Text style={styles.playButtonText}>▶</Text>
+                        </View>
+                      </TouchableOpacity>
+                    ) : (
+                      <Image
+                        source={{ uri: media }}
+                        style={styles.innerImage}
+                        resizeMode="cover"
                         onError={(error) =>
                           console.error(
-                            "AdminGeneral: Video thumbnail load error for item",
+                            "AdminGeneral: Image load error for item",
                             item.id,
                             error.nativeEvent
                           )
                         }
                       />
-                      <View style={styles.playButton}>
-                        <Text style={styles.playButtonText}>▶</Text>
-                      </View>
-                    </TouchableOpacity>
-                  ) : (
-                    <Image
-                      source={{ uri: media }}
-                      style={styles.innerImage}
-                      onError={(error) =>
-                        console.error(
-                          "AdminGeneral: Image load error for item",
-                          item.id,
-                          error.nativeEvent
-                        )
-                      }
-                    />
-                  )}
-                </View>
-              )}
-            />
+                    )}
+                  </View>
+                )}
+              />
+            </View>
+            <TouchableOpacity onPress={() => handleNext(item.id)}>
+              <Text style={styles.arrow}>{">"}</Text>
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity onPress={() => handleNext(item.id)}>
-            <Text style={styles.arrow}>{">"}</Text>
-          </TouchableOpacity>
-        </View>
-        {item.media.length === 1 && <View style={styles.noImages}></View>}
-        {(item.media.length > 1 ||
-          (item.media.length === 0 &&
-            ["https://picsum.photos/340/200"].length > 1)) && (
-          <View style={styles.sliderControls}>
-            <FlatList
-              horizontal
-              contentContainerStyle={styles.indicatorContainer}
-              data={
-                item.media.length > 0
-                  ? item.media
-                  : ["https://picsum.photos/340/200"]
-              }
-              keyExtractor={(item, index) => index.toString()}
-              renderItem={({ index }) => (
-                <View
-                  style={[
-                    styles.indicator,
-                    currentIndices[item.id] === index && styles.activeIndicator,
-                  ]}
-                />
-              )}
-              showsHorizontalScrollIndicator={false}
-            />
-          </View>
-        )}
-        <View style={styles.detailsContainer}>
-          <View style={styles.noteTextBox}>
-            {/* <Text style={styles.label}>{labels[language].text || "Text"}:</Text> */}
-            <Text style={styles.value}>{item.text || "N/A"}</Text>
-          </View>
-        </View>
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity
-            style={styles.button}
-            onPress={() => setDeleteModalVisible(item.id)}
-          >
-            <Text style={styles.buttonText}>
-              {labels[language].delete || "Delete"}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-      <Modal
-        transparent={true}
-        visible={deleteModalVisible === item.id}
-        onRequestClose={() => setDeleteModalVisible(null)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalText}>
-              {labels[language].deleteConfirm ||
-                "Are you sure you want to delete this post?"}
-            </Text>
-            <View style={styles.modalButtonContainer}>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.cancelButton]}
-                onPress={() => setDeleteModalVisible(null)}
-              >
-                <Text style={styles.modalButtonText}>
-                  {labels[language].cancel || "Cancel"}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.deleteButton]}
-                onPress={() => handleConfirmDelete(item.id)}
-              >
-                <Text style={styles.modalButtonText}>
-                  {labels[language].delete || "Delete"}
-                </Text>
-              </TouchableOpacity>
+          {item.media.length === 1 && <View style={styles.noImages}></View>}
+          {(item.media.length > 1 ||
+            (item.media.length === 0 &&
+              ["https://picsum.photos/340/200"].length > 1)) && (
+            <View style={styles.sliderControls}>
+              <FlatList
+                horizontal
+                contentContainerStyle={styles.indicatorContainer}
+                data={
+                  item.media.length > 0
+                    ? item.media
+                    : ["https://picsum.photos/340/200"]
+                }
+                keyExtractor={(item, index) => index.toString()}
+                renderItem={({ index }) => (
+                  <View
+                    style={[
+                      styles.indicator,
+                      currentIndices[item.id] === index &&
+                        styles.activeIndicator,
+                    ]}
+                  />
+                )}
+                showsHorizontalScrollIndicator={false}
+              />
+            </View>
+          )}
+          <View style={styles.detailsContainer}>
+            <View style={styles.noteTextBox}>
+              <Text style={styles.value}>{item.text || "N/A"}</Text>
             </View>
           </View>
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity
+              style={styles.button}
+              onPress={() => setDeleteModalVisible(item.id)}
+            >
+              <Text style={styles.buttonText}>
+                {labels[language].delete || "Delete"}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
-      </Modal>
-    </View>
-  );
+        <Modal
+          transparent={true}
+          visible={deleteModalVisible === item.id}
+          onRequestClose={() => setDeleteModalVisible(null)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalText}>
+                {labels[language].deleteConfirm ||
+                  "Are you sure you want to delete this post?"}
+              </Text>
+              <View style={styles.modalButtonContainer}>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.cancelButton]}
+                  onPress={() => setDeleteModalVisible(null)}
+                >
+                  <Text style={styles.modalButtonText}>
+                    {labels[language].cancel || "Cancel"}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.deleteButton]}
+                  onPress={() => handleConfirmDelete(item.id)}
+                >
+                  <Text style={styles.modalButtonText}>
+                    {labels[language].delete || "Delete"}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      </View>
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -468,11 +478,16 @@ const AdminGeneral = () => {
                           <Image
                             source={{ uri: "https://picsum.photos/90/90" }}
                             style={styles.imagePreview}
+                            resizeMode="cover"
                           />
                           <Text style={styles.previewVideoText}>Video</Text>
                         </>
                       ) : (
-                        <Image source={{ uri }} style={styles.imagePreview} />
+                        <Image
+                          source={{ uri }}
+                          style={styles.imagePreview}
+                          resizeMode="cover"
+                        />
                       )}
                     </View>
                   ))}
@@ -544,7 +559,15 @@ const AdminGeneral = () => {
           renderItem={renderItem}
           showsHorizontalScrollIndicator={false}
           numColumns={numColumns}
-          columnWrapperStyle={numColumns > 1 ? styles.row : undefined}
+          columnWrapperStyle={
+            numColumns > 1
+              ? {
+                  flexWrap: "wrap",
+                  justifyContent: "space-between",
+                  paddingHorizontal: 8,
+                }
+              : undefined
+          }
           ListEmptyComponent={
             <Text style={styles.title}>
               {labels[language].noPosts || "No posts available"}

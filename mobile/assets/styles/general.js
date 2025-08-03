@@ -1,5 +1,21 @@
 import { StyleSheet } from "react-native";
 import { COLORS } from "@/constants/colors";
+import { Dimensions } from "react-native";
+
+const { width } = Dimensions.get("window");
+const cardMargin = 8;
+const containerPadding = 10;
+const maxCardWidth = 392;
+const minCardWidth = 300;
+
+const calculateCardWidth = () => {
+  const availableWidth = width - 2 * containerPadding;
+  if (availableWidth >= 768) {
+    return Math.min(maxCardWidth, (availableWidth - 2 * cardMargin) / 3);
+  } else {
+    return Math.min(maxCardWidth, availableWidth);
+  }
+};
 
 export const styles = StyleSheet.create({
   container: {
@@ -25,7 +41,7 @@ export const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   imageBackground: {
-    width: "80%",
+    width: calculateCardWidth() - 30 - 50, // Subtract padding and arrow widths
     height: 200,
     borderRadius: 10,
     overflow: "hidden",

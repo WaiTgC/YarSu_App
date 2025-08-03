@@ -13,13 +13,14 @@ import {
 import { useState, useEffect, useRef } from "react";
 import { styles } from "@/assets/styles/home.styles";
 import CategoryGrid from "@/components/CategoryGrid";
+import { useLinks } from "@/hooks/useLinks";
+import { useHighlights } from "@/hooks/useHighlights";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { supabase } from "@/libs/supabase";
 import { getUserRole } from "@/services/authService";
 import { getItem } from "@/utils/storage";
 import { useLanguage } from "@/context/LanguageContext";
 import { labels } from "@/libs/language";
-import { useUser } from "@/context/UserContext";
 
 const getGreeting = (language: "en" | "my") => {
   const hour = new Date().getHours();
@@ -44,7 +45,8 @@ export default function Home({ toggleSidebar }: HomeProps) {
   const [currentImage, setCurrentImage] = useState(0);
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const { language, setLanguage } = useLanguage();
-  const { profile } = useUser();
+  const { links, loadLinks } = useLinks();
+  const { highlights, loadHighlights } = useHighlights();
 
   const defaultBanners = [
     require("@/assets/images/banner.png"),
@@ -53,16 +55,12 @@ export default function Home({ toggleSidebar }: HomeProps) {
     require("@/assets/images/banner3.png"),
   ];
 
-  const images = [
-    profile.bannerImage1 || defaultBanners[0],
-    profile.bannerImage2 || defaultBanners[1],
-    profile.bannerImage3 || defaultBanners[2],
-    profile.bannerImage4 || defaultBanners[3],
-  ].map((image) => {
-    if (typeof image === "string") {
-      return { uri: image };
-    }
-    return image; // Local asset from defaultBanners
+  // Map highlights to banner images, falling back to default banners
+  const images = defaultBanners.map((defaultBanner, index) => {
+    const highlight = highlights[index];
+    return highlight && highlight.image
+      ? { uri: highlight.image }
+      : defaultBanner;
   });
 
   const checkSessionWithRetry = async (retries = 3, delay = 500) => {
@@ -175,8 +173,17 @@ export default function Home({ toggleSidebar }: HomeProps) {
   };
 
   useEffect(() => {
-    checkSessionWithRetry();
-  }, []);
+    const loadData = async () => {
+      try {
+        await checkSessionWithRetry();
+        await loadLinks();
+        await loadHighlights();
+      } catch (error) {
+        console.error("Home - Error loading data:", error);
+      }
+    };
+    loadData();
+  }, [loadLinks, loadHighlights]);
 
   useEffect(() => {
     console.log(`Home - Current language: ${language}`);
@@ -184,11 +191,17 @@ export default function Home({ toggleSidebar }: HomeProps) {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    const success = await checkSessionWithRetry();
-    if (success) {
-      console.log("Home - Refresh: Session or token validated successfully");
-    } else {
-      console.log("Home - Refresh: Failed to validate session or token");
+    try {
+      const success = await checkSessionWithRetry();
+      if (success) {
+        await loadLinks();
+        await loadHighlights();
+        console.log("Home - Refresh: Session or token validated successfully");
+      } else {
+        console.log("Home - Refresh: Failed to validate session or token");
+      }
+    } catch (error) {
+      console.error("Home - Refresh error:", error);
     }
     setRefreshing(false);
   };
@@ -211,66 +224,17 @@ export default function Home({ toggleSidebar }: HomeProps) {
     return () => clearInterval(interval);
   }, [images]);
 
-  const handleTelegramPress = async () => {
-    const url = profile.telegram || "https://t.me";
+  const handleSocialMediaPress = async (platform: string, url: string) => {
     if (url) {
       try {
         const supported = await Linking.canOpenURL(url);
         if (supported) {
           await Linking.openURL(url);
         } else {
-          console.error("Home - Cannot open Telegram URL:", url);
+          console.error(`Home - Cannot open ${platform} URL:`, url);
         }
       } catch (error: any) {
-        console.error("Home - Error opening Telegram link:", error.message);
-      }
-    }
-  };
-
-  const handleTikTokPress = async () => {
-    const url = profile.tiktok || "https://tiktok.com";
-    if (url) {
-      try {
-        const supported = await Linking.canOpenURL(url);
-        if (supported) {
-          await Linking.openURL(url);
-        } else {
-          console.error("Home - Cannot open TikTok URL:", url);
-        }
-      } catch (error: any) {
-        console.error("Home - Error opening TikTok link:", error.message);
-      }
-    }
-  };
-
-  const handleYouTubePress = async () => {
-    const url = profile.youtube || "https://youtube.com";
-    if (url) {
-      try {
-        const supported = await Linking.canOpenURL(url);
-        if (supported) {
-          await Linking.openURL(url);
-        } else {
-          console.error("Home - Cannot open YouTube URL:", url);
-        }
-      } catch (error: any) {
-        console.error("Home - Error opening YouTube link:", error.message);
-      }
-    }
-  };
-
-  const handleFacebookPress = async () => {
-    const url = profile.facebook || "https://facebook.com";
-    if (url) {
-      try {
-        const supported = await Linking.canOpenURL(url);
-        if (supported) {
-          await Linking.openURL(url);
-        } else {
-          console.error("Home - Cannot open Facebook URL:", url);
-        }
-      } catch (error: any) {
-        console.error("Home - Error opening Facebook link:", error.message);
+        console.error(`Home - Error opening ${platform} link:`, error.message);
       }
     }
   };
@@ -284,6 +248,32 @@ export default function Home({ toggleSidebar }: HomeProps) {
     console.log("Home - Setting language to Myanmar");
     setLanguage("my");
   };
+
+  // Map links to platform buttons
+  const socialMediaButtons = [
+    {
+      platform: "Telegram",
+      icon: require("@/assets/images/tele.png"),
+      url: links.find((link) => link.platform.toLowerCase() === "telegram")
+        ?.url,
+    },
+    {
+      platform: "FaceBook",
+      icon: require("@/assets/images/fb.png"),
+      url: links.find((link) => link.platform.toLowerCase() === "facebook")
+        ?.url,
+    },
+    {
+      platform: "Tiktok",
+      icon: require("@/assets/images/tiktok.png"),
+      url: links.find((link) => link.platform.toLowerCase() === "tiktok")?.url,
+    },
+    {
+      platform: "YouTube",
+      icon: require("@/assets/images/utube.png"),
+      url: links.find((link) => link.platform.toLowerCase() === "youtube")?.url,
+    },
+  ].filter((button) => button.url); // Only show buttons with valid URLs
 
   if (isSignedIn === null) {
     return <View style={styles.container}></View>;
@@ -360,58 +350,24 @@ export default function Home({ toggleSidebar }: HomeProps) {
                     marginHorizontal: "auto",
                   }}
                 >
-                  <TouchableOpacity
-                    style={styles.joinTele}
-                    onPress={handleTelegramPress}
-                    {...(Platform.OS !== "web"
-                      ? { onStartShouldSetResponder: () => true }
-                      : {})}
-                  >
-                    <Image
-                      source={require("@/assets/images/tele.png")}
-                      style={styles.iconTele}
-                      resizeMode="contain"
-                    />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.joinTele}
-                    onPress={handleFacebookPress}
-                    {...(Platform.OS !== "web"
-                      ? { onStartShouldSetResponder: () => true }
-                      : {})}
-                  >
-                    <Image
-                      source={require("@/assets/images/fb.png")}
-                      style={styles.iconTele}
-                      resizeMode="contain"
-                    />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.joinTele}
-                    onPress={handleTikTokPress}
-                    {...(Platform.OS !== "web"
-                      ? { onStartShouldSetResponder: () => true }
-                      : {})}
-                  >
-                    <Image
-                      source={require("@/assets/images/tiktok.png")}
-                      style={styles.iconTele}
-                      resizeMode="contain"
-                    />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.joinTele}
-                    onPress={handleYouTubePress}
-                    {...(Platform.OS !== "web"
-                      ? { onStartShouldSetResponder: () => true }
-                      : {})}
-                  >
-                    <Image
-                      source={require("@/assets/images/utube.png")}
-                      style={styles.iconTele}
-                      resizeMode="contain"
-                    />
-                  </TouchableOpacity>
+                  {socialMediaButtons.map((button, index) => (
+                    <TouchableOpacity
+                      key={index}
+                      style={styles.joinTele}
+                      onPress={() =>
+                        handleSocialMediaPress(button.platform, button.url!)
+                      }
+                      {...(Platform.OS !== "web"
+                        ? { onStartShouldSetResponder: () => true }
+                        : {})}
+                    >
+                      <Image
+                        source={button.icon}
+                        style={styles.iconTele}
+                        resizeMode="contain"
+                      />
+                    </TouchableOpacity>
+                  ))}
                 </View>
                 <CategoryGrid />
               </View>

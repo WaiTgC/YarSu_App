@@ -10,13 +10,13 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useLanguage } from "@/context/LanguageContext";
-import { useUser } from "@/context/UserContext";
-import { useLinks } from "@/hooks/useLinks"; // Import useLinks
+import { useLinks } from "@/hooks/useLinks";
+import { useHighlights } from "@/hooks/useHighlights";
 import * as ImagePicker from "expo-image-picker";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { styles } from "@/assets/styles/adminstyles/generalSettings.styles";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { COLORS } from "@/constants/colors";
+import { supabase } from "@/libs/supabase";
 
 // Define static default banner images
 const defaultBanners = [
@@ -29,64 +29,66 @@ const defaultBanners = [
 const GeneralSettings = () => {
   const router = useRouter();
   const { language } = useLanguage();
-  const { profile, updateProfile } = useUser();
-  const { links, fetchLinks, createLink, updateLink, deleteLink, loadLinks } =
-    useLinks(); // Use useLinks hook
+  const { links, fetchLinks, updateLink, loadLinks } = useLinks();
+  const {
+    highlights,
+    createHighlight,
+    updateHighlight,
+    deleteHighlight,
+    loadHighlights,
+  } = useHighlights();
   const [isEditing, setIsEditing] = useState(false);
   const [editingField, setEditingField] = useState<string | null>(null);
   const [bannerImages, setBannerImages] =
     useState<(string | { uri: string } | any)[]>(defaultBanners);
   const [linkInputs, setLinkInputs] = useState({
-    tiktok: "",
-    facebook: "",
-    instagram: "",
+    telegram: "",
     youtube: "",
+    facebook: "",
+    tiktok: "",
   });
 
-  // Load images from AsyncStorage and fetch links on mount
+  // Load highlights and links from backend on mount
   useEffect(() => {
     const loadData = async () => {
       try {
-        // Load banner images
-        const savedImages = await AsyncStorage.getItem("bannerImages");
-        if (savedImages) {
-          const parsedImages = JSON.parse(savedImages);
-          setBannerImages(
-            parsedImages.map((img: string | null, index: number) =>
-              img ? { uri: img } : defaultBanners[index]
-            )
-          );
-          console.log(
-            "GeneralSettings - Loaded images from AsyncStorage:",
-            parsedImages
-          );
-        } else {
-          console.log(
-            "GeneralSettings - No saved images, using default banners"
-          );
-          setBannerImages(defaultBanners);
-        }
-
-        // Fetch links from backend
+        await loadHighlights();
         await loadLinks();
       } catch (error) {
-        console.error(
-          "GeneralSettings - Error loading data from AsyncStorage or links:",
-          error
-        );
+        console.error("GeneralSettings - Error loading data:", error);
         setBannerImages(defaultBanners);
       }
     };
     loadData();
-  }, [loadLinks]);
+  }, [loadHighlights, loadLinks]);
+
+  // Update bannerImages when highlights change
+  useEffect(() => {
+    if (highlights && highlights.length > 0) {
+      const newBannerImages = defaultBanners.map((defaultBanner, index) => {
+        const highlight = highlights[index];
+        return highlight && highlight.image
+          ? { uri: highlight.image }
+          : defaultBanner;
+      });
+      setBannerImages(newBannerImages);
+      console.log(
+        "GeneralSettings - Updated banner images from highlights:",
+        newBannerImages
+      );
+    } else {
+      setBannerImages(defaultBanners);
+      console.log("GeneralSettings - No highlights, using default banners");
+    }
+  }, [highlights]);
 
   // Update linkInputs when links change
   useEffect(() => {
     const updatedInputs = {
-      tiktok: "",
-      facebook: "",
-      instagram: "",
+      telegram: "",
       youtube: "",
+      facebook: "",
+      tiktok: "",
     };
     links.forEach((link) => {
       const platform = link.platform.toLowerCase();
@@ -111,55 +113,20 @@ const GeneralSettings = () => {
       if (existingLink) {
         // Update existing link
         await updateLink(existingLink.id, { platform, url: value });
+        setEditingField(null);
+        Alert.alert(
+          "Saved",
+          `${field.charAt(0).toUpperCase() + field.slice(1)} link saved!`
+        );
       } else {
-        // Create new link
-        await createLink({ platform, url: value });
+        Alert.alert(
+          "Error",
+          `Cannot create new ${field} link. Only existing links can be edited.`
+        );
       }
-
-      // Update profile for consistency (optional, depending on requirements)
-      await updateProfile({ [field]: value });
-
-      setEditingField(null);
-      Alert.alert(
-        "Saved",
-        `${field.charAt(0).toUpperCase() + field.slice(1)} link saved!`
-      );
     } catch (error) {
       console.error(`Error saving ${field} link:`, error);
       Alert.alert("Error", `Failed to save ${field} link.`);
-    }
-  };
-
-  const handleSave = async () => {
-    setIsEditing(false);
-    // Save images to AsyncStorage
-    const imageUris = bannerImages.map((image) =>
-      typeof image === "object" && image.uri ? image.uri : null
-    );
-    try {
-      await AsyncStorage.setItem("bannerImages", JSON.stringify(imageUris));
-      console.log(
-        "GeneralSettings - Saved image URIs to AsyncStorage:",
-        imageUris
-      );
-
-      // Update profile with image URIs
-      const updates = {
-        bannerImage1: imageUris[0],
-        bannerImage2: imageUris[1],
-        bannerImage3: imageUris[2],
-        bannerImage4: imageUris[3],
-      };
-
-      await updateProfile(updates);
-      console.log("GeneralSettings - Profile updated with images:", updates);
-      Alert.alert("Saved", "Settings have been saved locally!");
-    } catch (error) {
-      console.error(
-        "GeneralSettings - Error saving to AsyncStorage or profile:",
-        error
-      );
-      Alert.alert("Error", "Failed to save settings.");
     }
   };
 
@@ -168,6 +135,11 @@ const GeneralSettings = () => {
   };
 
   const pickBannerImage = async (index: number) => {
+    if (!isEditing) {
+      Alert.alert("Error", "Please click Edit to select an image.");
+      return;
+    }
+
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
       Alert.alert("Permission Denied", "Please allow access to your photos.");
@@ -182,23 +154,131 @@ const GeneralSettings = () => {
     });
 
     if (!result.canceled && result.assets) {
-      const newImages = [...bannerImages];
-      newImages[index] = { uri: result.assets[0].uri };
-      setBannerImages(newImages);
-      console.log(
-        `GeneralSettings - Picked image ${index}:`,
-        result.assets[0].uri
-      );
+      const uri = result.assets[0].uri;
+
+      // Convert image URI to Blob for Supabase upload
+      const response = await fetch(uri);
+      const blob = await response.blob();
+      const fileName = `general-post-${Date.now()}-${index}.jpg`;
+
+      // Remove existing image from Supabase if updating
+      if (highlights[index] && highlights[index].image) {
+        const oldImagePath = highlights[index].image.split("/").pop();
+        if (oldImagePath) {
+          const { error: removeError } = await supabase.storage
+            .from("general-images")
+            .remove([oldImagePath]);
+          if (removeError) {
+            console.error(
+              "GeneralSettings - Error removing old image:",
+              removeError
+            );
+            Alert.alert(
+              "Error",
+              `Failed to remove old image: ${removeError.message}`
+            );
+            return;
+          }
+          console.log(`GeneralSettings - Removed old image: ${oldImagePath}`);
+        }
+      }
+
+      // Upload new image to Supabase
+      const { error: uploadError } = await supabase.storage
+        .from("general-images")
+        .upload(fileName, blob, {
+          contentType: "image/jpeg",
+          upsert: true, // Overwrite if file exists
+        });
+
+      if (uploadError) {
+        console.error(
+          "GeneralSettings - Error uploading image to Supabase:",
+          uploadError
+        );
+        Alert.alert("Error", `Failed to upload image: ${uploadError.message}`);
+        return;
+      }
+
+      const { data } = supabase.storage
+        .from("general-images")
+        .getPublicUrl(fileName);
+      const imageUrl = data.publicUrl;
+
+      // Update or create highlight in the backend
+      try {
+        const highlightData = { image: imageUrl };
+        if (highlights[index]) {
+          await updateHighlight(highlights[index].id, highlightData);
+          console.log(
+            `GeneralSettings - Updated highlight ${index}:`,
+            imageUrl
+          );
+        } else {
+          await createHighlight(highlightData);
+          console.log(
+            `GeneralSettings - Created highlight ${index}:`,
+            imageUrl
+          );
+        }
+
+        // Update local state
+        const newImages = [...bannerImages];
+        newImages[index] = { uri: imageUrl };
+        setBannerImages(newImages);
+        console.log(`GeneralSettings - Picked image ${index}:`, imageUrl);
+
+        // Refresh highlights
+        await loadHighlights();
+      } catch (error) {
+        console.error("GeneralSettings - Error saving highlight:", error);
+        Alert.alert("Error", "Failed to save highlight image.");
+      }
     }
   };
 
-  const removeBannerImage = (index: number) => {
-    const newImages = [...bannerImages];
-    newImages[index] = defaultBanners[index];
-    setBannerImages(newImages);
-    console.log(
-      `GeneralSettings - Removed banner ${index}, reverted to default`
-    );
+  const removeBannerImage = async (index: number) => {
+    try {
+      if (highlights[index]) {
+        const oldImagePath = highlights[index].image.split("/").pop();
+        if (oldImagePath) {
+          const { error: removeError } = await supabase.storage
+            .from("general-images")
+            .remove([oldImagePath]);
+          if (removeError) {
+            console.error(
+              "GeneralSettings - Error removing image:",
+              removeError
+            );
+            Alert.alert(
+              "Error",
+              `Failed to remove image: ${removeError.message}`
+            );
+            return;
+          }
+          console.log(`GeneralSettings - Removed image: ${oldImagePath}`);
+        }
+        await deleteHighlight(highlights[index].id);
+        console.log(`GeneralSettings - Deleted highlight ${index}`);
+      }
+      const newImages = [...bannerImages];
+      newImages[index] = defaultBanners[index];
+      setBannerImages(newImages);
+      console.log(
+        `GeneralSettings - Removed banner ${index}, reverted to default`
+      );
+
+      // Refresh highlights
+      await loadHighlights();
+    } catch (error) {
+      console.error("GeneralSettings - Error deleting highlight:", error);
+      Alert.alert("Error", "Failed to remove highlight image.");
+    }
+  };
+
+  const handleSave = () => {
+    setIsEditing(false);
+    Alert.alert("Saved", "Settings have been saved!");
   };
 
   return (
@@ -208,7 +288,7 @@ const GeneralSettings = () => {
     >
       <View style={styles.card}>
         <Text style={styles.header}>Links</Text>
-        {["tiktok", "facebook", "instagram", "youtube"].map((field) => (
+        {["telegram", "youtube", "facebook", "tiktok"].map((field) => (
           <View key={field} style={styles.fieldRow}>
             <Text style={styles.label}>
               {field.charAt(0).toUpperCase() + field.slice(1)}
