@@ -24,6 +24,12 @@ export default function SignIn() {
   const shakeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    console.log("SignIn - Supabase client:", !!supabase);
+    if (!supabase) {
+      console.error("SignIn - Supabase client is undefined");
+      setError("Application error: Supabase client not initialized");
+    }
+
     Animated.spring(slideAnim, {
       toValue: 0,
       friction: 7,
@@ -57,32 +63,39 @@ export default function SignIn() {
 
   const onSignInPress = async () => {
     setIsLoading(true);
+    setError(""); // Clear previous errors
     try {
-      console.log("Attempting sign-in:", email);
+      if (!supabase) {
+        throw new Error("Supabase client is not initialized");
+      }
+      console.log("SignIn - Attempting sign-in:", email);
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
-      if (error) throw new Error(error.message);
+      if (error) {
+        console.error("SignIn - Supabase auth error:", error.message);
+        throw new Error(error.message);
+      }
       if (data.session) {
-        console.log("Sign-in successful");
+        console.log("SignIn - Successful, user ID:", data.session.user.id);
         await storeItem("authToken", data.session.access_token || "");
         await storeItem("userId", data.session.user.id || "");
-        console.log("Sign-in - Stored userId:", data.session.user.id); // Debug log
+        console.log("SignIn - Stored userId:", data.session.user.id);
+        console.log("SignIn - Stored authToken:", data.session.access_token);
         const user = await getUserRole();
-        console.log("Sign-in - User data:", user);
-        console.log("Sign-in - User role:", user.role);
+        console.log("SignIn - User data:", user);
+        console.log("SignIn - User role:", user.role);
         router.replace(
           user.role === "admin" ? "/(admin)/dashboard" : "/(root)/home"
         );
       } else {
+        console.error("SignIn - No session returned");
         setError("Sign-in failed. Please check your credentials.");
       }
     } catch (err: any) {
-      console.error("Sign-in error:", err);
+      console.error("SignIn - Error:", err.message);
       setError(err.message || "An error occurred. Please try again.");
-      console.log("Navigating to /(root)/home as fallback for error");
-      router.replace("/(root)/home");
     } finally {
       setIsLoading(false);
     }
