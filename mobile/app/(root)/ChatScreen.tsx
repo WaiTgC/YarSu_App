@@ -10,7 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
-import { api } from "@/libs/api";
+import { api } from "@/libs/apic";
 import * as SecureStore from "expo-secure-store";
 
 interface Message {
