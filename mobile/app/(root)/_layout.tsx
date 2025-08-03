@@ -57,16 +57,14 @@ export default function RootLayout() {
   }
 
   return (
-    <UserProvider>
-      <SafeScreen>
-        <AppLayout>
-          <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="home" />
-            <Stack.Screen name="ChatScreen" />
-          </Stack>
-        </AppLayout>
-        <StatusBar style="auto" />
-      </SafeScreen>
-    </UserProvider>
+    <SafeScreen>
+      <AppLayout>
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="home" />
+          <Stack.Screen name="ChatScreen" />
+        </Stack>
+      </AppLayout>
+      <StatusBar style="auto" />
+    </SafeScreen>
   );
 }

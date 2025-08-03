@@ -12,7 +12,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import { labels } from "@/libs/language";
 import Carousel, { ICarouselInstance } from "react-native-reanimated-carousel";
 import { styles } from "@/assets/styles/document.styles";
-import { useDoc } from "@/hooks/useDoc";
+import { useDocs } from "@/hooks/useDoc";
 import { COLORS } from "@/constants/colors";
 
 interface DocPost {
@@ -24,7 +24,7 @@ interface DocPost {
 
 const Document = () => {
   const { language } = useLanguage();
-  const { docPosts, loadDocPosts } = useDoc();
+  const { docPosts, loadDocPosts } = useDocs();
   const [posts, setPosts] = useState<DocPost[]>([]);
   const [currentIndices, setCurrentIndices] = useState<{
     [key: string]: number;

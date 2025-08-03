@@ -11,6 +11,7 @@ import {
 import { useRouter } from "expo-router";
 import { useLanguage } from "@/context/LanguageContext";
 import { useUser } from "@/context/UserContext";
+import { useLinks } from "@/hooks/useLinks"; // Import useLinks
 import * as ImagePicker from "expo-image-picker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { styles } from "@/assets/styles/adminstyles/generalSettings.styles";
@@ -29,15 +30,24 @@ const GeneralSettings = () => {
   const router = useRouter();
   const { language } = useLanguage();
   const { profile, updateProfile } = useUser();
+  const { links, fetchLinks, createLink, updateLink, deleteLink, loadLinks } =
+    useLinks(); // Use useLinks hook
   const [isEditing, setIsEditing] = useState(false);
   const [editingField, setEditingField] = useState<string | null>(null);
   const [bannerImages, setBannerImages] =
     useState<(string | { uri: string } | any)[]>(defaultBanners);
+  const [linkInputs, setLinkInputs] = useState({
+    tiktok: "",
+    facebook: "",
+    instagram: "",
+    youtube: "",
+  });
 
-  // Load images and links from AsyncStorage on mount
+  // Load images from AsyncStorage and fetch links on mount
   useEffect(() => {
     const loadData = async () => {
       try {
+        // Load banner images
         const savedImages = await AsyncStorage.getItem("bannerImages");
         if (savedImages) {
           const parsedImages = JSON.parse(savedImages);
@@ -57,30 +67,35 @@ const GeneralSettings = () => {
           setBannerImages(defaultBanners);
         }
 
-        const savedProfile = await AsyncStorage.getItem("userProfile");
-        if (savedProfile) {
-          const parsedProfile = JSON.parse(savedProfile);
-          await updateProfile({
-            telegram: parsedProfile.telegram || profile.telegram,
-            facebook: parsedProfile.facebook || profile.facebook,
-            youtube: parsedProfile.youtube || profile.youtube,
-            tiktok: parsedProfile.tiktok || profile.tiktok,
-          });
-          console.log(
-            "GeneralSettings - Loaded links from AsyncStorage:",
-            parsedProfile
-          );
-        }
+        // Fetch links from backend
+        await loadLinks();
       } catch (error) {
         console.error(
-          "GeneralSettings - Error loading data from AsyncStorage:",
+          "GeneralSettings - Error loading data from AsyncStorage or links:",
           error
         );
         setBannerImages(defaultBanners);
       }
     };
     loadData();
-  }, []);
+  }, [loadLinks]);
+
+  // Update linkInputs when links change
+  useEffect(() => {
+    const updatedInputs = {
+      tiktok: "",
+      facebook: "",
+      instagram: "",
+      youtube: "",
+    };
+    links.forEach((link) => {
+      const platform = link.platform.toLowerCase();
+      if (platform in updatedInputs) {
+        updatedInputs[platform] = link.url;
+      }
+    });
+    setLinkInputs(updatedInputs);
+  }, [links]);
 
   const handleEdit = () => setIsEditing(true);
 
@@ -88,13 +103,29 @@ const GeneralSettings = () => {
 
   const handleSaveField = async (field: string, value: string) => {
     try {
+      const platform = field.charAt(0).toUpperCase() + field.slice(1);
+      const existingLink = links.find(
+        (link) => link.platform.toLowerCase() === field
+      );
+
+      if (existingLink) {
+        // Update existing link
+        await updateLink(existingLink.id, { platform, url: value });
+      } else {
+        // Create new link
+        await createLink({ platform, url: value });
+      }
+
+      // Update profile for consistency (optional, depending on requirements)
       await updateProfile({ [field]: value });
+
       setEditingField(null);
       Alert.alert(
         "Saved",
         `${field.charAt(0).toUpperCase() + field.slice(1)} link saved!`
       );
     } catch (error) {
+      console.error(`Error saving ${field} link:`, error);
       Alert.alert("Error", `Failed to save ${field} link.`);
     }
   };
@@ -112,12 +143,8 @@ const GeneralSettings = () => {
         imageUris
       );
 
-      // Update profile with image URIs and links
+      // Update profile with image URIs
       const updates = {
-        telegram: profile.telegram,
-        facebook: profile.facebook,
-        youtube: profile.youtube,
-        tiktok: profile.tiktok,
         bannerImage1: imageUris[0],
         bannerImage2: imageUris[1],
         bannerImage3: imageUris[2],
@@ -125,10 +152,7 @@ const GeneralSettings = () => {
       };
 
       await updateProfile(updates);
-      console.log(
-        "GeneralSettings - Profile updated with images and links:",
-        updates
-      );
+      console.log("GeneralSettings - Profile updated with images:", updates);
       Alert.alert("Saved", "Settings have been saved locally!");
     } catch (error) {
       console.error(
@@ -140,7 +164,7 @@ const GeneralSettings = () => {
   };
 
   const handleChange = (field: string, value: string) => {
-    updateProfile({ [field]: value });
+    setLinkInputs((prev) => ({ ...prev, [field]: value }));
   };
 
   const pickBannerImage = async (index: number) => {
@@ -184,7 +208,7 @@ const GeneralSettings = () => {
     >
       <View style={styles.card}>
         <Text style={styles.header}>Links</Text>
-        {["telegram", "facebook", "youtube", "tiktok"].map((field) => (
+        {["tiktok", "facebook", "instagram", "youtube"].map((field) => (
           <View key={field} style={styles.fieldRow}>
             <Text style={styles.label}>
               {field.charAt(0).toUpperCase() + field.slice(1)}
@@ -195,13 +219,15 @@ const GeneralSettings = () => {
               >
                 <TextInput
                   style={[styles.input, { flex: 1 }]}
-                  value={profile[field] || ""}
+                  value={linkInputs[field] || ""}
                   onChangeText={(text) => handleChange(field, text)}
                   placeholder={`Enter ${field} link`}
                 />
                 <TouchableOpacity
                   style={[styles.actionButton, { marginLeft: 10 }]}
-                  onPress={() => handleSaveField(field, profile[field] || "")}
+                  onPress={() =>
+                    handleSaveField(field, linkInputs[field] || "")
+                  }
                 >
                   <Text style={styles.actionText}>Save</Text>
                 </TouchableOpacity>
@@ -212,7 +238,7 @@ const GeneralSettings = () => {
               >
                 <View style={styles.valueContainer}>
                   <Text style={styles.value}>
-                    {profile[field] || "Not set"}
+                    {linkInputs[field] || "Not set"}
                   </Text>
                 </View>
                 <TouchableOpacity

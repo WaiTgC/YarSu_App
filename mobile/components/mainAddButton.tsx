@@ -19,11 +19,14 @@ import { useCondos } from "@/hooks/useCondos";
 import { useHotels } from "@/hooks/useHotels";
 import { useCourses } from "@/hooks/useCourses";
 import { useRestaurants } from "@/hooks/useRestaurants";
+import { useGeneral } from "@/hooks/useGeneral";
+import { useDocs } from "@/hooks/useDoc";
 import { useLanguage } from "@/context/LanguageContext";
 import { labels } from "@/libs/language";
 import { COLORS } from "@/constants/colors";
 import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
+import { supabase } from "@/libs/supabase";
 
 // Define types
 type JobType = {
@@ -100,6 +103,20 @@ type RestaurantType = {
   created_at: string;
 };
 
+type GeneralPostType = {
+  id: number;
+  text: string;
+  media: string[];
+  created_at: string;
+};
+
+type DocPostType = {
+  id: number;
+  text: string;
+  media: string[] | null;
+  created_at: string;
+};
+
 const MainAddButton = () => {
   const [windowWidth, setWindowWidth] = useState(
     Dimensions.get("window").width
@@ -129,6 +146,15 @@ const MainAddButton = () => {
   const { createRestaurant, loadRestaurants } = useRestaurants() as {
     createRestaurant: (restaurant: Partial<RestaurantType>) => Promise<void>;
     loadRestaurants: () => Promise<void>;
+  };
+  const { addPost: addGeneralPost, loadPosts: loadGeneralPosts } =
+    useGeneral() as {
+      addPost: (post: Partial<GeneralPostType>) => Promise<void>;
+      loadPosts: () => Promise<void>;
+    };
+  const { addPost: addDocPost, loadPosts: loadDocPosts } = useDocs() as {
+    addPost: (post: Partial<DocPostType>) => Promise<void>;
+    loadPosts: () => Promise<void>;
   };
 
   const [modalVisible, setModalVisible] = useState<boolean>(false);
@@ -190,6 +216,16 @@ const MainAddButton = () => {
     admin_rating: "",
     notes: "",
   });
+  const [newGeneralPost, setNewGeneralPost] = useState<
+    Partial<GeneralPostType>
+  >({
+    text: "",
+    media: [],
+  });
+  const [newDocPost, setNewDocPost] = useState<Partial<DocPostType>>({
+    text: "",
+    media: [],
+  });
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
   const MAX_IMAGES = 3;
 
@@ -210,13 +246,13 @@ const MainAddButton = () => {
     return true;
   };
 
-  // Pick and compress image, convert to base64
+  // Pick and compress image or upload video
   const pickImage = async () => {
     if (selectedImages.length >= MAX_IMAGES) {
       Alert.alert(
         labels[language].error || "Error",
         labels[language].maxImages ||
-          `Cannot add more than ${MAX_IMAGES} images`
+          `Cannot add more than ${MAX_IMAGES} media files`
       );
       return;
     }
@@ -225,7 +261,7 @@ const MainAddButton = () => {
     if (!hasPermission) return;
 
     let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ImagePicker.MediaTypeOptions.All,
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.3,
@@ -235,50 +271,102 @@ const MainAddButton = () => {
     if (!result.canceled && result.assets && result.assets.length > 0) {
       const uri = result.assets[0].uri;
       const base64 = result.assets[0].base64;
-      if (!base64) {
-        Alert.alert(
-          labels[language].error || "Error",
-          "Failed to get image data"
+      const isVideo = uri.endsWith(".mp4") || uri.endsWith(".mov");
+
+      let base64String: string;
+      if (isVideo) {
+        const response = await fetch(uri);
+        const blob = await response.blob();
+        const fileName = `post-${selectedCategory}-${Date.now()}.mp4`;
+        const { error } = await supabase.storage
+          .from(
+            selectedCategory === "general"
+              ? "general-images"
+              : selectedCategory === "document"
+              ? "docs-images"
+              : "images"
+          )
+          .upload(fileName, blob, { contentType: "video/mp4" });
+        if (error) {
+          Alert.alert(
+            labels[language].error || "Error",
+            `Failed to upload video: ${error.message}`
+          );
+          return;
+        }
+        const { data } = supabase.storage
+          .from(
+            selectedCategory === "general"
+              ? "general-images"
+              : selectedCategory === "document"
+              ? "docs-images"
+              : "images"
+          )
+          .getPublicUrl(fileName);
+        base64String = data.publicUrl;
+      } else {
+        if (!base64) {
+          Alert.alert(
+            labels[language].error || "Error",
+            "Failed to get image data"
+          );
+          return;
+        }
+        const compressedImage = await ImageManipulator.manipulateAsync(
+          uri,
+          [{ resize: { width: 600 } }],
+          {
+            compress: 0.5,
+            format: ImageManipulator.SaveFormat.JPEG,
+            base64: true,
+          }
         );
-        return;
+        base64String = `data:image/jpeg;base64,${
+          compressedImage.base64 || base64
+        }`;
       }
 
-      const compressedImage = await ImageManipulator.manipulateAsync(
-        uri,
-        [{ resize: { width: 600 } }],
-        {
-          compress: 0.5,
-          format: ImageManipulator.SaveFormat.JPEG,
-          base64: true,
-        }
-      );
-
-      const imageBase64 = compressedImage.base64 || base64;
-      const base64String = `data:image/jpeg;base64,${imageBase64}`;
-      setSelectedImages((prev) => [...prev, compressedImage.uri]);
-      if (selectedCategory === "travel") {
-        setNewTravelPost((prev) => ({
-          ...prev,
-          images: [...(prev.images || []), base64String],
-        }));
-      } else if (selectedCategory === "condo") {
-        setNewCondo((prev) => ({
-          ...prev,
-          images: [...(prev.images || []), base64String],
-        }));
-      } else if (selectedCategory === "hotel") {
-        setNewHotel((prev) => ({
-          ...prev,
-          images: [...(prev.images || []), base64String],
-        }));
-      } else if (selectedCategory === "restaurant") {
-        setNewRestaurant((prev) => ({
-          ...prev,
-          images: [...(prev.images || []), base64String],
-        }));
+      setSelectedImages((prev) => [...prev, uri]);
+      switch (selectedCategory) {
+        case "travel":
+          setNewTravelPost((prev) => ({
+            ...prev,
+            images: [...(prev.images || []), base64String],
+          }));
+          break;
+        case "condo":
+          setNewCondo((prev) => ({
+            ...prev,
+            images: [...(prev.images || []), base64String],
+          }));
+          break;
+        case "hotel":
+          setNewHotel((prev) => ({
+            ...prev,
+            images: [...(prev.images || []), base64String],
+          }));
+          break;
+        case "restaurant":
+          setNewRestaurant((prev) => ({
+            ...prev,
+            images: [...(prev.images || []), base64String],
+          }));
+          break;
+        case "general":
+          setNewGeneralPost((prev) => ({
+            ...prev,
+            media: [...(prev.media || []), base64String],
+          }));
+          break;
+        case "document":
+          setNewDocPost((prev) => ({
+            ...prev,
+            media: [...(prev.media || []), base64String],
+          }));
+          break;
       }
     } else {
-      console.log("Image selection canceled or failed:", result);
+      console.log("Media selection canceled or failed:", result);
     }
   };
 
@@ -406,6 +494,28 @@ const MainAddButton = () => {
     }
   };
 
+  // Handle general post input changes
+  const handleGeneralPostInputChange = <K extends keyof GeneralPostType>(
+    field: K,
+    value: GeneralPostType[K]
+  ) => {
+    setNewGeneralPost((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  // Handle doc post input changes
+  const handleDocPostInputChange = <K extends keyof DocPostType>(
+    field: K,
+    value: DocPostType[K]
+  ) => {
+    setNewDocPost((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
   // Render radio button
   const renderRadioButton = (field: string, value: string, label: string) => (
     <TouchableOpacity
@@ -506,6 +616,7 @@ const MainAddButton = () => {
       setModalVisible(false);
       resetForms();
       setSelectedImages([]);
+      setSelectedCategory(null);
 
       if (Platform.OS !== "web") {
         Alert.alert(
@@ -586,6 +697,7 @@ const MainAddButton = () => {
       setModalVisible(false);
       resetForms();
       setSelectedImages([]);
+      setSelectedCategory(null);
 
       if (Platform.OS !== "web") {
         Alert.alert(
@@ -663,6 +775,7 @@ const MainAddButton = () => {
       setModalVisible(false);
       resetForms();
       setSelectedImages([]);
+      setSelectedCategory(null);
 
       if (Platform.OS !== "web") {
         Alert.alert(
@@ -754,6 +867,7 @@ const MainAddButton = () => {
       setModalVisible(false);
       resetForms();
       setSelectedImages([]);
+      setSelectedCategory(null);
 
       if (Platform.OS !== "web") {
         Alert.alert(
@@ -829,6 +943,7 @@ const MainAddButton = () => {
       setModalVisible(false);
       resetForms();
       setSelectedImages([]);
+      setSelectedCategory(null);
 
       if (Platform.OS !== "web") {
         Alert.alert(
@@ -910,6 +1025,7 @@ const MainAddButton = () => {
       setModalVisible(false);
       resetForms();
       setSelectedImages([]);
+      setSelectedCategory(null);
 
       if (Platform.OS !== "web") {
         Alert.alert(
@@ -936,6 +1052,123 @@ const MainAddButton = () => {
       }
     }
   }, [createRestaurant, loadRestaurants, newRestaurant, language]);
+
+  // Perform general post addition
+  const performAddGeneralPost = async () => {
+    if (!addGeneralPost) {
+      console.error("addPost is not defined in useGeneral hook");
+      Alert.alert(
+        labels[language].error || "Error",
+        labels[language].errorMessage ||
+          "Failed to add general post: Function not available"
+      );
+      return;
+    }
+
+    try {
+      const convertedGeneralPost: Partial<GeneralPostType> = {
+        text: newGeneralPost.text?.trim(),
+        media: newGeneralPost.media || [],
+      };
+
+      if (!convertedGeneralPost.text) {
+        throw new Error(labels[language].requiredFields || "Text is required");
+      }
+
+      console.log(
+        "General Post Payload:",
+        JSON.stringify(convertedGeneralPost, null, 2)
+      );
+      await addGeneralPost(convertedGeneralPost);
+      await loadGeneralPosts();
+      setModalVisible(false);
+      resetForms();
+      setSelectedImages([]);
+      setSelectedCategory(null);
+
+      if (Platform.OS !== "web") {
+        Alert.alert(
+          labels[language].added || "Added",
+          labels[language].created || "General post has been added!"
+        );
+      } else {
+        window.alert(
+          labels[language].created || "General post has been added!"
+        );
+      }
+    } catch (error: any) {
+      console.error("Error adding general post:", error);
+      const errorMessage = error.message || JSON.stringify(error);
+      if (Platform.OS === "web") {
+        window.alert(
+          labels[language].error ||
+            `Failed to add general post: ${errorMessage}`
+        );
+      } else {
+        Alert.alert(
+          labels[language].error || "Error",
+          `Failed to add general post: ${errorMessage}`
+        );
+      }
+    }
+  };
+
+  // Perform doc post addition
+  const performAddDocPost = async () => {
+    if (!addDocPost) {
+      console.error("addPost is not defined in useDocs hook");
+      Alert.alert(
+        labels[language].error || "Error",
+        labels[language].errorMessage ||
+          "Failed to add doc post: Function not available"
+      );
+      return;
+    }
+
+    try {
+      const convertedDocPost: Partial<DocPostType> = {
+        text: newDocPost.text?.trim(),
+        media: newDocPost.media || [],
+      };
+
+      if (!convertedDocPost.text) {
+        throw new Error(labels[language].requiredFields || "Text is required");
+      }
+
+      console.log(
+        "Doc Post Payload:",
+        JSON.stringify(convertedDocPost, null, 2)
+      );
+      await addDocPost(convertedDocPost);
+      await loadDocPosts();
+      setModalVisible(false);
+      resetForms();
+      setSelectedImages([]);
+      setSelectedCategory(null);
+
+      if (Platform.OS !== "web") {
+        Alert.alert(
+          labels[language].added || "Added",
+          labels[language].created || "Doc post has been added!"
+        );
+      } else {
+        window.alert(labels[language].created || "Doc post has been added!");
+      }
+    } catch (error: any) {
+      console.error("Error adding doc post:", error);
+      const errorMessage = error.message || JSON.stringify(error);
+      if (Platform.OS === "web") {
+        window.alert(
+          labels[language].error || `Failed to add doc post: ${errorMessage}`
+        );
+      } else {
+        Alert.alert(
+          labels[language].error || "Error",
+          `Failed to add doc post: ${errorMessage}`
+        );
+      }
+    }
+  };
 
   // Reset all forms
   const resetForms = () => {
@@ -995,6 +1228,14 @@ const MainAddButton = () => {
       admin_rating: "",
       notes: "",
     });
+    setNewGeneralPost({
+      text: "",
+      media: [],
+    });
+    setNewDocPost({
+      text: "",
+      media: [],
+    });
   };
 
   // Handle addition with platform-specific confirmation
@@ -1021,6 +1262,10 @@ const MainAddButton = () => {
         ? performAddCourse
         : selectedCategory === "restaurant"
         ? performAddRestaurant
+        : selectedCategory === "general"
+        ? performAddGeneralPost
+        : selectedCategory === "document"
+        ? performAddDocPost
         : () => {};
 
     if (Platform.OS === "web") {
@@ -1227,11 +1472,19 @@ const MainAddButton = () => {
         <Text style={styles.label}>{labels[language].images || "Images"}:</Text>
         <ScrollView horizontal style={{ flexDirection: "row", maxHeight: 100 }}>
           {selectedImages.map((uri, index) => (
-            <Image
-              key={index}
-              source={{ uri }}
-              style={[styles.imagePreview, { marginLeft: 10 }]}
-            />
+            <View key={index} style={styles.mediaPreviewWrapper}>
+              {uri.endsWith(".mp4") || uri.endsWith(".mov") ? (
+                <>
+                  <Image
+                    source={{ uri: "https://picsum.photos/90/90" }}
+                    style={styles.imagePreview}
+                  />
+                  <Text style={styles.previewVideoText}>Video</Text>
+                </>
+              ) : (
+                <Image source={{ uri }} style={styles.imagePreview} />
+              )}
+            </View>
           ))}
           <TouchableOpacity
             style={[
@@ -1323,11 +1576,19 @@ const MainAddButton = () => {
         <Text style={styles.label}>{labels[language].images || "Images"}:</Text>
         <ScrollView horizontal style={{ flexDirection: "row", maxHeight: 100 }}>
           {selectedImages.map((uri, index) => (
-            <Image
-              key={index}
-              source={{ uri }}
-              style={[styles.imagePreview, { marginLeft: 10 }]}
-            />
+            <View key={index} style={styles.mediaPreviewWrapper}>
+              {uri.endsWith(".mp4") || uri.endsWith(".mov") ? (
+                <>
+                  <Image
+                    source={{ uri: "https://picsum.photos/90/90" }}
+                    style={styles.imagePreview}
+                  />
+                  <Text style={styles.previewVideoText}>Video</Text>
+                </>
+              ) : (
+                <Image source={{ uri }} style={styles.imagePreview} />
+              )}
+            </View>
           ))}
           <TouchableOpacity
             style={[
@@ -1435,11 +1696,19 @@ const MainAddButton = () => {
         <Text style={styles.label}>{labels[language].images || "Images"}:</Text>
         <ScrollView horizontal style={{ flexDirection: "row", maxHeight: 100 }}>
           {selectedImages.map((uri, index) => (
-            <Image
-              key={index}
-              source={{ uri }}
-              style={[styles.imagePreview, { marginLeft: 10 }]}
-            />
+            <View key={index} style={styles.mediaPreviewWrapper}>
+              {uri.endsWith(".mp4") || uri.endsWith(".mov") ? (
+                <>
+                  <Image
+                    source={{ uri: "https://picsum.photos/90/90" }}
+                    style={styles.imagePreview}
+                  />
+                  <Text style={styles.previewVideoText}>Video</Text>
+                </>
+              ) : (
+                <Image source={{ uri }} style={styles.imagePreview} />
+              )}
+            </View>
           ))}
           <TouchableOpacity
             style={[
@@ -1523,11 +1792,19 @@ const MainAddButton = () => {
         <Text style={styles.label}>{labels[language].images || "Images"}:</Text>
         <ScrollView horizontal style={{ flexDirection: "row", maxHeight: 100 }}>
           {selectedImages.map((uri, index) => (
-            <Image
-              key={index}
-              source={{ uri }}
-              style={[styles.imagePreview, { marginLeft: 10 }]}
-            />
+            <View key={index} style={styles.mediaPreviewWrapper}>
+              {uri.endsWith(".mp4") || uri.endsWith(".mov") ? (
+                <>
+                  <Image
+                    source={{ uri: "https://picsum.photos/90/90" }}
+                    style={styles.imagePreview}
+                  />
+                  <Text style={styles.previewVideoText}>Video</Text>
+                </>
+              ) : (
+                <Image source={{ uri }} style={styles.imagePreview} />
+              )}
+            </View>
           ))}
           <TouchableOpacity
             style={[
@@ -1570,6 +1847,96 @@ const MainAddButton = () => {
     </>
   );
 
+  // Render general post form
+  const renderGeneralPostForm = () => (
+    <>
+      <View style={styles.fieldRow}>
+        <Text style={styles.label}>{labels[language].text || "Text"}:</Text>
+        <TextInput
+          style={[styles.input, { height: 100 }]}
+          value={newGeneralPost.text || ""}
+          onChangeText={(text) => handleGeneralPostInputChange("text", text)}
+          placeholder={labels[language].text || "Enter post text"}
+          multiline
+        />
+      </View>
+      <View style={styles.fieldRow}>
+        <Text style={styles.label}>{labels[language].media || "Media"}:</Text>
+        <ScrollView horizontal style={{ flexDirection: "row", maxHeight: 100 }}>
+          {selectedImages.map((uri, index) => (
+            <View key={index} style={styles.mediaPreviewWrapper}>
+              {uri.endsWith(".mp4") || uri.endsWith(".mov") ? (
+                <>
+                  <Image
+                    source={{ uri: "https://picsum.photos/90/90" }}
+                    style={styles.imagePreview}
+                  />
+                  <Text style={styles.previewVideoText}>Video</Text>
+                </>
+              ) : (
+                <Image source={{ uri }} style={styles.imagePreview} />
+              )}
+            </View>
+          ))}
+          <TouchableOpacity
+            style={[
+              styles.imageInput,
+              { marginLeft: selectedImages.length > 0 ? 10 : 0 },
+            ]}
+            onPress={pickImage}
+          >
+            <Ionicons name="add" size={24} color={COLORS.black} />
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
+    </>
+  );
+
+  // Render doc post form
+  const renderDocPostForm = () => (
+    <>
+      <View style={styles.fieldRow}>
+        <Text style={styles.label}>{labels[language].text || "Text"}:</Text>
+        <TextInput
+          style={[styles.input, { height: 100 }]}
+          value={newDocPost.text || ""}
+          onChangeText={(text) => handleDocPostInputChange("text", text)}
+          placeholder={labels[language].text || "Enter document text"}
+          multiline
+        />
+      </View>
+      <View style={styles.fieldRow}>
+        <Text style={styles.label}>{labels[language].media || "Media"}:</Text>
+        <ScrollView horizontal style={{ flexDirection: "row", maxHeight: 100 }}>
+          {selectedImages.map((uri, index) => (
+            <View key={index} style={styles.mediaPreviewWrapper}>
+              {uri.endsWith(".mp4") || uri.endsWith(".mov") ? (
+                <>
+                  <Image
+                    source={{ uri: "https://picsum.photos/90/90" }}
+                    style={styles.imagePreview}
+                  />
+                  <Text style={styles.previewVideoText}>Video</Text>
+                </>
+              ) : (
+                <Image source={{ uri }} style={styles.imagePreview} />
+              )}
+            </View>
+          ))}
+          <TouchableOpacity
+            style={[
+              styles.imageInput,
+              { marginLeft: selectedImages.length > 0 ? 10 : 0 },
+            ]}
+            onPress={pickImage}
+          >
+            <Ionicons name="add" size={24} color={COLORS.black} />
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
+    </>
+  );
+
   // Custom dropdown options
   const categoryOptions = [
     {
@@ -1582,6 +1949,8 @@ const MainAddButton = () => {
     { label: labels[language].hotel || "Hotel", value: "hotel" },
     { label: labels[language].course || "Course", value: "course" },
     { label: labels[language].restaurant || "Restaurant", value: "restaurant" },
+    { label: labels[language].general || "General", value: "general" },
+    { label: labels[language].document || "Document", value: "document" },
   ];
 
   // Render custom dropdown
@@ -1695,6 +2064,10 @@ const MainAddButton = () => {
                     ? renderCourseForm()
                     : selectedCategory === "restaurant"
                     ? renderRestaurantForm()
+                    : selectedCategory === "general"
+                    ? renderGeneralPostForm()
+                    : selectedCategory === "document"
+                    ? renderDocPostForm()
                     : null}
                   <View style={styles.modalButtonContainer}>
                     <TouchableOpacity

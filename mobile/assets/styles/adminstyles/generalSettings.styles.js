@@ -57,8 +57,14 @@ export const styles = StyleSheet.create({
     alignItems: "flex-end",
   },
   value: {
+    fontFamily: "SF Pro",
+    fontSize: 15,
+    fontStyle: "normal",
+    fontWeight: "400",
+    alignItems: "center",
     fontSize: 16,
     color: COLORS.background,
+    width: "100%",
   },
   bannerContainer: {
     flexDirection: "row",

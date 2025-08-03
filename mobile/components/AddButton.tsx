@@ -18,13 +18,14 @@ import { useCondos } from "@/hooks/useCondos";
 import { useHotels } from "@/hooks/useHotels";
 import { useCourses } from "@/hooks/useCourses";
 import { useRestaurants } from "@/hooks/useRestaurants";
-import { useDoc } from "@/hooks/useDoc";
 import { useGeneral } from "@/hooks/useGeneral";
+import { useDocs } from "@/hooks/useDoc";
 import { useLanguage } from "@/context/LanguageContext";
 import { labels } from "@/libs/language";
 import { COLORS } from "@/constants/colors";
 import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
+import { supabase } from "@/libs/supabase";
 
 // Define types
 type JobType = {
@@ -101,8 +102,30 @@ type RestaurantType = {
   created_at: string;
 };
 
+type GeneralPostType = {
+  id: number;
+  text: string;
+  media: string[];
+  created_at: string;
+};
+
+type DocPostType = {
+  id: number;
+  text: string;
+  media: string[] | null;
+  created_at: string;
+};
+
 interface AddButtonProps {
-  type: "job" | "travel" | "condo" | "hotel" | "course" | "restaurant";
+  type:
+    | "job"
+    | "travel"
+    | "condo"
+    | "hotel"
+    | "course"
+    | "restaurant"
+    | "document"
+    | "general";
 }
 
 const AddButton: React.FC<AddButtonProps> = ({ type }) => {
@@ -130,6 +153,15 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
   const { createRestaurant, loadRestaurants } = useRestaurants() as {
     createRestaurant: (restaurant: Partial<RestaurantType>) => Promise<void>;
     loadRestaurants: () => Promise<void>;
+  };
+  const { addPost: addGeneralPost, loadPosts: loadGeneralPosts } =
+    useGeneral() as {
+      addPost: (post: Partial<GeneralPostType>) => Promise<GeneralPostType>;
+      loadPosts: () => Promise<void>;
+    };
+  const { addPost: addDocPost, loadPosts: loadDocPosts } = useDocs() as {
+    addPost: (post: Partial<DocPostType>) => Promise<DocPostType>;
+    loadPosts: () => Promise<void>;
   };
 
   const [modalVisible, setModalVisible] = useState<boolean>(false);
@@ -189,6 +221,16 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
     admin_rating: "",
     notes: "",
   });
+  const [newGeneralPost, setNewGeneralPost] = useState<
+    Partial<GeneralPostType>
+  >({
+    text: "",
+    media: [],
+  });
+  const [newDocPost, setNewDocPost] = useState<Partial<DocPostType>>({
+    text: "",
+    media: [],
+  });
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
   const MAX_IMAGES = 3;
 
@@ -224,7 +266,7 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
     if (!hasPermission) return;
 
     let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ImagePicker.MediaTypeOptions.All, // Allow images and videos
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.3,
@@ -234,7 +276,8 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
     if (!result.canceled && result.assets && result.assets.length > 0) {
       const uri = result.assets[0].uri;
       const base64 = result.assets[0].base64;
-      if (!base64) {
+      const isVideo = uri.endsWith(".mp4") || uri.endsWith(".mov");
+      if (!base64 && !isVideo) {
         Alert.alert(
           labels[language].error || "Error",
           "Failed to get image data"
@@ -242,19 +285,43 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
         return;
       }
 
-      const compressedImage = await ImageManipulator.manipulateAsync(
-        uri,
-        [{ resize: { width: 600 } }],
-        {
-          compress: 0.5,
-          format: ImageManipulator.SaveFormat.JPEG,
-          base64: true,
+      let base64String: string;
+      if (isVideo) {
+        // For videos, upload directly without compression
+        const response = await fetch(uri);
+        const blob = await response.blob();
+        const fileName = `post-${type}-${Date.now()}.mp4`;
+        const { error } = await supabase.storage
+          .from(type === "general" ? "general-images" : "docs-images")
+          .upload(fileName, blob, { contentType: "video/mp4" });
+        if (error) {
+          Alert.alert(
+            labels[language].error || "Error",
+            `Failed to upload video: ${error.message}`
+          );
+          return;
         }
-      );
+        const { data } = supabase.storage
+          .from(type === "general" ? "general-images" : "docs-images")
+          .getPublicUrl(fileName);
+        base64String = data.publicUrl;
+      } else {
+        // For images, compress and convert to base64
+        const compressedImage = await ImageManipulator.manipulateAsync(
+          uri,
+          [{ resize: { width: 600 } }],
+          {
+            compress: 0.5,
+            format: ImageManipulator.SaveFormat.JPEG,
+            base64: true,
+          }
+        );
+        base64String = `data:image/jpeg;base64,${
+          compressedImage.base64 || base64
+        }`;
+      }
 
-      const imageBase64 = compressedImage.base64 || base64;
-      const base64String = `data:image/jpeg;base64,${imageBase64}`;
-      setSelectedImages((prev) => [...prev, compressedImage.uri]);
+      setSelectedImages((prev) => [...prev, uri]);
       if (type === "travel") {
         setNewTravelPost((prev) => ({
           ...prev,
@@ -275,9 +342,19 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
           ...prev,
           images: [...(prev.images || []), base64String],
         }));
+      } else if (type === "general") {
+        setNewGeneralPost((prev) => ({
+          ...prev,
+          media: [...(prev.media || []), base64String],
+        }));
+      } else if (type === "document") {
+        setNewDocPost((prev) => ({
+          ...prev,
+          media: [...(prev.media || []), base64String],
+        }));
       }
     } else {
-      console.log("Image selection canceled or failed:", result);
+      console.log("Media selection canceled or failed:", result);
     }
   };
 
@@ -403,6 +480,28 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
         [field]: value,
       }));
     }
+  };
+
+  // Handle general post input changes
+  const handleGeneralPostInputChange = <K extends keyof GeneralPostType>(
+    field: K,
+    value: GeneralPostType[K]
+  ) => {
+    setNewGeneralPost((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  // Handle doc post input changes
+  const handleDocPostInputChange = <K extends keyof DocPostType>(
+    field: K,
+    value: DocPostType[K]
+  ) => {
+    setNewDocPost((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
   };
 
   // Render radio button
@@ -893,7 +992,7 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
   };
 
   // Perform restaurant addition
-  const performAddRestaurant = useCallback(async () => {
+  const performAddRestaurant = async () => {
     if (!createRestaurant) {
       console.error("createRestaurant is not defined in useRestaurants hook");
       Alert.alert(
@@ -980,7 +1079,128 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
         );
       }
     }
-  }, [createRestaurant, loadRestaurants, newRestaurant, language]);
+  };
+
+  // Perform general post addition
+  const performAddGeneralPost = async () => {
+    if (!addGeneralPost) {
+      console.error("addPost is not defined in useGeneral hook");
+      Alert.alert(
+        labels[language].error || "Error",
+        labels[language].errorMessage ||
+          "Failed to add general post: Function not available"
+      );
+      return;
+    }
+
+    try {
+      const convertedGeneralPost: Partial<GeneralPostType> = {
+        text: newGeneralPost.text?.trim(),
+        media: newGeneralPost.media || [],
+      };
+
+      if (!convertedGeneralPost.text) {
+        throw new Error(labels[language].requiredFields || "Text is required");
+      }
+
+      console.log(
+        "General Post Payload:",
+        JSON.stringify(convertedGeneralPost, null, 2)
+      );
+      await addGeneralPost(convertedGeneralPost);
+      await loadGeneralPosts();
+      setModalVisible(false);
+      setNewGeneralPost({
+        text: "",
+        media: [],
+      });
+      setSelectedImages([]);
+
+      if (Platform.OS !== "web") {
+        Alert.alert(
+          labels[language].added || "Added",
+          labels[language].created || "General post has been added!"
+        );
+      } else {
+        window.alert(
+          labels[language].created || "General post has been added!"
+        );
+      }
+    } catch (error: any) {
+      console.error("Error adding general post:", error);
+      const errorMessage = error.message || JSON.stringify(error);
+      if (Platform.OS === "web") {
+        window.alert(
+          labels[language].error ||
+            `Failed to add general post: ${errorMessage}`
+        );
+      } else {
+        Alert.alert(
+          labels[language].error || "Error",
+          `Failed to add general post: ${errorMessage}`
+        );
+      }
+    }
+  };
+
+  // Perform doc post addition
+  const performAddDocPost = async () => {
+    if (!addDocPost) {
+      console.error("addPost is not defined in useDocs hook");
+      Alert.alert(
+        labels[language].error || "Error",
+        labels[language].errorMessage ||
+          "Failed to add doc post: Function not available"
+      );
+      return;
+    }
+
+    try {
+      const convertedDocPost: Partial<DocPostType> = {
+        text: newDocPost.text?.trim(),
+        media: newDocPost.media || [],
+      };
+
+      if (!convertedDocPost.text) {
+        throw new Error(labels[language].requiredFields || "Text is required");
+      }
+
+      console.log(
+        "Doc Post Payload:",
+        JSON.stringify(convertedDocPost, null, 2)
+      );
+      await addDocPost(convertedDocPost);
+      await loadDocPosts();
+      setModalVisible(false);
+      setNewDocPost({
+        text: "",
+        media: [],
+      });
+      setSelectedImages([]);
+
+      if (Platform.OS !== "web") {
+        Alert.alert(
+          labels[language].added || "Added",
+          labels[language].created || "Doc post has been added!"
+        );
+      } else {
+        window.alert(labels[language].created || "Doc post has been added!");
+      }
+    } catch (error: any) {
+      console.error("Error adding doc post:", error);
+      const errorMessage = error.message || JSON.stringify(error);
+      if (Platform.OS === "web") {
+        window.alert(
+          labels[language].error || `Failed to add doc post: ${errorMessage}`
+        );
+      } else {
+        Alert.alert(
+          labels[language].error || "Error",
+          `Failed to add doc post: ${errorMessage}`
+        );
+      }
+    }
+  };
 
   // Handle addition with platform-specific confirmation
   const handleAdd = () => {
@@ -990,6 +1210,8 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
     const isHotel = type === "hotel";
     const isCourse = type === "course";
     const isRestaurant = type === "restaurant";
+    const isGeneral = type === "general";
+    const isDocument = type === "document";
     const confirmMessage = isJob
       ? labels[language].addConfirm || "Are you sure you want to add this job?"
       : isTravel
@@ -1007,6 +1229,12 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
       : isRestaurant
       ? labels[language].addConfirm ||
         "Are you sure you want to add this restaurant?"
+      : isGeneral
+      ? labels[language].addConfirm ||
+        "Are you sure you want to add this general post?"
+      : isDocument
+      ? labels[language].addConfirm ||
+        "Are you sure you want to add this doc post?"
       : "";
     const title = isJob
       ? labels[language].addJob || "Add Job"
@@ -1020,6 +1248,10 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
       ? labels[language].addCourse || "Add Course"
       : isRestaurant
       ? labels[language].addRestaurant || "Add Restaurant"
+      : isGeneral
+      ? labels[language].createPost || "Create General Post"
+      : isDocument
+      ? labels[language].createPost || "Create Doc Post"
       : "";
     const performAction = isJob
       ? performAddJob
@@ -1033,6 +1265,10 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
       ? performAddCourse
       : isRestaurant
       ? performAddRestaurant
+      : isGeneral
+      ? performAddGeneralPost
+      : isDocument
+      ? performAddDocPost
       : () => {};
 
     if (Platform.OS === "web") {
@@ -1242,11 +1478,19 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
         <Text style={styles.label}>{labels[language].images || "Images"}:</Text>
         <ScrollView horizontal style={{ flexDirection: "row", maxHeight: 100 }}>
           {selectedImages.map((uri, index) => (
-            <Image
-              key={index}
-              source={{ uri }}
-              style={[styles.imagePreview, { marginLeft: 10 }]}
-            />
+            <View key={index} style={styles.mediaPreviewWrapper}>
+              {uri.endsWith(".mp4") || uri.endsWith(".mov") ? (
+                <>
+                  <Image
+                    source={{ uri: "https://picsum.photos/90/90" }}
+                    style={styles.imagePreview}
+                  />
+                  <Text style={styles.previewVideoText}>Video</Text>
+                </>
+              ) : (
+                <Image source={{ uri }} style={styles.imagePreview} />
+              )}
+            </View>
           ))}
           <TouchableOpacity
             style={[
@@ -1338,11 +1582,19 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
         <Text style={styles.label}>{labels[language].images || "Images"}:</Text>
         <ScrollView horizontal style={{ flexDirection: "row", maxHeight: 100 }}>
           {selectedImages.map((uri, index) => (
-            <Image
-              key={index}
-              source={{ uri }}
-              style={[styles.imagePreview, { marginLeft: 10 }]}
-            />
+            <View key={index} style={styles.mediaPreviewWrapper}>
+              {uri.endsWith(".mp4") || uri.endsWith(".mov") ? (
+                <>
+                  <Image
+                    source={{ uri: "https://picsum.photos/90/90" }}
+                    style={styles.imagePreview}
+                  />
+                  <Text style={styles.previewVideoText}>Video</Text>
+                </>
+              ) : (
+                <Image source={{ uri }} style={styles.imagePreview} />
+              )}
+            </View>
           ))}
           <TouchableOpacity
             style={[
@@ -1450,11 +1702,19 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
         <Text style={styles.label}>{labels[language].images || "Images"}:</Text>
         <ScrollView horizontal style={{ flexDirection: "row", maxHeight: 100 }}>
           {selectedImages.map((uri, index) => (
-            <Image
-              key={index}
-              source={{ uri }}
-              style={[styles.imagePreview, { marginLeft: 10 }]}
-            />
+            <View key={index} style={styles.mediaPreviewWrapper}>
+              {uri.endsWith(".mp4") || uri.endsWith(".mov") ? (
+                <>
+                  <Image
+                    source={{ uri: "https://picsum.photos/90/90" }}
+                    style={styles.imagePreview}
+                  />
+                  <Text style={styles.previewVideoText}>Video</Text>
+                </>
+              ) : (
+                <Image source={{ uri }} style={styles.imagePreview} />
+              )}
+            </View>
           ))}
           <TouchableOpacity
             style={[
@@ -1538,11 +1798,19 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
         <Text style={styles.label}>{labels[language].images || "Images"}:</Text>
         <ScrollView horizontal style={{ flexDirection: "row", maxHeight: 100 }}>
           {selectedImages.map((uri, index) => (
-            <Image
-              key={index}
-              source={{ uri }}
-              style={[styles.imagePreview, { marginLeft: 10 }]}
-            />
+            <View key={index} style={styles.mediaPreviewWrapper}>
+              {uri.endsWith(".mp4") || uri.endsWith(".mov") ? (
+                <>
+                  <Image
+                    source={{ uri: "https://picsum.photos/90/90" }}
+                    style={styles.imagePreview}
+                  />
+                  <Text style={styles.previewVideoText}>Video</Text>
+                </>
+              ) : (
+                <Image source={{ uri }} style={styles.imagePreview} />
+              )}
+            </View>
           ))}
           <TouchableOpacity
             style={[
@@ -1585,6 +1853,96 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
     </>
   );
 
+  // Render general post form
+  const renderGeneralPostForm = () => (
+    <>
+      <View style={styles.fieldRow}>
+        <Text style={styles.label}>{labels[language].text || "Text"}:</Text>
+        <TextInput
+          style={[styles.input, { height: 100 }]}
+          value={newGeneralPost.text || ""}
+          onChangeText={(text) => handleGeneralPostInputChange("text", text)}
+          placeholder={labels[language].text || "Enter text"}
+          multiline
+        />
+      </View>
+      <View style={styles.fieldRow}>
+        <Text style={styles.label}>{labels[language].media || "Media"}:</Text>
+        <ScrollView horizontal style={{ flexDirection: "row", maxHeight: 100 }}>
+          {selectedImages.map((uri, index) => (
+            <View key={index} style={styles.mediaPreviewWrapper}>
+              {uri.endsWith(".mp4") || uri.endsWith(".mov") ? (
+                <>
+                  <Image
+                    source={{ uri: "https://picsum.photos/90/90" }}
+                    style={styles.imagePreview}
+                  />
+                  <Text style={styles.previewVideoText}>Video</Text>
+                </>
+              ) : (
+                <Image source={{ uri }} style={styles.imagePreview} />
+              )}
+            </View>
+          ))}
+          <TouchableOpacity
+            style={[
+              styles.imageInput,
+              { marginLeft: selectedImages.length > 0 ? 10 : 0 },
+            ]}
+            onPress={pickImage}
+          >
+            <Ionicons name="add" size={24} color={COLORS.black} />
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
+    </>
+  );
+
+  // Render doc post form
+  const renderDocPostForm = () => (
+    <>
+      <View style={styles.fieldRow}>
+        <Text style={styles.label}>{labels[language].text || "Text"}:</Text>
+        <TextInput
+          style={[styles.input, { height: 100 }]}
+          value={newDocPost.text || ""}
+          onChangeText={(text) => handleDocPostInputChange("text", text)}
+          placeholder={labels[language].text || "Enter text"}
+          multiline
+        />
+      </View>
+      <View style={styles.fieldRow}>
+        <Text style={styles.label}>{labels[language].media || "Media"}:</Text>
+        <ScrollView horizontal style={{ flexDirection: "row", maxHeight: 100 }}>
+          {selectedImages.map((uri, index) => (
+            <View key={index} style={styles.mediaPreviewWrapper}>
+              {uri.endsWith(".mp4") || uri.endsWith(".mov") ? (
+                <>
+                  <Image
+                    source={{ uri: "https://picsum.photos/90/90" }}
+                    style={styles.imagePreview}
+                  />
+                  <Text style={styles.previewVideoText}>Video</Text>
+                </>
+              ) : (
+                <Image source={{ uri }} style={styles.imagePreview} />
+              )}
+            </View>
+          ))}
+          <TouchableOpacity
+            style={[
+              styles.imageInput,
+              { marginLeft: selectedImages.length > 0 ? 10 : 0 },
+            ]}
+            onPress={pickImage}
+          >
+            <Ionicons name="add" size={24} color={COLORS.black} />
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
+    </>
+  );
+
   return (
     <>
       <TouchableOpacity onPress={() => setModalVisible(true)}>
@@ -1614,6 +1972,10 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
                   ? labels[language].addCourse || "Add New Course"
                   : type === "restaurant"
                   ? labels[language].addRestaurant || "Add New Restaurant"
+                  : type === "general"
+                  ? labels[language].createPost || "Create New General Post"
+                  : type === "document"
+                  ? labels[language].createPost || "Create New Doc Post"
                   : ""}
               </Text>
               <TouchableOpacity
@@ -1636,6 +1998,10 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
                 ? renderCourseForm()
                 : type === "restaurant"
                 ? renderRestaurantForm()
+                : type === "general"
+                ? renderGeneralPostForm()
+                : type === "document"
+                ? renderDocPostForm()
                 : null}
               <View style={styles.modalButtonContainer}>
                 <TouchableOpacity
