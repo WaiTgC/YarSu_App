@@ -43,22 +43,16 @@ export default function ChatButton() {
       const token = await getItem("authToken");
       console.log("ChatButton - Auth token:", token);
 
-      // Check for existing chat
-      console.log("ChatButton - Fetching chats for userId:", currentUserId);
+      // Fetch the user's chat
+      console.log("ChatButton - Fetching chat for userId:", currentUserId);
       const response = await api.get(`/chats?user_id=${currentUserId}`);
-      let chatId;
-
-      if (response.data && response.data.length > 0) {
-        // Use existing chat
-        chatId = response.data[0].id;
-        console.log("ChatButton - Found existing chatId:", chatId);
-      } else {
-        // Create a new chat
-        console.log("ChatButton - Creating new chat for userId:", currentUserId);
-        const createResponse = await api.post("/chats", { user_id: currentUserId });
-        chatId = createResponse.data.id;
-        console.log("ChatButton - Created new chatId:", chatId);
+      if (!response.data || response.data.length === 0) {
+        console.error("ChatButton - No chat found for userId:", currentUserId);
+        return;
       }
+
+      const chatId = response.data[0].id;
+      console.log("ChatButton - Found chatId:", chatId);
 
       // Navigate to ChatScreen with chatId
       const path = "/(root)/ChatScreen";
