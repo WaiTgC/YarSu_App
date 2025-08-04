@@ -17,6 +17,7 @@ import { useJobs } from "@/hooks/useJobs";
 import { formatDate, fetchWithTimeout } from "@/libs/utils";
 import { useLanguage } from "@/context/LanguageContext";
 import { labels } from "@/libs/language";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 
 // Define the Job type
 type JobType = {

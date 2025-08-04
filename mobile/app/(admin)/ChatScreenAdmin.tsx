@@ -10,10 +10,12 @@ import {
   KeyboardAvoidingView,
   Platform,
   TouchableOpacity,
+  Dimensions,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { supabase } from "@/libs/supabase";
 import * as SecureStore from "expo-secure-store";
+import Ionicons from "@expo/vector-icons/Ionicons";
 
 interface Message {
   id: string;
@@ -38,19 +40,33 @@ export default function ChatScreenAdmin() {
     chatIdFromRoute || null
   );
   const [chats, setChats] = useState<Chat[]>([]);
+  const [filteredChats, setFilteredChats] = useState<Chat[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [adminId, setAdminId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const flatListRef = useRef<FlatList<any>>(null);
+  const [screenWidth, setScreenWidth] = useState(
+    Dimensions.get("window").width
+  );
+  const isLargeScreen = screenWidth > 600;
+
+  // Update screen width on dimension change
+  useEffect(() => {
+    const subscription = Dimensions.addEventListener("change", ({ window }) => {
+      setScreenWidth(window.width);
+    });
+    return () => subscription?.remove();
+  }, []);
 
   const fetchMessages = async () => {
     if (!selectedChatId) {
       setMessages([]);
       return;
     }
-    setLoading(false);
+    setLoading(true);
     try {
       const { data, error } = await supabase
         .from("messages")
@@ -146,19 +162,22 @@ export default function ChatScreenAdmin() {
         );
 
       setChats(chatsWithLastMessage);
-      if (!selectedChatId && chatsWithLastMessage.length > 0) {
+      setFilteredChats(chatsWithLastMessage);
+      // Only auto-select first chat on large screens if no chatId from route
+      if (!selectedChatId && chatsWithLastMessage.length > 0 && isLargeScreen) {
         setSelectedChatId(chatsWithLastMessage[0].id);
       }
     } catch (err) {
       console.error("ChatScreenAdmin - Error fetching chats:", err);
       setChats([]);
+      setFilteredChats([]);
     }
     setLoading(false);
   };
 
   useEffect(() => {
     fetchMessages();
-    const interval = setInterval(fetchMessages, 5000); // Poll every 5 seconds
+    const interval = setInterval(fetchMessages, 5000);
     return () => clearInterval(interval);
   }, [selectedChatId]);
 
@@ -174,7 +193,7 @@ export default function ChatScreenAdmin() {
       });
       if (error) throw error;
       setInput("");
-      await fetchMessages(); // Now accessible
+      await fetchMessages();
       flatListRef.current?.scrollToEnd({ animated: true });
     } catch (err) {
       console.error("ChatScreenAdmin - Error sending message:", err);
@@ -182,18 +201,43 @@ export default function ChatScreenAdmin() {
     setSending(false);
   };
 
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+    if (query.trim() === "") {
+      setFilteredChats(chats);
+    } else {
+      const filtered = chats.filter(
+        (chat) =>
+          chat.user_id.toLowerCase().includes(query.toLowerCase()) ||
+          (chat.last_message?.message &&
+            chat.last_message.message
+              .toLowerCase()
+              .includes(query.toLowerCase()))
+      );
+      setFilteredChats(filtered);
+    }
+  };
+
   const renderChatItem = ({ item }: { item: Chat }) => (
     <TouchableOpacity
-      style={styles.chatItem}
-      onPress={() => setSelectedChatId(item.id)}
+      style={[
+        styles.chatItem,
+        selectedChatId === item.id && styles.selectedChatItem,
+      ]}
+      onPress={() => {
+        setSelectedChatId(item.id);
+      }}
     >
-      <Text>Chat with {item.user_id.slice(0, 8)}...</Text>
-      <Text>
-        {item.last_message && item.last_message.created_at
-          ? `Last: ${item.last_message.message} (${new Date(
-              item.last_message.created_at
-            ).toLocaleTimeString()})`
+      <Text style={styles.chatUserId}>User: {item.user_id.slice(0, 8)}...</Text>
+      <Text style={styles.chatLastMessage}>
+        {item.last_message?.message
+          ? `Last: ${item.last_message.message.slice(0, 20)}...`
           : "No messages yet"}
+      </Text>
+      <Text style={styles.chatTimestamp}>
+        {item.last_message?.created_at
+          ? new Date(item.last_message.created_at).toLocaleTimeString()
+          : new Date(item.created_at).toLocaleTimeString()}
       </Text>
     </TouchableOpacity>
   );
@@ -209,6 +253,9 @@ export default function ChatScreenAdmin() {
         {item.sender_id === adminId ? "You (Admin)" : "User"}
       </Text>
       <Text>{item.message}</Text>
+      <Text style={styles.messageTimestamp}>
+        {item.created_at ? new Date(item.created_at).toLocaleTimeString() : ""}
+      </Text>
     </View>
   );
 
@@ -228,47 +275,140 @@ export default function ChatScreenAdmin() {
       keyboardVerticalOffset={Platform.OS === "ios" ? 100 : 0}
     >
       <View style={styles.container}>
-        <FlatList
-          data={chats}
-          renderItem={renderChatItem}
-          keyExtractor={(item) => item.id}
-          horizontal={false}
-          style={styles.chatList}
-          ListEmptyComponent={<Text>No chats available</Text>}
-        />
-        {selectedChatId ? (
-          <>
-            <FlatList
-              ref={flatListRef}
-              data={messages}
-              renderItem={renderMessage}
-              keyExtractor={(item) => item.id}
-              onContentSizeChange={() =>
-                flatListRef.current?.scrollToEnd({ animated: true })
-              }
-              onLayout={() =>
-                flatListRef.current?.scrollToEnd({ animated: true })
-              }
-              contentContainerStyle={{ paddingBottom: 70 }}
-            />
-            <View style={styles.inputRowFixed}>
+        {isLargeScreen ? (
+          // Large Screen Layout
+          <View style={styles.largeScreenContainer}>
+            <View style={styles.chatListContainer}>
               <TextInput
-                value={input}
-                onChangeText={setInput}
-                style={styles.input}
-                placeholder="Type a message..."
+                style={styles.searchInput}
+                value={searchQuery}
+                onChangeText={handleSearch}
+                placeholder="Search chats..."
               />
-              <Button
-                title={sending ? "Sending..." : "Send"}
-                onPress={sendMessage}
-                disabled={sending || !selectedChatId}
+              <FlatList
+                data={filteredChats}
+                renderItem={renderChatItem}
+                keyExtractor={(item) => item.id}
+                style={styles.chatList}
+                ListEmptyComponent={
+                  <Text style={styles.noChatText}>No chats found</Text>
+                }
               />
             </View>
-          </>
-        ) : (
-          <View style={styles.noChatContainer}>
-            <Text style={styles.noChatText}>Select a chat to start</Text>
+            <View style={styles.chatAreaContainer}>
+              {selectedChatId ? (
+                <>
+                  <View style={styles.chatHeader}>
+                    <Text style={styles.chatHeaderText}>
+                      User:{" "}
+                      {chats
+                        .find((chat) => chat.id === selectedChatId)
+                        ?.user_id.slice(0, 8)}
+                      ...
+                    </Text>
+                  </View>
+                  <FlatList
+                    ref={flatListRef}
+                    data={messages}
+                    renderItem={renderMessage}
+                    keyExtractor={(item) => item.id}
+                    onContentSizeChange={() =>
+                      flatListRef.current?.scrollToEnd({ animated: true })
+                    }
+                    onLayout={() =>
+                      flatListRef.current?.scrollToEnd({ animated: true })
+                    }
+                    contentContainerStyle={{ paddingBottom: 70 }}
+                  />
+                  <View style={styles.inputRowFixed}>
+                    <TextInput
+                      value={input}
+                      onChangeText={setInput}
+                      style={styles.input}
+                      placeholder="Type a message..."
+                    />
+                    <Button
+                      title={sending ? "Sending..." : "Send"}
+                      onPress={sendMessage}
+                      disabled={sending || !selectedChatId}
+                    />
+                  </View>
+                </>
+              ) : (
+                <View style={styles.noChatContainer}>
+                  <Text style={styles.noChatText}>Select a chat to start</Text>
+                </View>
+              )}
+            </View>
           </View>
+        ) : (
+          // Mobile Layout
+          <>
+            {!selectedChatId ? (
+              <View style={styles.chatListContainer}>
+                <TextInput
+                  style={styles.searchInput}
+                  value={searchQuery}
+                  onChangeText={handleSearch}
+                  placeholder="Search chats..."
+                />
+                <FlatList
+                  data={filteredChats}
+                  renderItem={renderChatItem}
+                  keyExtractor={(item) => item.id}
+                  style={styles.chatList}
+                  contentContainerStyle={{ paddingBottom: 20 }}
+                  ListEmptyComponent={
+                    <Text style={styles.noChatText}>No chats found</Text>
+                  }
+                />
+              </View>
+            ) : (
+              <View style={styles.chatAreaContainer}>
+                <View style={styles.chatHeader}>
+                  <TouchableOpacity
+                    onPress={() => setSelectedChatId(null)}
+                    style={styles.backButton}
+                  >
+                    <Ionicons name="arrow-back" size={24} color="#000" />
+                  </TouchableOpacity>
+                  <Text style={styles.chatHeaderText}>
+                    User:{" "}
+                    {chats
+                      .find((chat) => chat.id === selectedChatId)
+                      ?.user_id.slice(0, 8)}
+                    ...
+                  </Text>
+                </View>
+                <FlatList
+                  ref={flatListRef}
+                  data={messages}
+                  renderItem={renderMessage}
+                  keyExtractor={(item) => item.id}
+                  onContentSizeChange={() =>
+                    flatListRef.current?.scrollToEnd({ animated: true })
+                  }
+                  onLayout={() =>
+                    flatListRef.current?.scrollToEnd({ animated: true })
+                  }
+                  contentContainerStyle={{ paddingBottom: 70 }}
+                />
+                <View style={styles.inputRowFixed}>
+                  <TextInput
+                    value={input}
+                    onChangeText={setInput}
+                    style={styles.input}
+                    placeholder="Type a message..."
+                  />
+                  <Button
+                    title={sending ? "Sending..." : "Send"}
+                    onPress={sendMessage}
+                    disabled={sending || !selectedChatId}
+                  />
+                </View>
+              </View>
+            )}
+          </>
         )}
       </View>
     </KeyboardAvoidingView>
@@ -282,24 +422,72 @@ const styles = StyleSheet.create({
     padding: 10,
     paddingTop: 40,
   },
+  largeScreenContainer: {
+    flex: 1,
+    flexDirection: "row",
+  },
+  chatListContainer: {
+    flex: 1,
+    borderRightWidth: 1,
+    borderRightColor: "#eee",
+    maxWidth: 300,
+  },
+  chatAreaContainer: {
+    flex: 2,
+    position: "relative",
+  },
   chatList: {
-    maxHeight: 150,
-    borderBottomWidth: 1,
-    borderBottomColor: "#eee",
-    marginBottom: 10,
+    flex: 1,
   },
   chatItem: {
     padding: 10,
     borderBottomWidth: 1,
     borderBottomColor: "#ddd",
+    backgroundColor: "#fff",
+  },
+  selectedChatItem: {
+    backgroundColor: "#f0f0f0",
+  },
+  chatUserId: {
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  chatLastMessage: {
+    fontSize: 14,
+    color: "#666",
+  },
+  chatTimestamp: {
+    fontSize: 12,
+    color: "#888",
+    textAlign: "right",
+  },
+  searchInput: {
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 20,
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    margin: 10,
+  },
+  chatHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+    backgroundColor: "#fff",
+  },
+  chatHeaderText: {
+    fontSize: 16,
+    fontWeight: "bold",
+    marginLeft: 10,
+  },
+  backButton: {
+    padding: 5,
   },
   inputRowFixed: {
     flexDirection: "row",
     alignItems: "center",
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
     backgroundColor: "#fff",
     padding: 10,
     paddingBottom: 20,
@@ -333,6 +521,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#888",
     marginBottom: 2,
+  },
+  messageTimestamp: {
+    fontSize: 10,
+    color: "#888",
+    textAlign: "right",
+    marginTop: 2,
   },
   noChatContainer: {
     flex: 1,

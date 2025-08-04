@@ -165,10 +165,10 @@ export default function AppSidebar({ isOpen, toggleSidebar }: AppSidebarProps) {
                 onPress={handleChangePassword}
                 onStartShouldSetResponder={() => true}
               >
-                <View style={styles.menuItemContent}>
+                {/* <View style={styles.menuItemContent}>
                   <Ionicons name="lock-closed" size={20} color={COLORS.text} />
                   <Text style={styles.menuText}>Change Password</Text>
-                </View>
+                </View> */}
               </TouchableOpacity>
               <TouchableOpacity style={[styles.logoutButton]}>
                 <View style={styles.menuItemContent}>

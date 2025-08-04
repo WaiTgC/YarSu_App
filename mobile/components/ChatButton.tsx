@@ -1,4 +1,10 @@
-import { View, TouchableOpacity, Text, ActivityIndicator } from "react-native";
+import {
+  View,
+  TouchableOpacity,
+  Text,
+  ActivityIndicator,
+  Image,
+} from "react-native";
 import { useRouter } from "expo-router";
 import { useState, useEffect } from "react";
 import { supabase } from "@/libs/supabase";
@@ -104,7 +110,10 @@ export default function ChatButton() {
       {isLoading ? (
         <ActivityIndicator size="small" color="#0000ff" />
       ) : (
-        <Text>Chat</Text>
+        <Image
+          source={require("@/assets/images/chatuser.png")}
+          style={{ width: 30, height: 30 }}
+        />
       )}
     </TouchableOpacity>
   );

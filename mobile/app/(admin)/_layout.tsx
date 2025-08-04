@@ -39,19 +39,12 @@ export default function ALayout() {
   }
 
   return (
-    <KeyboardAwareScrollView
-      style={{ flex: 1 }}
-      contentContainerStyle={{ flexGrow: 1 }}
-      enableOnAndroid={true}
-      enableAutomaticScroll={true}
-    >
-      <UserProvider>
-        <SafeScreen>
-          <AdminLayout>
-            <Stack screenOptions={{ headerShown: false }} />
-          </AdminLayout>
-        </SafeScreen>
-      </UserProvider>
-    </KeyboardAwareScrollView>
+    <UserProvider>
+      <SafeScreen>
+        <AdminLayout>
+          <Stack screenOptions={{ headerShown: false }} />
+        </AdminLayout>
+      </SafeScreen>
+    </UserProvider>
   );
 }

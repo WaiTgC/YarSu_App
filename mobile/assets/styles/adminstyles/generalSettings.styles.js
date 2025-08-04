@@ -1,5 +1,6 @@
-import { StyleSheet } from "react-native";
+import { StyleSheet, Dimensions } from "react-native";
 import { COLORS } from "@/constants/colors";
+const { width } = Dimensions.get("window");
 
 export const styles = StyleSheet.create({
   container: {
@@ -8,9 +9,11 @@ export const styles = StyleSheet.create({
   },
   contentContainer: {
     padding: 10,
-    flexDirection: "row",
+    flexDirection: width > 600 ? "row" : "column", // Row on large screens, column on small
+    alignItems: "center", // Center cards horizontally
+    justifyContent: "center",
+    gap: 24,
     margin: "auto",
-    gap: 48,
   },
   card: {
     backgroundColor: "rgba(217, 217, 217, 0.60)",
@@ -22,8 +25,9 @@ export const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
-    minWidth: 413,
-    width: "auto",
+    width: width > 600 ? "45%" : "90%", // 45% width on large screens, 90% on small
+    maxWidth: 500, // Cap width for larger screens
+    minWidth: 360,
     height: "auto",
   },
   header: {
