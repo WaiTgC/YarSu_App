@@ -147,7 +147,9 @@ const Condo = () => {
             <Text style={styles.cardTitleText1}>
               {labels[language].citylife || "City Life"}
             </Text>
-            <Text style={styles.cardTitleText2}>{labels[language].Simplified || "Simplified."}</Text>
+            <Text style={styles.cardTitleText2}>
+              {labels[language].Simplified || "Simplified."}
+            </Text>
           </View>
           {condos.length === 0 ? (
             <Text style={styles.title}>Loading condos...</Text>
