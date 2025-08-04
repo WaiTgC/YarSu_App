@@ -76,12 +76,8 @@ export const useJobs = () => {
           gender: false,
         });
         // Redirect to chat screen (assuming chatId is created or linked by backend)
-        const { chatId } = await response.json(); // Expect chatId from backend
-        if (chatId) {
-          router.push(`/ChatScreen?chatId=${chatId}`);
-        } else {
-          console.error("No chatId returned from inquiry submission");
-        }
+
+        router.push(`/home`);
       } else {
         throw new Error("Failed to submit application");
       }

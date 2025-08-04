@@ -16,7 +16,6 @@ export const styles = StyleSheet.create({
     padding: containerPadding,
   },
   gridContainer: {
-    justifyContent: "space-between",
     marginTop: 10,
     rowGap: 20,
     margin: "70",
@@ -127,7 +126,7 @@ export const styles = StyleSheet.create({
   },
   modalContent: {
     width: "80%",
-    maxHeight: Dimensions.get("window").height * 0.8,
+    maxHeight: "80%",
     backgroundColor: "rgba(248, 249, 250, 0.80)",
     borderRadius: 12,
     padding: 20,

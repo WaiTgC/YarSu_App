@@ -92,7 +92,7 @@ const Restaurant = () => {
   };
 
   const renderItem = ({ item }: { item: RestaurantType }) => {
-    const windowWidth = Dimensions.get("window").width;
+    const windowWidth = 430;
     const containerPadding = 15;
     const cardMargin = 10;
     const cardWidth =
@@ -144,7 +144,7 @@ const Restaurant = () => {
       ) : (
         <FlatList
           data={restaurants}
-          contentContainerStyle={styles.gridContainer}
+          style={styles.gridContainer}
           keyExtractor={(item) => item.id.toString()}
           renderItem={renderItem}
           numColumns={numColumns}
@@ -154,10 +154,9 @@ const Restaurant = () => {
             numColumns > 1
               ? {
                   flexWrap: "wrap",
-                  justifyContent: "space-between",
                   paddingHorizontal: 8,
                 }
-              : { flexDirection: "column", paddingHorizontal: 8 }
+              : undefined
           }
           ListEmptyComponent={<Text>No restaurants available</Text>}
         />
@@ -243,7 +242,7 @@ const Restaurant = () => {
                 </View>
                 <View style={styles.modalDetailRow}>
                   <Text style={styles.detailText}>
-                    {labels[language].notes}:{" "}
+                    {labels[language].notes}:
                   </Text>
                   <View style={styles.notes}>
                     <Text>{selectedRestaurant.notes || "N/A"}</Text>

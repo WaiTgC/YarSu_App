@@ -137,7 +137,7 @@ const General = () => {
   };
 
   const renderItem = ({ item }: { item: PostType }) => {
-    const cardWidth = (Dimensions.get("window").width - 40) / numColumns - 16;
+    const cardWidth = 300;
     return (
       <View style={[styles.card, { width: cardWidth }]}>
         <View style={styles.bottomContainer}>

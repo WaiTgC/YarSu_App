@@ -98,7 +98,6 @@ export const styles = StyleSheet.create({
     padding: 10,
     marginTop: 5,
     width: "100%",
-    height: "auto ",
   },
   noteTextContainer: {
     overflow: "hidden",

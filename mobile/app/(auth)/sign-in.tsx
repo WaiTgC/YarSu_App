@@ -24,9 +24,9 @@ export default function SignIn() {
   const shakeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    console.log("SignIn - Supabase client:", !!supabase);
+    // console.log("SignIn - Supabase client:", !!supabase);
     if (!supabase) {
-      console.error("SignIn - Supabase client is undefined");
+      // console.error("SignIn - Supabase client is undefined");
       setError("Application error: Supabase client not initialized");
     }
 
@@ -68,33 +68,33 @@ export default function SignIn() {
       if (!supabase) {
         throw new Error("Supabase client is not initialized");
       }
-      console.log("SignIn - Attempting sign-in:", email);
+      // console.log("SignIn - Attempting sign-in:", email);
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
       if (error) {
-        console.error("SignIn - Supabase auth error:", error.message);
+        // console.error("SignIn - Supabase auth error:", error.message);
         throw new Error(error.message);
       }
       if (data.session) {
         console.log("SignIn - Successful, user ID:", data.session.user.id);
         await storeItem("authToken", data.session.access_token || "");
         await storeItem("userId", data.session.user.id || "");
-        console.log("SignIn - Stored userId:", data.session.user.id);
-        console.log("SignIn - Stored authToken:", data.session.access_token);
+        // console.log("SignIn - Stored userId:", data.session.user.id);
+        // console.log("SignIn - Stored authToken:", data.session.access_token);
         const user = await getUserRole();
-        console.log("SignIn - User data:", user);
-        console.log("SignIn - User role:", user.role);
+        // console.log("SignIn - User data:", user);
+        // console.log("SignIn - User role:", user.role);
         router.replace(
           user.role === "admin" ? "/(admin)/dashboard" : "/(root)/home"
         );
       } else {
-        console.error("SignIn - No session returned");
+        // console.error("SignIn - No session returned");
         setError("Sign-in failed. Please check your credentials.");
       }
     } catch (err: any) {
-      console.error("SignIn - Error:", err.message);
+      // console.error("SignIn - Error:", err.message);
       setError(err.message || "An error occurred. Please try again.");
     } finally {
       setIsLoading(false);

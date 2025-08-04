@@ -38,6 +38,7 @@ export const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
     color: COLORS.text,
+    width: "80%",
   },
   separator: {
     height: 1,
@@ -136,7 +137,6 @@ export const styles = StyleSheet.create({
     fontStyle: "normal",
     fontWeight: "400",
     letterSpacing: 0.15,
-
 
     fontWeight: "bold",
   },
