@@ -146,7 +146,7 @@ export default function SignUpScreen() {
           style={styles.button}
           onStartShouldSetResponder={() => true}
         >
-          <Text style={styles.buttonText}>Try Again</Text>
+          <Text style={styles.buttonText}>BakS</Text>
         </TouchableOpacity>
       </View>
     );

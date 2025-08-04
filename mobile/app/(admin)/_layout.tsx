@@ -8,6 +8,7 @@ import { router } from "expo-router";
 import { getUserRole } from "@/services/authService";
 import { UserProvider } from "@/context/UserContext";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
+import { StatusBar } from "expo-status-bar";
 
 export default function ALayout() {
   const [isCheckingSession, setIsCheckingSession] = useState(true);
@@ -44,6 +45,7 @@ export default function ALayout() {
         <AdminLayout>
           <Stack screenOptions={{ headerShown: false }} />
         </AdminLayout>
+        <StatusBar style="dark" />
       </SafeScreen>
     </UserProvider>
   );

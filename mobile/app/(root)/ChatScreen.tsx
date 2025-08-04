@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -19,6 +19,7 @@ interface Message {
   sender_id: string;
   message: string;
   created_at?: string;
+  type: string;
 }
 
 export default function ChatScreen() {
@@ -31,28 +32,43 @@ export default function ChatScreen() {
   const flatListRef = useRef<FlatList<any>>(null);
 
   useEffect(() => {
-    // Fetch userId from SecureStore
-    SecureStore.getItemAsync("userId").then((id) => setUserId(id));
-    fetchMessages();
-    // Poll for new messages
-    const interval = setInterval(async () => {
-      if (!chatId) return;
+    const fetchUserAndMessages = async () => {
+      const id = await SecureStore.getItemAsync("userId");
+      setUserId(id);
       await fetchMessages();
-    }, 3000); // Poll every 3 seconds
-    return () => clearInterval(interval);
+    };
+
+    fetchUserAndMessages();
+
+    const subscription = supabase
+      .channel(`public:messages:chat_id=eq.${chatId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "messages",
+          filter: `chat_id=eq.${chatId}`,
+        },
+        () => fetchMessages()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(subscription);
+    };
   }, [chatId]);
 
   const fetchMessages = async () => {
-    setLoading(false);
+    if (!chatId) {
+      setMessages([]);
+      setLoading(false);
+      return;
+    }
     try {
-      if (!chatId) {
-        setMessages([]);
-        setLoading(false);
-        return;
-      }
       const { data, error } = await supabase
         .from("messages")
-        .select("id, sender_id, message, created_at")
+        .select("id, sender_id, message, created_at, type")
         .eq("chat_id", chatId)
         .order("created_at", { ascending: true });
       if (error) throw error;
@@ -65,13 +81,9 @@ export default function ChatScreen() {
   };
 
   const sendMessage = async () => {
-    if (!input.trim() || !userId) return;
+    if (!input.trim() || !userId || !chatId) return;
     setSending(true);
     try {
-      if (!chatId) {
-        setSending(false);
-        return;
-      }
       const { error } = await supabase.from("messages").insert({
         chat_id: chatId,
         sender_id: userId,
@@ -87,26 +99,79 @@ export default function ChatScreen() {
     setSending(false);
   };
 
-  const renderItem = ({ item }: { item: Message }) => (
-    <View
-      style={[
-        styles.messageBubble,
-        item.sender_id === userId ? styles.myMessage : styles.otherMessage,
-      ]}
-    >
-      <Text style={styles.senderLabel}>
-        {item.sender_id === userId ? "You" : "Other"}
-      </Text>
-      <Text>{item.message}</Text>
-    </View>
-  );
+  const renderItem = ({ item }: { item: Message }) => {
+    if (item.type === "card") {
+      let cardData;
+      try {
+        cardData = JSON.parse(item.message);
+      } catch (err) {
+        console.error("Error parsing card message:", err);
+        return null;
+      }
+      return (
+        <View
+          style={[
+            styles.messageBubble,
+            item.sender_id === userId ? styles.myMessage : styles.otherMessage,
+            styles.cardContainer,
+          ]}
+        >
+          <Text style={styles.senderLabel}>
+            {item.sender_id === userId ? "You" : "Other"}
+          </Text>
+          <Text style={styles.cardTitle}>Job Application</Text>
+          <Text style={styles.cardField}>
+            Job: {cardData.job_title || "N/A"}
+          </Text>
+          <Text style={styles.cardField}>Name: {cardData.name || "N/A"}</Text>
+          <Text style={styles.cardField}>
+            Phone: {cardData.phonenumber || "N/A"}
+          </Text>
+          <Text style={styles.cardField}>
+            Address: {cardData.address || "N/A"}
+          </Text>
+          <Text style={styles.cardField}>
+            Birthday: {cardData.birthday || "N/A"}
+          </Text>
+          <Text style={styles.cardField}>
+            Thai Language: {cardData.thailanguage || "N/A"}
+          </Text>
+          <Text style={styles.cardField}>
+            Gender: {cardData.gender || "N/A"}
+          </Text>
+          {item.created_at && (
+            <Text style={styles.cardTimestamp}>
+              {new Date(item.created_at).toLocaleString()}
+            </Text>
+          )}
+        </View>
+      );
+    }
+    return (
+      <View
+        style={[
+          styles.messageBubble,
+          item.sender_id === userId ? styles.myMessage : styles.otherMessage,
+        ]}
+      >
+        <Text style={styles.senderLabel}>
+          {item.sender_id === userId ? "You" : "Other"}
+        </Text>
+        <Text>{item.message}</Text>
+        {item.created_at && (
+          <Text style={styles.messageTimestamp}>
+            {new Date(item.created_at).toLocaleString()}
+          </Text>
+        )}
+      </View>
+    );
+  };
 
   return (
     <KeyboardAvoidingView
       style={{ flex: 1 }}
-      contentContainerStyle={{ flexGrow: 1 }}
-      enableOnAndroid={true}
-      enableAutomaticScroll={true}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 100 : 0}
     >
       <View style={styles.container}>
         {loading ? (
@@ -137,7 +202,7 @@ export default function ChatScreen() {
           <Button
             title={sending ? "Sending..." : "Send"}
             onPress={sendMessage}
-            disabled={sending}
+            disabled={sending || !input.trim() || !chatId}
           />
         </View>
       </View>
@@ -192,5 +257,34 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#888",
     marginBottom: 2,
+  },
+  cardContainer: {
+    backgroundColor: "#E6F0FA",
+    borderWidth: 1,
+    borderColor: "#ADD8E6",
+    padding: 15,
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    marginBottom: 10,
+    color: "#333",
+  },
+  cardField: {
+    fontSize: 14,
+    marginBottom: 5,
+    color: "#333",
+  },
+  cardTimestamp: {
+    fontSize: 12,
+    color: "#888",
+    marginTop: 5,
+    alignSelf: "flex-end",
+  },
+  messageTimestamp: {
+    fontSize: 12,
+    color: "#888",
+    marginTop: 5,
+    alignSelf: "flex-end",
   },
 });

@@ -1,11 +1,16 @@
 import React, { useEffect, useRef, useState } from "react";
-import { useRouter } from "expo-router";
-import { Text, View, TouchableOpacity, Animated, Image } from "react-native";
+import { useRouter, useNavigation } from "expo-router";
+import {
+  Text,
+  View,
+  TouchableOpacity,
+  Animated,
+  Image,
+  BackHandler,
+} from "react-native";
 import { styles } from "@/assets/styles/adminstyles/Sidebar.styles";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { COLORS } from "@/constants/colors";
-import { supabase } from "@/libs/supabase";
-import { getUserRole } from "@/services/authService";
 import { SignOutButton } from "@/components/SignOutButton";
 import { useLanguage } from "@/context/LanguageContext";
 import { useUser } from "@/context/UserContext";
@@ -20,11 +25,36 @@ export default function AdminSidebar({
   toggleSidebar,
 }: AdminSidebarProps) {
   const router = useRouter();
+  const navigation = useNavigation();
   const { language, setLanguage } = useLanguage();
   const { profile } = useUser();
-  const [user, setUser] = useState<any>(null);
-  const [isSignedIn, setIsSignedIn] = useState(false);
   const translateX = useRef(new Animated.Value(isOpen ? 0 : -250)).current;
+
+  // Disable swipe-back gesture
+  useEffect(() => {
+    navigation.setOptions({
+      gestureEnabled: false,
+    });
+  }, [navigation]);
+
+  // Block hardware back button (Android)
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener(
+      "hardwareBackPress",
+      () => {
+        return true;
+      }
+    );
+    return () => backHandler.remove();
+  }, []);
+
+  // Block navigation back attempts
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("beforeRemove", (e) => {
+      e.preventDefault();
+    });
+    return unsubscribe;
+  }, [navigation]);
 
   useEffect(() => {
     Animated.timing(translateX, {
@@ -34,29 +64,14 @@ export default function AdminSidebar({
     }).start();
   }, [isOpen]);
 
+  // Assume admin role for local development
+  const isAdmin = true; // Replace with actual logic if needed (e.g., check AsyncStorage)
+
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        setIsSignedIn(true);
-        getUserRole()
-          .then((userData) => {
-            setUser(userData);
-            if (userData.role !== "admin") {
-              router.replace("/(root)");
-            }
-          })
-          .catch((error) => {
-            console.error("Error fetching user role:", error);
-            setIsSignedIn(false);
-            router.replace("/(auth)");
-          });
-      } else {
-        setIsSignedIn(false);
-        setUser(null);
-        router.replace("/(auth)");
-      }
-    });
-  }, []);
+    if (!isAdmin) {
+      router.replace("/(root)");
+    }
+  }, [isAdmin]);
 
   const handleChangePassword = () => {
     router.push("/forgetPassword");
@@ -73,7 +88,6 @@ export default function AdminSidebar({
     toggleSidebar();
   };
 
-  // Function to get display text for avatar and username
   const getDisplayText = () => {
     if (profile.name) {
       return {
@@ -82,7 +96,7 @@ export default function AdminSidebar({
       };
     }
     const email = profile.email || "Admin";
-    const username = email.split("@")[0]; // Strip domain
+    const username = email.split("@")[0];
     return {
       avatarText: username.slice(0, 2).toUpperCase(),
       username,
@@ -129,26 +143,22 @@ export default function AdminSidebar({
         ]}
       >
         <View style={styles.sidebarHeader}>
-          {isSignedIn ? (
-            <View style={styles.userContainer}>
-              <View style={styles.avatar}>
-                {profile.imageUrl ? (
-                  <Image
-                    source={{ uri: profile.imageUrl }}
-                    style={styles.avatarImage}
-                  />
-                ) : (
-                  <Text style={styles.avatarText}>{avatarText}</Text>
-                )}
-              </View>
-              <View>
-                <Text style={styles.welcomeText}>Welcome,</Text>
-                <Text style={styles.usernameText}>{username}</Text>
-              </View>
+          <View style={styles.userContainer}>
+            <View style={styles.avatar}>
+              {profile.imageUrl ? (
+                <Image
+                  source={{ uri: profile.imageUrl }}
+                  style={styles.avatarImage}
+                />
+              ) : (
+                <Text style={styles.avatarText}>{avatarText}</Text>
+              )}
             </View>
-          ) : (
-            <Text style={styles.welcomeText}>Please sign in</Text>
-          )}
+            <View>
+              <Text style={styles.welcomeText}>Welcome,</Text>
+              <Text style={styles.usernameText}>{username}</Text>
+            </View>
+          </View>
           <TouchableOpacity style={styles.closeButton} onPress={toggleSidebar}>
             <Ionicons name="chevron-back" size={24} color={COLORS.text} />
           </TouchableOpacity>
@@ -209,3 +219,4 @@ export default function AdminSidebar({
     </>
   );
 }
+  

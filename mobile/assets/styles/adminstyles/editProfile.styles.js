@@ -1,5 +1,7 @@
 import { StyleSheet } from "react-native";
 import { COLORS } from "@/constants/colors";
+import { Dimensions } from "react-native";
+const { width } = Dimensions.get("window");
 
 export const styles = StyleSheet.create({
   container: {
@@ -19,7 +21,9 @@ export const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: COLORS.background,
-    width: 550,
+    width: width > 600 ? "45%" : "90%", // 45% width on large screens, 90% on small
+    maxWidth: 500, // Cap width for larger screens
+    minWidth: 300,
     height: "auto",
     borderRadius: 15,
     padding: 16,
@@ -43,10 +47,10 @@ export const styles = StyleSheet.create({
     overflow: "hidden", // Ensure image stays within circle
   },
   profileImage: {
-    width: 90,
-    height: 90,
-    borderRadius: 45, // Match container for circular crop
-    resizeMode: "cover", // Ensure image fills the circle
+    width: 70,
+    height: 70,
+
+    resizeMode: "contain", // Ensure image fills the circle
   },
   fieldRow: {
     flexDirection: "row",
@@ -60,14 +64,15 @@ export const styles = StyleSheet.create({
     fontSize: 14,
     fontStyle: "normal",
     fontWeight: "650",
-    lineHeight: "normal",
+
     letterSpacing: 0.96,
     color: COLORS.white,
     width: "180px",
     textAlign: "right",
   },
   valueContainer: {
-    width: 308,
+    width: width > 600 ? "45%" : "50%", // 45% width on large screens, 90% on small
+    maxWidth: 308, // Cap width for larger screens
     height: 40,
     borderRadius: 10,
     backgroundColor: "#fff",
@@ -79,12 +84,14 @@ export const styles = StyleSheet.create({
     fontSize: 14,
     fontStyle: "normal",
     fontWeight: "650",
-    lineHeight: "normal",
+
     letterSpacing: 0.96,
     color: COLORS.black,
   },
   input: {
-    width: 308,
+    width: width > 600 ? "45%" : "50%", // 45% width on large screens, 90% on small
+    maxWidth: 308, // Cap width for larger screens
+
     height: 40,
     borderRadius: 10,
     backgroundColor: COLORS.white,
@@ -93,7 +100,7 @@ export const styles = StyleSheet.create({
     fontSize: 14,
     fontStyle: "normal",
     fontWeight: "650",
-    lineHeight: "normal",
+
     letterSpacing: 0.96,
     color: COLORS.black,
   },
@@ -111,7 +118,7 @@ export const styles = StyleSheet.create({
     fontSize: 14,
     fontStyle: "normal",
     fontWeight: "650",
-    lineHeight: "normal",
+
     letterSpacing: 0.96,
     color: "#fff",
   },
@@ -129,7 +136,7 @@ export const styles = StyleSheet.create({
     fontSize: 14,
     fontStyle: "normal",
     fontWeight: "650",
-    lineHeight: "normal",
+
     letterSpacing: 0.96,
     color: "#fff",
   },

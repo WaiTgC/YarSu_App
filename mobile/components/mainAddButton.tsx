@@ -523,10 +523,17 @@ const MainAddButton = () => {
       style={styles.radioButton}
       onPress={() => {
         if (selectedCategory === "job") {
-          handleJobInputChange(
-            field as keyof JobType,
-            value === "Yes" ? true : value === "Monthly" ? value : false
-          );
+          if (field === "payment_type") {
+            handleJobInputChange(
+              field as keyof JobType,
+              value as "Monthly" | "Daily"
+            );
+          } else {
+            handleJobInputChange(
+              field as keyof JobType,
+              value === "Yes" ? true : false
+            );
+          }
         } else if (selectedCategory === "hotel") {
           handleHotelInputChange(
             field as keyof HotelType,
@@ -537,12 +544,10 @@ const MainAddButton = () => {
     >
       <View style={styles.radioCircle}>
         {(selectedCategory === "job" &&
-          newJob[field as keyof JobType] ===
-            (value === "Yes"
-              ? true
-              : value === "Monthly" || value === "Daily"
-              ? value
-              : false)) ||
+          (field === "payment_type"
+            ? newJob[field as keyof JobType] === value
+            : newJob[field as keyof JobType] ===
+              (value === "Yes" ? true : false))) ||
         (selectedCategory === "hotel" &&
           newHotel[field as keyof HotelType] ===
             (value === "Yes" ? true : false)) ? (

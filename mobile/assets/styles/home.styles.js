@@ -413,7 +413,7 @@ export const styles = StyleSheet.create({
     // Animation inspired by hover:scale-105 and animate-float-up
     animationDuration: "0.3s",
     animationTimingFunction: "ease-in-out",
-    marginBottom: 20,
+    marginBottom: 10,
   },
   iconContainer: {
     width: "100%",

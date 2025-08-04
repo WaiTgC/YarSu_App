@@ -5,7 +5,6 @@ import React, {
   useEffect,
   ReactNode,
 } from "react";
-import { supabase } from "@/libs/supabase";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 interface UserProfile {
@@ -44,14 +43,6 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const fetchUserProfile = async () => {
       try {
-        // Fetch email from Supabase session
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        if (session?.user?.email) {
-          setProfile((prev) => ({ ...prev, email: session.user.email }));
-        }
-
         // Load profile from AsyncStorage
         const storedProfile = await AsyncStorage.getItem("userProfile");
         const storedImage = await AsyncStorage.getItem("userProfileImage");
@@ -62,23 +53,6 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         if (storedImage) {
           setProfile((prev) => ({ ...prev, imageUrl: storedImage }));
         }
-
-        // Fetch profile from Supabase
-        const { data, error } = await supabase
-          .from("users")
-          .select("name, phone_number, address, image_url")
-          .eq("email", session?.user?.email)
-          .single();
-        if (error) throw error;
-        if (data) {
-          setProfile((prev) => ({
-            ...prev,
-            name: data.name || "",
-            phoneNumber: data.phone_number || "",
-            address: data.address || "",
-            imageUrl: data.image_url || prev.imageUrl,
-          }));
-        }
       } catch (error) {
         console.error("UserContext - Error fetching user profile:", error);
       }
@@ -88,25 +62,10 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
   const updateProfile = async (updates: Partial<UserProfile>) => {
     try {
-      setProfile((prev) => ({ ...prev, ...updates }));
+      const newProfile = { ...profile, ...updates };
+      setProfile(newProfile);
       // Persist to AsyncStorage
-      await AsyncStorage.setItem(
-        "userProfile",
-        JSON.stringify({ ...profile, ...updates })
-      );
-      // Persist to Supabase
-      if (profile.email) {
-        const { error } = await supabase
-          .from("users")
-          .update({
-            name: updates.name || profile.name,
-            phone_number: updates.phoneNumber || profile.phoneNumber,
-            address: updates.address || profile.address,
-            image_url: updates.imageUrl || profile.imageUrl,
-          })
-          .eq("email", profile.email);
-        if (error) throw error;
-      }
+      await AsyncStorage.setItem("userProfile", JSON.stringify(newProfile));
     } catch (error) {
       console.error("UserContext - Error updating profile:", error);
     }
@@ -114,25 +73,11 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
   const uploadImage = async (file: any) => {
     try {
-      const fileExt = file.uri.split(".").pop();
-      const fileName = `${Date.now()}.${fileExt}`;
-      const filePath = `profile/${fileName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from("profile-images")
-        .upload(filePath, file, {
-          cacheControl: "3600",
-          upsert: true,
-        });
-
-      if (uploadError) throw uploadError;
-
-      const { data } = supabase.storage
-        .from("profile-images")
-        .getPublicUrl(filePath);
-      await updateProfile({ imageUrl: data.publicUrl });
-      await AsyncStorage.setItem("userProfileImage", data.publicUrl);
-      return data.publicUrl;
+      // Store the image URI directly in AsyncStorage (or convert to base64 if needed)
+      const imageUri = file.uri;
+      await AsyncStorage.setItem("userProfileImage", imageUri);
+      await updateProfile({ imageUrl: imageUri });
+      return imageUri;
     } catch (error) {
       console.error("UserContext - Error uploading image:", error);
       return null;

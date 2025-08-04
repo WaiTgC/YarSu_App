@@ -511,10 +511,17 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
       style={styles.radioButton}
       onPress={() => {
         if (type === "job") {
-          handleJobInputChange(
-            field as keyof JobType,
-            value === "Yes" ? true : value === "Monthly" ? value : false
-          );
+          if (field === "payment_type") {
+            handleJobInputChange(
+              field as keyof JobType,
+              value as "Monthly" | "Daily"
+            );
+          } else {
+            handleJobInputChange(
+              field as keyof JobType,
+              value === "Yes" ? true : false
+            );
+          }
         } else if (type === "hotel") {
           handleHotelInputChange(
             field as keyof HotelType,
@@ -525,12 +532,10 @@ const AddButton: React.FC<AddButtonProps> = ({ type }) => {
     >
       <View style={styles.radioCircle}>
         {(type === "job" &&
-          newJob[field as keyof JobType] ===
-            (value === "Yes"
-              ? true
-              : value === "Monthly" || value === "Daily"
-              ? value
-              : false)) ||
+          (field === "payment_type"
+            ? newJob[field as keyof JobType] === value
+            : newJob[field as keyof JobType] ===
+              (value === "Yes" ? true : false))) ||
         (type === "hotel" &&
           newHotel[field as keyof HotelType] ===
             (value === "Yes" ? true : false)) ? (

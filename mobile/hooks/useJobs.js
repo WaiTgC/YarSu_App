@@ -1,8 +1,11 @@
 import { useState, useCallback } from "react";
+import * as SecureStore from "expo-secure-store";
+import { useRouter } from "expo-router";
 
 const API_URL = "https://yarsu-backend.onrender.com/api";
 
 export const useJobs = () => {
+  const router = useRouter();
   const [jobs, setJobs] = useState([]);
   const [selectedJob, setSelectedJob] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
@@ -45,13 +48,19 @@ export const useJobs = () => {
   const handleSubmit = useCallback(async () => {
     if (!selectedJob) return;
 
+    const userId = await SecureStore.getItemAsync("userId");
+    if (!userId) {
+      alert("Please log in to apply.");
+      return;
+    }
+
     try {
-      const response = await fetch(`${API_URL}/user_inquiries`, {
+      const response = await fetch(`${API_URL}/inquiries`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           job_id: selectedJob.id,
-          user_id: "some-user-id", // Replace with actual user ID from Clerk
+          user_id: userId,
           ...formData,
         }),
       });
@@ -66,6 +75,13 @@ export const useJobs = () => {
           thailanguage: false,
           gender: false,
         });
+        // Redirect to chat screen (assuming chatId is created or linked by backend)
+        const { chatId } = await response.json(); // Expect chatId from backend
+        if (chatId) {
+          router.push(`/ChatScreen?chatId=${chatId}`);
+        } else {
+          console.error("No chatId returned from inquiry submission");
+        }
       } else {
         throw new Error("Failed to submit application");
       }
@@ -73,35 +89,32 @@ export const useJobs = () => {
       console.error("Error submitting inquiry:", error);
       alert("An error occurred. Please try again.");
     }
-  }, [selectedJob, formData]);
+  }, [selectedJob, formData, router]);
 
   const loadJobs = useCallback(async () => {
     await fetchJobs();
   }, [fetchJobs]);
 
-  const editJob = useCallback(
-    async (id: number, updatedJob: Partial<JobType>) => {
-      try {
-        const response = await fetch(`${API_URL}/jobs/${id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(updatedJob),
-        });
-        if (!response.ok)
-          throw new Error(`HTTP error! Status: ${response.status}`);
-        const updatedData = await response.json();
-        setJobs((prevJobs) =>
-          prevJobs.map((job) => (job.id === id ? updatedData : job))
-        );
-      } catch (error) {
-        console.error("Error editing job:", error.message);
-        alert("An error occurred while editing the job.");
-      }
-    },
-    []
-  );
+  const editJob = useCallback(async (id, updatedJob) => {
+    try {
+      const response = await fetch(`${API_URL}/jobs/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatedJob),
+      });
+      if (!response.ok)
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      const updatedData = await response.json();
+      setJobs((prevJobs) =>
+        prevJobs.map((job) => (job.id === id ? updatedData : job))
+      );
+    } catch (error) {
+      console.error("Error editing job:", error.message);
+      alert("An error occurred while editing the job.");
+    }
+  }, []);
 
-  const deleteJob = useCallback(async (id: number) => {
+  const deleteJob = useCallback(async (id) => {
     try {
       const response = await fetch(`${API_URL}/jobs/${id}`, {
         method: "DELETE",
@@ -115,7 +128,7 @@ export const useJobs = () => {
     }
   }, []);
 
-  const addJob = useCallback(async (newJob: Partial<JobType>) => {
+  const addJob = useCallback(async (newJob) => {
     try {
       const response = await fetch(`${API_URL}/jobs`, {
         method: "POST",

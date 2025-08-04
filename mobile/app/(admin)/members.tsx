@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -21,10 +21,14 @@ type MemberType = {
   role: string;
 };
 
-const Member = () => {
+type MemberProps = {
+  members?: MemberType[]; // Optional prop to pass members
+  onAddMember?: (member: MemberType) => void; // Optional callback for adding members
+};
+
+const Member = ({ members = [], onAddMember }: MemberProps) => {
   const router = useRouter();
   const { language } = useLanguage();
-  const [members, setMembers] = useState<MemberType[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
   const [newMember, setNewMember] = useState({
     username: "",
@@ -32,28 +36,7 @@ const Member = () => {
     role: "member",
   });
 
-  const fetchMembers = useCallback(async () => {
-    try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("id, username, email, role");
-      if (error) {
-        console.error("Error fetching members:", error);
-        Alert.alert("Error", "Failed to load members.");
-      } else {
-        setMembers(data || []);
-      }
-    } catch (error) {
-      console.error("Error fetching members:", error);
-      Alert.alert("Error", "Failed to load members.");
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchMembers();
-  }, [fetchMembers]);
-
-  const handleAddMember = async () => {
+  const handleAddMember = useCallback(async () => {
     if (!newMember.username || !newMember.email) {
       Alert.alert("Error", "Please fill in all required fields.");
       return;
@@ -73,7 +56,9 @@ const Member = () => {
         console.error("Error adding member:", error);
         Alert.alert("Error", "Failed to add member.");
       } else if (data) {
-        setMembers([...members, ...data]);
+        if (onAddMember) {
+          onAddMember(data[0]);
+        }
         setModalVisible(false);
         setNewMember({ username: "", email: "", role: "member" });
         Alert.alert(
@@ -85,7 +70,7 @@ const Member = () => {
       console.error("Error adding member:", error);
       Alert.alert("Error", "Failed to add member.");
     }
-  };
+  }, [newMember, onAddMember, language]);
 
   const renderMember = ({ item }: { item: MemberType }) => (
     <View style={styles.tableRow}>

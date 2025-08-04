@@ -66,7 +66,7 @@ export default function ChatScreenAdmin() {
       setMessages([]);
       return;
     }
-    setLoading(true);
+    setLoading(false);
     try {
       const { data, error } = await supabase
         .from("messages")
