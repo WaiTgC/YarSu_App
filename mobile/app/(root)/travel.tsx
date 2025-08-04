@@ -49,17 +49,15 @@ const Travel = () => {
   const [isNoteExpanded, setIsNoteExpanded] = useState(false);
 
   useEffect(() => {
-    console.log("Travel: useEffect triggered, calling loadTravelPosts");
     loadTravelPosts();
   }, [loadTravelPosts]);
 
   useEffect(() => {
     let interval;
     if (showDetails && selectedPost?.images && selectedPost.images.length > 1) {
-      console.log("Travel: Starting auto-slide interval", selectedPost.images);
       interval = setInterval(() => {
         const nextIndex = (currentImageIndex + 1) % selectedPost.images.length;
-        console.log("Travel: Sliding to index", nextIndex);
+
         setCurrentImageIndex(nextIndex);
         if (carouselRef.current) {
           carouselRef.current.scrollTo({ index: nextIndex, animated: true });
@@ -97,7 +95,6 @@ const Travel = () => {
     item: TravelPostType;
     index: number;
   }) => {
-    console.log(`Travel: Rendering item ${item.id} at index ${index}`);
     const baseHeight = 150;
     const doubleHeight = baseHeight * 2 + 8;
     const reducedHeight = baseHeight;
@@ -120,7 +117,6 @@ const Travel = () => {
           },
         ]}
         onPress={() => {
-          console.log(`Travel: handleMoreInfo called for item ${item.id}`);
           handleMoreInfo(item);
           setShowDetails(true);
           setIsNoteExpanded(false);
@@ -230,10 +226,6 @@ const Travel = () => {
               <TouchableOpacity
                 style={styles.closeIconButton}
                 onPress={() => {
-                  console.log(
-                    "Travel: Close icon pressed for",
-                    selectedPost?.id
-                  );
                   setShowDetails(false);
                   setIsNoteExpanded(false);
                 }}
@@ -263,20 +255,12 @@ const Travel = () => {
                     scrollAnimationDuration={300}
                     defaultIndex={currentImageIndex}
                     onSnapToItem={(index) => {
-                      console.log("Travel: Snapped to index", index);
                       setCurrentImageIndex(index);
                     }}
                     renderItem={({ item: image }) => (
                       <Image
                         source={{ uri: image }}
                         style={styles.modalImage}
-                        onError={(error) =>
-                          console.error(
-                            "Travel: Modal image load error for",
-                            selectedPost.id,
-                            error.nativeEvent
-                          )
-                        }
                       />
                     )}
                   />

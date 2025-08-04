@@ -124,9 +124,7 @@ const Job = () => {
     }
   }, [showApplyForm, slideAnimApply, headerHeight]);
 
-  useEffect(() => {
-    console.log(`Job - Current language: ${language}`);
-  }, [language]);
+  useEffect(() => {}, [language]);
 
   const getDaysInMonth = (month: number, year: number) => {
     return new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
@@ -150,7 +148,6 @@ const Job = () => {
     ).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`;
     handleFormChange("birthday", formattedDate);
     setShowCalendar(false);
-    console.log(`Job - Selected birthday: ${formattedDate}, Day: ${day}`);
   };
 
   const handlePrevMonth = () => {

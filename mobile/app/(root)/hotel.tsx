@@ -89,9 +89,7 @@ const Hotel = () => {
       <Image
         source={{ uri: item.images[0] }}
         style={styles.cardImage}
-        onError={(error) =>
-          console.error("Image load error", error.nativeEvent)
-        }
+        
       />
       <View style={styles.imageOverlay}>
         <Text style={styles.overlayText}>{item.name}</Text>
@@ -226,12 +224,6 @@ const Hotel = () => {
                       <Image
                         source={{ uri: image }}
                         style={styles.modalImage}
-                        onError={(error) =>
-                          console.error(
-                            "Modal image load error",
-                            error.nativeEvent
-                          )
-                        }
                       />
                     </View>
                   ))}

@@ -107,9 +107,9 @@ const Restaurant = () => {
           source={{ uri: item.images[0] || "https://picsum.photos/200" }}
           style={[styles.cardImage, { height: cardWidth * 0.75 }]}
           resizeMode="cover"
-          onError={(error) =>
-            console.error("Image load error:", error.nativeEvent)
-          }
+          // onError={(error) =>
+          //   console.error("Image load error:", error.nativeEvent)
+          // }
         />
         <View style={styles.textContainer}>
           <View style={styles.logoContainer}>
@@ -191,9 +191,9 @@ const Restaurant = () => {
                   }}
                   style={styles.modalImage}
                   resizeMode="contain"
-                  onError={(error) =>
-                    console.error("Modal image load error:", error.nativeEvent)
-                  }
+                  // onError={(error) =>
+                  //   console.error("Modal image load error:", error.nativeEvent)
+                  // }
                 />
                 <TouchableOpacity
                   style={styles.arrowButton}
