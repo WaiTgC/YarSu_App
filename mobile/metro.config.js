@@ -9,7 +9,7 @@ module.exports = (async () => {
       extraNodeModules: {
         path: require.resolve("path-browserify"),
         assert: require.resolve("assert"),
-        fs: require.resolve("react-native-fs"),
+        
       },
     },
   };
