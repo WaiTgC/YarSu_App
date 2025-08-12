@@ -1,12 +1,13 @@
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import {
   Text,
   TextInput,
   TouchableOpacity,
   View,
   Animated,
+  BackHandler,
 } from "react-native";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { styles } from "@/assets/styles/auth.styles";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -23,10 +24,25 @@ export default function SignIn() {
   const slideAnim = useRef(new Animated.Value(1000)).current;
   const shakeAnim = useRef(new Animated.Value(0)).current;
 
+  // Prevent back navigation from sign-in screen
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        // Prevent going back to app/index.tsx from sign-in screen
+        console.log("SignIn - Preventing back navigation to index");
+        return true; // This prevents going back
+      };
+
+      const subscription = BackHandler.addEventListener(
+        "hardwareBackPress",
+        onBackPress
+      );
+      return () => subscription.remove();
+    }, [])
+  );
+
   useEffect(() => {
-    // console.log("SignIn - Supabase client:", !!supabase);
     if (!supabase) {
-      // console.error("SignIn - Supabase client is undefined");
       setError("Application error: Supabase client not initialized");
     }
 
@@ -63,38 +79,40 @@ export default function SignIn() {
 
   const onSignInPress = async () => {
     setIsLoading(true);
-    setError(""); // Clear previous errors
+    setError("");
     try {
       if (!supabase) {
         throw new Error("Supabase client is not initialized");
       }
-      // console.log("SignIn - Attempting sign-in:", email);
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
+
       if (error) {
-        // console.error("SignIn - Supabase auth error:", error.message);
         throw new Error(error.message);
       }
+
       if (data.session) {
         console.log("SignIn - Successful, user ID:", data.session.user.id);
         await storeItem("authToken", data.session.access_token || "");
         await storeItem("userId", data.session.user.id || "");
-        // console.log("SignIn - Stored userId:", data.session.user.id);
-        // console.log("SignIn - Stored authToken:", data.session.access_token);
+
         const user = await getUserRole();
-        // console.log("SignIn - User data:", user);
-        // console.log("SignIn - User role:", user.role);
-        router.replace(
-          user.role === "admin" ? "/(admin)/dashboard" : "/(root)/home"
-        );
+        console.log("SignIn - User role:", user.role);
+
+        // Navigate to home screen and clear the navigation stack
+        // This prevents going back to auth screens
+        const targetRoute =
+          user.role === "admin" ? "/(admin)/dashboard" : "/(root)/home";
+        router.dismissAll();
+        router.replace(targetRoute);
       } else {
-        // console.error("SignIn - No session returned");
         setError("Sign-in failed. Please check your credentials.");
       }
     } catch (err: any) {
-      // console.error("SignIn - Error:", err.message);
+      console.error("SignIn - Error:", err.message);
       setError(err.message || "An error occurred. Please try again.");
     } finally {
       setIsLoading(false);

@@ -169,7 +169,7 @@ export default function RootLayout() {
       } else if (event === "SIGNED_OUT") {
         setIsAuthenticated(false);
         // Only navigate to index if explicitly signed out
-        router.replace("/(auth)");
+        router.replace("/index");
       }
     });
 
@@ -203,7 +203,7 @@ export default function RootLayout() {
     return (
       <View style={styles.container}>
         <ActivityIndicator size="large" color="#0000ff" />
-        <Text style={styles.welcomeText}>Loading...</Text>
+        {/* <Text style={styles.welcomeText}>Loading...</Text> */}
       </View>
     );
   }

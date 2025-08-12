@@ -5,9 +5,10 @@ import {
   View,
   Animated,
   Platform,
+  BackHandler,
 } from "react-native";
-import { useState, useRef, useEffect } from "react";
-import { router } from "expo-router";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { router, useFocusEffect } from "expo-router";
 import { styles } from "@/assets/styles/auth.styles";
 import { COLORS } from "@/constants/colors";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -23,6 +24,23 @@ export default function SignUpScreen() {
   const [error, setError] = useState("");
   const slideAnim = useRef(new Animated.Value(1000)).current;
   const shakeAnim = useRef(new Animated.Value(0)).current;
+
+  // Prevent back navigation from sign-up screen
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        // Prevent going back to app/index.tsx from sign-up screen
+        console.log("SignUp - Preventing back navigation to index");
+        return true; // This prevents going back
+      };
+
+      const subscription = BackHandler.addEventListener(
+        "hardwareBackPress",
+        onBackPress
+      );
+      return () => subscription.remove();
+    }, [])
+  );
 
   useEffect(() => {
     Animated.spring(slideAnim, {
@@ -146,7 +164,7 @@ export default function SignUpScreen() {
           style={styles.button}
           onStartShouldSetResponder={() => true}
         >
-          <Text style={styles.buttonText}>BakS</Text>
+          <Text style={styles.buttonText}>Back</Text>
         </TouchableOpacity>
       </View>
     );

@@ -1,67 +1,196 @@
 import { Stack, router, useFocusEffect } from "expo-router";
-import { useEffect, useCallback } from "react";
-import { supabase } from "@/libs/supabase";
-import { getUserRole } from "@/services/authService";
-import { getItem } from "@/utils/storage";
-import { BackHandler, StatusBar } from "react-native";
-import AppLayout from "@/components/AppLayout";
 import SafeScreen from "@/components/SafeScreen";
+import { supabase } from "@/libs/supabase";
+import { useEffect, useState, useCallback } from "react";
+import {
+  View,
+  Text,
+  ActivityIndicator,
+  StatusBar,
+  BackHandler,
+} from "react-native";
+import { styles } from "@/assets/styles/auth.styles";
+import AppLayout from "@/components/AppLayout";
+import { getUserRole } from "@/services/authService";
+import { getItem, removeItem } from "@/utils/storage";
 
-export default function RootRoutesLayout() {
-  // Ensure only authenticated users can access root screens
-  useEffect(() => {
-    const checkAuthAndRedirect = async () => {
-      try {
-        const storedToken = await getItem("authToken");
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
+export default function RootLayout() {
+  const [isCheckingSession, setIsCheckingSession] = useState<boolean>(true);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
 
-        if (!session && !storedToken) {
-          // User is not authenticated, redirect to welcome screen
-          console.log(
-            "RootRoutesLayout - User not authenticated, redirecting to welcome"
-          );
-          router.replace("/(auth)");
-          return;
+  const checkAuthenticationStatus = async () => {
+    try {
+      console.log("RootLayout - Checking session...");
+
+      // Check for stored token first
+      const storedToken = await getItem("authToken");
+
+      // Check Supabase session
+      const {
+        data: { session },
+        error,
+      } = await supabase.auth.getSession();
+
+      if (error) {
+        console.error("RootLayout - Session check error:", error.message);
+
+        // If there's an error but we have a stored token, try to use it
+        if (storedToken) {
+          try {
+            const userData = await getUserRole();
+            if (
+              userData &&
+              userData.id &&
+              (userData.role === "user" || userData.role === "admin")
+            ) {
+              console.log(
+                "RootLayout - Using stored token, user authenticated"
+              );
+              setIsAuthenticated(true);
+              return true;
+            }
+          } catch (userError) {
+            console.error(
+              "RootLayout - Error getting user data from stored token:",
+              userError
+            );
+            // Clear invalid token
+            await removeItem("authToken");
+            await removeItem("userId");
+          }
         }
 
-        // Verify the user data is valid
+        setIsAuthenticated(false);
+        return false;
+      } else if (session) {
+        console.log(
+          "RootLayout - Session found:",
+          session.user.email,
+          session.user.id
+        );
+
         try {
           const userData = await getUserRole();
-          if (!userData || !userData.id) {
-            // Invalid user data, redirect to welcome
-            console.log(
-              "RootRoutesLayout - Invalid user data, redirecting to welcome"
-            );
-            router.replace("/(auth)");
+          if (
+            userData &&
+            userData.id &&
+            (userData.role === "user" || userData.role === "admin")
+          ) {
+            setIsAuthenticated(true);
+            return true;
           } else {
-            console.log(
-              "RootRoutesLayout - User authenticated:",
-              userData.email
-            );
+            console.log("RootLayout - Invalid user role or data:", userData);
+            setIsAuthenticated(false);
+            return false;
           }
-        } catch (error) {
-          console.error("RootRoutesLayout - Error verifying user data:", error);
-          router.replace("/(auth)");
+        } catch (userError) {
+          console.error("RootLayout - Error getting user data:", userError);
+          setIsAuthenticated(false);
+          return false;
         }
-      } catch (error) {
-        console.error("RootRoutesLayout - Error checking auth:", error);
-        router.replace("/(auth)");
+      } else {
+        console.log("RootLayout - No session found");
+
+        // Check if we have a stored token as fallback
+        if (storedToken) {
+          try {
+            const userData = await getUserRole();
+            if (
+              userData &&
+              userData.id &&
+              (userData.role === "user" || userData.role === "admin")
+            ) {
+              console.log(
+                "RootLayout - Using stored token, user authenticated"
+              );
+              setIsAuthenticated(true);
+              return true;
+            }
+          } catch (userError) {
+            console.error(
+              "RootLayout - Error getting user data from stored token:",
+              userError
+            );
+            // Clear invalid token
+            await removeItem("authToken");
+            await removeItem("userId");
+          }
+        }
+
+        setIsAuthenticated(false);
+        return false;
       }
+    } catch (error: any) {
+      console.error("RootLayout - Error checking session:", error.message);
+      setIsAuthenticated(false);
+      return false;
+    } finally {
+      setIsCheckingSession(false);
+    }
+  };
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const initializeAuth = async () => {
+      await checkAuthenticationStatus();
     };
 
-    checkAuthAndRedirect();
+    initializeAuth();
+
+    // Listen for auth state changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!isMounted) return;
+
+      console.log(
+        "RootLayout - Auth state changed:",
+        event,
+        session?.user?.email
+      );
+
+      if (event === "SIGNED_IN" && session) {
+        try {
+          const userData = await getUserRole();
+          if (
+            userData &&
+            userData.id &&
+            (userData.role === "user" || userData.role === "admin")
+          ) {
+            setIsAuthenticated(true);
+          } else {
+            setIsAuthenticated(false);
+          }
+        } catch (error) {
+          console.error("RootLayout - Error after sign in:", error);
+          setIsAuthenticated(false);
+        }
+      } else if (event === "SIGNED_OUT") {
+        setIsAuthenticated(false);
+        // Only navigate to index if explicitly signed out
+        router.replace("/index");
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
-  // Handle back button in root screens to prevent going back to auth screens
+  // Handle Android back button to prevent unwanted navigation for authenticated users
   useFocusEffect(
     useCallback(() => {
       const onBackPress = () => {
-        // For authenticated users in root screens, prevent going back to auth screens
-        // Allow normal navigation within the root screens
-        // The individual screens can handle their own back navigation logic
-        return false; // Allow default back behavior within root screens
+        if (isAuthenticated) {
+          // For authenticated users, prevent going back to app/index.tsx
+          console.log(
+            "RootLayout - Preventing back navigation for authenticated user"
+          );
+          return true; // Prevent default back behavior
+        }
+        return false; // Allow normal back navigation for non-authenticated screens
       };
 
       const subscription = BackHandler.addEventListener(
@@ -69,29 +198,60 @@ export default function RootRoutesLayout() {
         onBackPress
       );
       return () => subscription.remove();
-    }, [])
+    }, [isAuthenticated])
   );
+
+  if (isCheckingSession) {
+    return (
+      <View style={styles.container}>
+        <ActivityIndicator size="large" color="#0000ff" />
+        {/* <Text style={styles.welcomeText}>Loading...</Text> */}
+      </View>
+    );
+  }
 
   return (
     <SafeScreen>
-      <AppLayout>
+      {isAuthenticated ? (
+        // For authenticated users, only show the authenticated stack
+        // app/index.tsx is completely excluded from this stack
+        <AppLayout>
+          <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen
+              name="(root)"
+              options={{
+                gestureEnabled: false, // Disable swipe gesture
+              }}
+            />
+            <Stack.Screen
+              name="(admin)"
+              options={{
+                gestureEnabled: false, // Disable swipe gesture
+              }}
+            />
+            <Stack.Screen
+              name="home"
+              options={{
+                gestureEnabled: false, // Disable swipe gesture for Home
+              }}
+            />
+            <Stack.Screen
+              name="ChatScreen"
+              options={{
+                title: "Chat",
+                gestureEnabled: false, // Disable swipe gesture for ChatScreen
+              }}
+            />
+            {/* Add other authenticated screens here */}
+          </Stack>
+        </AppLayout>
+      ) : (
+        // For non-authenticated users, show the unauthenticated stack
         <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen
-            name="home"
-            options={{
-              gestureEnabled: false, // Disable swipe back gesture
-            }}
-          />
-          <Stack.Screen
-            name="ChatScreen"
-            options={{
-              title: "Chat",
-              gestureEnabled: true, // Allow swipe back to home
-            }}
-          />
-          {/* Add other root screens here */}
+          <Stack.Screen name="index" />
+          <Stack.Screen name="(auth)" />
         </Stack>
-      </AppLayout>
+      )}
       <StatusBar style="auto" />
     </SafeScreen>
   );

@@ -28,7 +28,7 @@ export default function AuthRoutesLayout() {
               console.log(
                 "AuthLayout - Redirecting authenticated user to home"
               );
-              router.replace("/home");
+              router.replace("/(root)/home");
             }
           } catch (error) {
             console.error(
@@ -45,13 +45,16 @@ export default function AuthRoutesLayout() {
     checkAuthAndRedirect();
   }, []);
 
-  // Handle back button in auth screens
+  // Handle back button in auth screens to prevent going back to app/index.tsx
   useFocusEffect(
     useCallback(() => {
       const onBackPress = () => {
-        // Allow normal back navigation within auth screens
-        // But prevent going back to authenticated screens if somehow accessed
-        return false; // Allow default back behavior
+        // Prevent going back to app/index.tsx from auth screens
+        // Return true to prevent default back behavior
+        console.log(
+          "AuthLayout - Preventing back navigation to index from auth screens"
+        );
+        return true; // This prevents going back to app/index.tsx
       };
 
       const subscription = BackHandler.addEventListener(
@@ -70,9 +73,24 @@ export default function AuthRoutesLayout() {
       enableAutomaticScroll={true}
     >
       <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="index" />
-        <Stack.Screen name="sign-in" />
-        <Stack.Screen name="sign-up" />
+        <Stack.Screen
+          name="index"
+          options={{
+            gestureEnabled: false, // Disable swipe back gesture
+          }}
+        />
+        <Stack.Screen
+          name="sign-in"
+          options={{
+            gestureEnabled: true, // Disable swipe back gesture
+          }}
+        />
+        <Stack.Screen
+          name="sign-up"
+          options={{
+            gestureEnabled: false, // Disable swipe back gesture
+          }}
+        />
       </Stack>
     </KeyboardAwareScrollView>
   );
