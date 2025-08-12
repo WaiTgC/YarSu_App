@@ -7,7 +7,7 @@ import { supabase } from "@/libs/supabase";
 import { router } from "expo-router";
 import { getUserRole } from "@/services/authService";
 import { UserProvider } from "@/context/UserContext";
-import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
+// import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { StatusBar } from "expo-status-bar";
 
 export default function ALayout() {
