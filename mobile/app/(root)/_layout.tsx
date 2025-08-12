@@ -1,59 +1,76 @@
-import { Stack } from "expo-router";
-import SafeScreen from "@/components/SafeScreen";
+import { Stack, router, useFocusEffect } from "expo-router";
+import { useEffect, useCallback } from "react";
 import { supabase } from "@/libs/supabase";
-import { useEffect, useState } from "react";
-import { View, Text, ActivityIndicator, StatusBar } from "react-native";
-import { styles } from "@/assets/styles/auth.styles";
+import { getUserRole } from "@/services/authService";
+import { getItem } from "@/utils/storage";
+import { BackHandler, StatusBar } from "react-native";
 import AppLayout from "@/components/AppLayout";
+import SafeScreen from "@/components/SafeScreen";
 
-export default function RootLayout() {
-  const [isCheckingSession, setIsCheckingSession] = useState<boolean>(true);
-
+export default function RootRoutesLayout() {
+  // Ensure only authenticated users can access root screens
   useEffect(() => {
-    let isMounted = true;
-
-    const checkSession = async () => {
+    const checkAuthAndRedirect = async () => {
       try {
-        console.log("RootLayout - Checking session...");
+        const storedToken = await getItem("authToken");
         const {
           data: { session },
-          error,
         } = await supabase.auth.getSession();
-        if (!isMounted) return;
 
-        if (error) {
-          console.error("RootLayout - Session check error:", error.message);
-        } else if (session) {
+        if (!session && !storedToken) {
+          // User is not authenticated, redirect to welcome screen
           console.log(
-            "RootLayout - Session found:",
-            session.user.email,
-            session.user.id
+            "RootRoutesLayout - User not authenticated, redirecting to welcome"
           );
-        } else {
-          console.log("RootLayout - No session found");
+          router.replace("/(auth)");
+          return;
         }
-      } catch (error: any) {
-        console.error("RootLayout - Error checking session:", error.message);
-      } finally {
-        if (isMounted) setIsCheckingSession(false);
+
+        // Verify the user data is valid
+        try {
+          const userData = await getUserRole();
+          if (!userData || !userData.id) {
+            // Invalid user data, redirect to welcome
+            console.log(
+              "RootRoutesLayout - Invalid user data, redirecting to welcome"
+            );
+            router.replace("/(auth)");
+          } else {
+            console.log(
+              "RootRoutesLayout - User authenticated:",
+              userData.email
+            );
+          }
+        } catch (error) {
+          console.error("RootRoutesLayout - Error verifying user data:", error);
+          router.replace("/(auth)");
+        }
+      } catch (error) {
+        console.error("RootRoutesLayout - Error checking auth:", error);
+        router.replace("/(auth)");
       }
     };
 
-    checkSession();
-
-    return () => {
-      isMounted = false;
-    };
+    checkAuthAndRedirect();
   }, []);
 
-  if (isCheckingSession) {
-    return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" color="#0000ff" />
-        <Text style={styles.welcomeText}>Loading...</Text>
-      </View>
-    );
-  }
+  // Handle back button in root screens to prevent going back to auth screens
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        // For authenticated users in root screens, prevent going back to auth screens
+        // Allow normal navigation within the root screens
+        // The individual screens can handle their own back navigation logic
+        return false; // Allow default back behavior within root screens
+      };
+
+      const subscription = BackHandler.addEventListener(
+        "hardwareBackPress",
+        onBackPress
+      );
+      return () => subscription.remove();
+    }, [])
+  );
 
   return (
     <SafeScreen>
@@ -62,16 +79,17 @@ export default function RootLayout() {
           <Stack.Screen
             name="home"
             options={{
-              gestureEnabled: false, // Disable swipe gesture for Home
+              gestureEnabled: false, // Disable swipe back gesture
             }}
           />
           <Stack.Screen
             name="ChatScreen"
             options={{
               title: "Chat",
-              gestureEnabled: false, // Optionally disable for ChatScreen too
+              gestureEnabled: true, // Allow swipe back to home
             }}
           />
+          {/* Add other root screens here */}
         </Stack>
       </AppLayout>
       <StatusBar style="auto" />

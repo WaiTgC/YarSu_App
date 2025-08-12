@@ -7,6 +7,7 @@ import { COLORS } from "@/constants/colors";
 import { useState } from "react";
 import { useLanguage } from "@/context/LanguageContext";
 import { labels } from "@/libs/language";
+import { removeItem } from "@/utils/storage"; // Import removeItem
 
 export const SignOutButtonUser = () => {
   const router = useRouter();
@@ -17,12 +18,22 @@ export const SignOutButtonUser = () => {
     try {
       console.log("SignOutButtonUser - Attempting sign-out");
       await supabase.auth.signOut();
+
+      // Clear stored tokens
+      await removeItem("authToken");
+      await removeItem("userId");
+
       console.log(
-        "SignOutButtonUser - Sign-out successful, navigating to /(auth)"
+        "SignOutButtonUser - Sign-out successful, navigating to /index"
       );
+      // Clear the navigation stack and navigate to the index page
+      router.dismissAll();
       router.replace("/(auth)");
     } catch (error) {
       console.error("SignOutButtonUser - Sign-out error:", error);
+      // Even if sign out fails, attempt to navigate to (auth)"); page
+      router.dismissAll();
+      router.replace("/(auth)");
     }
   };
 

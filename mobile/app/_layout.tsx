@@ -1,60 +1,238 @@
-import { Stack } from "expo-router";
+import { Stack, router, useFocusEffect } from "expo-router";
 import SafeScreen from "@/components/SafeScreen";
 import { supabase } from "@/libs/supabase";
-import { useEffect, useState } from "react";
-import { View, Text, ActivityIndicator } from "react-native";
+import { useEffect, useState, useCallback } from "react";
+import {
+  View,
+  Text,
+  ActivityIndicator,
+  StatusBar,
+  BackHandler,
+} from "react-native";
 import { styles } from "@/assets/styles/auth.styles";
-import { StatusBar } from "expo-status-bar";
-import { LanguageProvider } from "@/context/LanguageContext";
+import AppLayout from "@/components/AppLayout";
+import { getUserRole } from "@/services/authService";
+import { getItem } from "@/utils/storage";
 
-export default function Layout() {
+export default function RootLayout() {
   const [isCheckingSession, setIsCheckingSession] = useState<boolean>(true);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+
+  const checkAuthenticationStatus = async () => {
+    try {
+      console.log("RootLayout - Checking session...");
+
+      // Check for stored token first
+      const storedToken = await getItem("authToken");
+
+      // Check Supabase session
+      const {
+        data: { session },
+        error,
+      } = await supabase.auth.getSession();
+
+      if (error) {
+        console.error("RootLayout - Session check error:", error.message);
+
+        // If there's an error but we have a stored token, try to use it
+        if (storedToken) {
+          try {
+            const userData = await getUserRole();
+            if (
+              userData &&
+              userData.id &&
+              (userData.role === "user" || userData.role === "admin")
+            ) {
+              console.log(
+                "RootLayout - Using stored token, user authenticated"
+              );
+              setIsAuthenticated(true);
+              return true;
+            }
+          } catch (userError) {
+            console.error(
+              "RootLayout - Error getting user data from stored token:",
+              userError
+            );
+            // Clear invalid token
+            await removeItem("authToken");
+            await removeItem("userId");
+          }
+        }
+
+        setIsAuthenticated(false);
+        return false;
+      } else if (session) {
+        console.log(
+          "RootLayout - Session found:",
+          session.user.email,
+          session.user.id
+        );
+
+        try {
+          const userData = await getUserRole();
+          if (
+            userData &&
+            userData.id &&
+            (userData.role === "user" || userData.role === "admin")
+          ) {
+            setIsAuthenticated(true);
+            return true;
+          } else {
+            console.log("RootLayout - Invalid user role or data:", userData);
+            setIsAuthenticated(false);
+            return false;
+          }
+        } catch (userError) {
+          console.error("RootLayout - Error getting user data:", userError);
+          setIsAuthenticated(false);
+          return false;
+        }
+      } else {
+        console.log("RootLayout - No session found");
+
+        // Check if we have a stored token as fallback
+        if (storedToken) {
+          try {
+            const userData = await getUserRole();
+            if (
+              userData &&
+              userData.id &&
+              (userData.role === "user" || userData.role === "admin")
+            ) {
+              console.log(
+                "RootLayout - Using stored token, user authenticated"
+              );
+              setIsAuthenticated(true);
+              return true;
+            }
+          } catch (userError) {
+            console.error(
+              "RootLayout - Error getting user data from stored token:",
+              userError
+            );
+            // Clear invalid token
+            await removeItem("authToken");
+            await removeItem("userId");
+          }
+        }
+
+        setIsAuthenticated(false);
+        return false;
+      }
+    } catch (error: any) {
+      console.error("RootLayout - Error checking session:", error.message);
+      setIsAuthenticated(false);
+      return false;
+    } finally {
+      setIsCheckingSession(false);
+    }
+  };
 
   useEffect(() => {
     let isMounted = true;
 
-    const checkSession = async () => {
-      try {
-        console.log("Checking session...");
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        if (!isMounted) return;
-
-        if (session) {
-          console.log("Session found, but staying on index.tsx");
-          // Optionally handle session-based navigation here if needed
-        } else {
-          console.log("No session found, showing index.tsx");
-        }
-      } catch (error) {
-        console.error("Session check error:", error);
-      } finally {
-        if (isMounted) setIsCheckingSession(false);
-      }
+    const initializeAuth = async () => {
+      await checkAuthenticationStatus();
     };
 
-    checkSession();
+    initializeAuth();
+
+    // Listen for auth state changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!isMounted) return;
+
+      console.log(
+        "RootLayout - Auth state changed:",
+        event,
+        session?.user?.email
+      );
+
+      if (event === "SIGNED_IN" && session) {
+        try {
+          const userData = await getUserRole();
+          if (
+            userData &&
+            userData.id &&
+            (userData.role === "user" || userData.role === "admin")
+          ) {
+            setIsAuthenticated(true);
+          } else {
+            setIsAuthenticated(false);
+          }
+        } catch (error) {
+          console.error("RootLayout - Error after sign in:", error);
+          setIsAuthenticated(false);
+        }
+      } else if (event === "SIGNED_OUT") {
+        setIsAuthenticated(false);
+        // Only navigate to index if explicitly signed out
+        router.replace("/(auth)");
+      }
+    });
 
     return () => {
       isMounted = false;
+      subscription.unsubscribe();
     };
   }, []);
+
+  // Handle Android back button to prevent unwanted navigation
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        if (isAuthenticated) {
+          // If user is authenticated, prevent going back to auth screens
+          // Let the individual screens handle their own back navigation
+          return false; // Allow normal back navigation within authenticated screens
+        }
+        return false; // Allow normal back navigation for non-authenticated screens
+      };
+
+      const subscription = BackHandler.addEventListener(
+        "hardwareBackPress",
+        onBackPress
+      );
+      return () => subscription.remove();
+    }, [isAuthenticated])
+  );
 
   if (isCheckingSession) {
     return (
       <View style={styles.container}>
         <ActivityIndicator size="large" color="#0000ff" />
+        <Text style={styles.welcomeText}>Loading...</Text>
       </View>
     );
   }
 
   return (
-    <LanguageProvider>
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="index" />
-      </Stack>
-      <StatusBar style="dark" />
-    </LanguageProvider>
+    <>
+      {isAuthenticated ? (
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen
+            name="home"
+            options={{
+              gestureEnabled: false, // Disable swipe gesture for Home
+            }}
+          />
+          <Stack.Screen
+            name="ChatScreen"
+            options={{
+              title: "Chat",
+              gestureEnabled: false, // Optionally disable for ChatScreen too
+            }}
+          />
+        </Stack>
+      ) : (
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="index" />
+          <Stack.Screen name="(auth)" />
+        </Stack>
+      )}
+      <StatusBar style="auto" />
+    </>
   );
 }

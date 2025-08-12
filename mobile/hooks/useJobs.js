@@ -77,7 +77,7 @@ export const useJobs = () => {
         });
         // Redirect to chat screen (assuming chatId is created or linked by backend)
 
-        router.push(`/home`);
+        router.replace("/ChatScreen");
       } else {
         throw new Error("Failed to submit application");
       }
